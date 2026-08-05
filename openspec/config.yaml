@@ -1,0 +1,57 @@
+# openspec/config.yaml
+schema: spec-driven
+
+context: |
+  Tech stack: Python 3 + FastAPI backend; React + Vite + Tailwind frontend; SQLite
+  database; ML with Scikit-Learn/XGBoost/LightGBM/CatBoost; DL with PyTorch;
+  plotting with Plotly/ECharts; processing with Pandas/NumPy/SciPy/Polars.
+  Architecture: modular, layered (Presentation / API / Application / Domain / Data);
+  independent engines (Data, Statistics, Probability, Feature, ML, DL,
+  Optimization, Generator, Backtesting, Experiment, Graph) behind well-defined
+  interfaces; config outside code; observability (logs, errors, timing,
+  resource usage, model versions).
+  Testing: no test runner detected yet (documentation-only repository as of
+  2026-08-05; no pyproject.toml/requirements/go.mod/package.json present).
+  Style: modularity, low coupling, high cohesion, reproducibility, extensibility;
+  Spanish project documentation, English technical artifacts per SDD contract.
+  Project state: Fase 0 (Design & Architecture) per README; IMPLEMENTATION_ROADMAP.md
+  defines Fases 0-19 with a strict dependency chain and Definition of Done.
+
+rules:
+  proposal:
+    - Include rollback plan for risky changes
+    - Record inconsistencies, missing dependencies, and architectural improvements found in project docs before implementation
+  specs:
+    - Use Given/When/Then for scenarios
+    - Use RFC 2119 keywords (MUST, SHALL, SHOULD, MAY)
+  design:
+    - Include sequence diagrams for complex flows
+    - Document architecture decisions with rationale
+  tasks:
+    - Group by phase, use hierarchical numbering
+    - Keep tasks completable in one session
+  apply:
+    guidelines:
+      - Follow existing code patterns
+      - Respect IMPLEMENTATION_ROADMAP.md phase ordering
+    tdd: false           # No test runner detected yet; enable when pytest is introduced
+    test_command: ""
+  verify:
+    test_command: ""
+    build_command: ""
+    coverage_threshold: 0
+  archive:
+    - Warn before merging destructive deltas
+
+testing:
+  strict_tdd: false      # No test runner detected in documentation-only repo
+  runner: ""
+  layers:
+    unit: false
+    integration: false
+    e2e: false
+  coverage: false
+  quality:
+    linter: false
+    typechecker: false
+    formatter: false
