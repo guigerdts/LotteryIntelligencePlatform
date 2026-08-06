@@ -7,6 +7,7 @@ authors = [
 ]
 requires-python = ">=3.12"
 dependencies = [
+    "alembic>=1.14.0",
     "fastapi>=0.141.1",
     "httpx>=0.28.1",
     "pre-commit>=4.6.1",
@@ -31,3 +32,8 @@ line-length = 100
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
+
+[tool.ruff.lint.per-file-ignores]
+# env.py must patch sys.path before importing the src-layout app package,
+# so its imports legitimately follow statements (E402) and split blocks (I001).
+"alembic/env.py" = ["E402", "I001"]
