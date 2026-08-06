@@ -27,6 +27,9 @@ dependencies = [
 [project.optional-dependencies]
 dialect-pg = ["psycopg[binary]>=3.2.0"]
 
+[project.scripts]
+lip = "backend.app.cli:main"
+
 [build-system]
 requires = ["uv_build>=0.11.19,<0.12.0"]
 build-backend = "uv_build"
