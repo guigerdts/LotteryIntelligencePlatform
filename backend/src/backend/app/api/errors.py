@@ -11,7 +11,8 @@ every typed failure. ``RESOURCE_SOFT_DELETED`` maps to **410 Gone** per explicit
 user mandate — the design said 404, the user overrides (deviation documented in
 the apply-progress). Fase 0 codes (``http_error``, ``validation_error``,
 ``internal_error``) are kept unchanged and handled by the existing handlers in
-``main.py``.
+``main.py``. The F2 import channel adds ``IMPORT_CONFLICT`` and
+``IMPORT_STATE_CONFLICT`` (both 409) to the taxonomy (IE-21, D-J/D-E).
 """
 
 from __future__ import annotations
@@ -24,7 +25,7 @@ from backend.app.schemas.envelope import ErrorDetail, ErrorEnvelope
 from backend.app.services.errors import ServiceError
 
 # Envelope code -> HTTP status (design Error Taxonomy; RESOURCE_SOFT_DELETED is
-# 410 per user mandate overriding design's 404).
+# 410 per user mandate overriding design's 404; the F2 import codes are 409).
 _CODE_TO_STATUS: dict[str, int] = {
     "validation_error": 422,
     "DUPLICATE_RESOURCE": 409,
@@ -32,6 +33,10 @@ _CODE_TO_STATUS: dict[str, int] = {
     "DATASET_LOCKED": 409,
     "RESOURCE_SOFT_DELETED": 410,
     "RESOURCE_NOT_FOUND": 404,
+    # F2 import channel (IE-11): concurrent active run and illegal terminal
+    # transition both surface 409 Conflict (D-J, D-E).
+    "IMPORT_CONFLICT": 409,
+    "IMPORT_STATE_CONFLICT": 409,
 }
 
 _UNKNOWN_STATUS = 500

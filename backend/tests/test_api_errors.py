@@ -20,6 +20,8 @@ from backend.app.main import create_app
 from backend.app.repositories.errors import DuplicateError, ReferentialError
 from backend.app.services.errors import (
     DatasetLockedError,
+    ImportConflictError,
+    ImportStateConflictError,
     NotFoundError,
     SoftDeletedError,
     ValidationError,
@@ -76,6 +78,20 @@ def test_soft_deleted_error_maps_to_410_user_mandate() -> None:
 
     assert status == 410
     assert body["error"]["code"] == "RESOURCE_SOFT_DELETED"
+
+
+def test_import_conflict_error_maps_to_409() -> None:
+    status, body = _run_handler(ImportConflictError("lottery already has an active run"))
+
+    assert status == 409
+    assert body["error"]["code"] == "IMPORT_CONFLICT"
+
+
+def test_import_state_conflict_error_maps_to_409() -> None:
+    status, body = _run_handler(ImportStateConflictError("illegal state transition"))
+
+    assert status == 409
+    assert body["error"]["code"] == "IMPORT_STATE_CONFLICT"
 
 
 # --- unexpected errors never expose stack traces -----------------------------
