@@ -18,6 +18,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
+from backend.app.api.errors import register_domain_error_handlers
 from backend.app.api.v1.router import api_v1_router
 from backend.app.config.settings import get_settings
 from backend.app.core.db import init_db
@@ -65,6 +66,7 @@ def create_app() -> FastAPI:
     app.include_router(api_v1_router, prefix=settings.api_v1_prefix)
 
     _register_error_handlers(app)
+    register_domain_error_handlers(app)
     return app
 
 
