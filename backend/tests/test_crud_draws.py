@@ -196,14 +196,19 @@ def test_invalid_date_filter_returns_422(client, db) -> None:
     assert response.json()["error"]["code"] == "validation_error"
 
 
-def test_latest_import_upload_not_mounted_in_fase1(client) -> None:
-    """Fase 2 endpoints must NOT exist in F1 (CD-07): no successful response.
+def test_latest_not_mounted_but_import_upload_require_body(client) -> None:
+    """F2 surface: /draws/import and /draws/upload are now mounted (IE-11).
 
-    ``/draws/latest`` is not a registered route; the ``/{draw_id}`` int-typed
-    route rejects the non-numeric segment with 422, and the import/upload POST
-    paths have no POST route (405 Method Not Allowed) — none of them are
-    functional F2 endpoints.
+    ``/draws/latest`` remains unmounted (never a functional endpoint). The F2
+    import endpoints are mounted but require a valid body/fields — a bare POST
+    is refused with 422 validation_error (no accidental no-op import).
     """
     assert client.get("/api/v1/draws/latest").status_code in (404, 422)
-    assert client.post("/api/v1/draws/import").status_code in (404, 405)
-    assert client.post("/api/v1/draws/upload").status_code in (404, 405)
+
+    import_resp = client.post("/api/v1/draws/import")
+    assert import_resp.status_code == 422
+    assert import_resp.json()["error"]["code"] == "validation_error"
+
+    upload_resp = client.post("/api/v1/draws/upload")
+    assert upload_resp.status_code == 422
+    assert upload_resp.json()["error"]["code"] == "validation_error"
