@@ -23,6 +23,7 @@ from alembic import command
 _BACKEND_DIR = Path(__file__).resolve().parents[1]
 _ALEMBIC_INI = _BACKEND_DIR / "alembic.ini"
 
+# F1's six core-domain tables (the 0001 schema).
 EXPECTED_TABLES = {
     "lottery",
     "draw",
@@ -31,6 +32,12 @@ EXPECTED_TABLES = {
     "datasets",
     "dataset_draws",
 }
+
+# The two import-engine audit tables added by 0003 (design §4).
+IMPORT_TABLES = {"imports", "import_errors"}
+
+# The full schema at head (0004) = F1 tables + import tables.
+HEAD_TABLES = EXPECTED_TABLES | IMPORT_TABLES
 
 # Alembic's own version-tracking table; not part of the domain schema.
 _ALEMBIC_VERSION = "alembic_version"
@@ -62,13 +69,23 @@ EXPECTED_CHECKS = {
 # Revision identifiers used to pin the 0001-only vs head (0002) states.
 _REV_0001 = "0001_initial_core_domain"
 
-# The four performance indexes shipped by 0002 (design Indexes table, Performance).
+# The four F1 performance indexes shipped by 0002 (design Indexes table, Performance).
 PERFORMANCE_INDEXES = {
     "ix_draw_lottery_date": ("draw", ("lottery_id", "draw_date")),
     "ix_draw_lottery_id": ("draw", ("lottery_id",)),
     "ix_draw_numbers_draw_id": ("draw_numbers", ("draw_id",)),
     "ix_dataset_draws_draw_id": ("dataset_draws", ("draw_id",)),
 }
+
+# The import-engine performance indexes shipped by 0004 (design §4, Performance row).
+IMPORT_PERF_INDEXES = {
+    "ix_imports_lottery_status_started": ("imports", ("lottery_id", "status", "started_at")),
+    "ix_imports_checksum": ("imports", ("checksum",)),
+    "ix_import_errors_import_id": ("import_errors", ("import_id",)),
+}
+
+# Revision identifiers used to pin migration states.
+_REV_0003 = "0003_imports_audit"
 
 
 def _config(db_path: Path) -> Config:
@@ -125,30 +142,35 @@ def test_upgrade_0001_creates_tables_constraints_no_perf_indexes(tmp_path: Path)
         engine.dispose()
 
 
-def test_upgrade_head_0002_adds_performance_indexes(tmp_path: Path) -> None:
-    """head (0002) adds exactly the four pre-approved performance indexes."""
+def test_upgrade_head_0004_adds_f1_and_import_performance_indexes(tmp_path: Path) -> None:
+    """head (0004) adds the four F1 perf indexes PLUS the three import perf indexes."""
     db = tmp_path / "head.db"
     command.upgrade(_config(db), "head")
 
     engine = sa.create_engine(f"sqlite:///{db}")
     insp = inspect(engine)
     try:
-        assert _domain_tables(db) == EXPECTED_TABLES
+        assert _domain_tables(db) == HEAD_TABLES
 
         # Integrity contract survives: every UNIQUE constraint from 0001 is intact.
         for table, expected in EXPECTED_UNIQUE.items():
             names = {uc["name"] for uc in insp.get_unique_constraints(table)}
             assert expected.issubset(names), f"{table} missing UNIQUE {expected - names}"
 
-        # The four performance indexes exist with the correct columns.
-        for name, (table, columns) in PERFORMANCE_INDEXES.items():
+        # The import tables must exist with their CHECK/FK constraints (0003).
+        assert {"imports", "import_errors"}.issubset(HEAD_TABLES)
+        check_names = {ck["name"] for ck in insp.get_check_constraints("imports")}
+        assert "ck_imports_status" in check_names
+        assert "ck_imports_import_type" in check_names
+
+        # All performance indexes (F1 + import) exist with the correct columns.
+        for name, (table, columns) in {**PERFORMANCE_INDEXES, **IMPORT_PERF_INDEXES}.items():
             idx = {i["name"]: i for i in insp.get_indexes(table)}
             assert name in idx, f"missing index {name} on {table}"
             assert tuple(idx[name]["column_names"]) == columns
             assert not idx[name]["unique"]  # performance, not integrity
 
-        # Each explicit index is a real CREATE INDEX (sql IS NOT NULL in
-        # sqlite_master), not an auto-index from a UNIQUE constraint.
+        # Each explicit index is a real CREATE INDEX (sql IS NOT NULL in sqlite_master).
         with engine.connect() as conn:
             master = {
                 row[0]: row[1]
@@ -156,14 +178,43 @@ def test_upgrade_head_0002_adds_performance_indexes(tmp_path: Path) -> None:
                     "SELECT name, sql FROM sqlite_master WHERE type='index'"
                 ).all()
             }
-        for name in PERFORMANCE_INDEXES:
+        for name in {**PERFORMANCE_INDEXES, **IMPORT_PERF_INDEXES}:
             assert master.get(name) is not None, f"{name} missing from sqlite_master"
     finally:
         engine.dispose()
 
 
+def test_upgrade_0003_creates_import_tables_with_integrity_no_import_perf_indexes(
+    tmp_path: Path,
+) -> None:
+    """0003 alone creates imports/import_errors with CHECK/FK and NO import perf indexes."""
+    db = tmp_path / "up_import.db"
+    command.upgrade(_config(db), _REV_0003)
+
+    engine = sa.create_engine(f"sqlite:///{db}")
+    insp = inspect(engine)
+    try:
+        assert _domain_tables(db) == HEAD_TABLES  # 0004 only adds perf indexes -> still present
+
+        # Integrity: PK, CHECK on imports status/import_type and per-counter >= 0.
+        check_names = {ck["name"] for ck in insp.get_check_constraints("imports")}
+        assert {"ck_imports_status", "ck_imports_import_type"}.issubset(check_names)
+        assert any(name.endswith("_non_negative") for name in check_names)
+
+        # FK RESTRICT declared on both import tables.
+        imports_fk = {f["name"] or "anonymous" for f in insp.get_foreign_keys("imports")}
+        errors_fk = {f["name"] or "anonymous" for f in insp.get_foreign_keys("import_errors")}
+        assert imports_fk and errors_fk
+
+        # No explicit performance index yet (0004 not applied).
+        assert insp.get_indexes("imports") == []
+        assert insp.get_indexes("import_errors") == []
+    finally:
+        engine.dispose()
+
+
 def test_downgrade_0002_removes_only_performance_indexes(tmp_path: Path) -> None:
-    """Downgrade to 0001 drops the four perf indexes; tables + integrity survive."""
+    """Downgrade to 0001 drops the F1 perf indexes AND the import tables; integrity survives."""
     db = tmp_path / "cycle.db"
     cfg = _config(db)
     command.upgrade(cfg, "head")
@@ -172,12 +223,12 @@ def test_downgrade_0002_removes_only_performance_indexes(tmp_path: Path) -> None
     engine = sa.create_engine(f"sqlite:///{db}")
     insp = inspect(engine)
     try:
-        # All six domain tables remain.
+        # All six domain tables remain (import tables 0003 were also dropped).
         assert _domain_tables(db) == EXPECTED_TABLES
         # No explicit performance index remains on any table.
         for table in EXPECTED_TABLES:
             explicit = insp.get_indexes(table)
-            assert explicit == [], f"{table} still has an explicit index at 0001"
+            assert explicit == [], f"{table} still has an explicit index at {_REV_0001}"
         # Integrity constraints survive.
         for table, expected in EXPECTED_UNIQUE.items():
             names = {uc["name"] for uc in insp.get_unique_constraints(table)}
@@ -192,11 +243,11 @@ def test_downgrade_base_drops_all_then_reupgrade_succeeds(tmp_path: Path) -> Non
     cfg = _config(db)
 
     command.upgrade(cfg, "head")
-    assert _domain_tables(db) == EXPECTED_TABLES
+    assert _domain_tables(db) == HEAD_TABLES
 
     command.downgrade(cfg, "base")
     # Alembic keeps its version table; every domain table must be dropped.
     assert _domain_tables(db) == set()
 
     command.upgrade(cfg, "head")
-    assert _domain_tables(db) == EXPECTED_TABLES
+    assert _domain_tables(db) == HEAD_TABLES
