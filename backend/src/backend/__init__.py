@@ -1,0 +1,1 @@
+"""Lottery Intelligence Platform backend package (src-layout root)."""
