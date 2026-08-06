@@ -51,13 +51,18 @@ class DrawRepository(BaseRepository[Draw]):
         order: str = "desc",
         page: int = 1,
         page_size: int = 50,
+        is_deleted: bool | None = None,
     ) -> list[Draw]:
         """Return a filtered, ordered page of draws with children preloaded.
 
         ``lottery_code`` resolves via a join to ``lottery.code`` (the ``?lottery=``
-        API filter). Only the requested page is loaded; children are fetched in
-        one selectin batch per relationship — the SELECT count does not grow with
-        the page size (scope item 8).
+        API filter). ``is_deleted`` (when not ``None``) filters the soft-delete
+        flag in SQL so pagination stays correct — the service owns the CD-05
+        exclusion policy and always passes ``False`` for functional queries;
+        ``None`` keeps the unfiltered behaviour for administrative/raw access.
+        Only the requested page is loaded; children are fetched in one selectin
+        batch per relationship — the SELECT count does not grow with the page
+        size (scope item 8).
         """
         stmt = (
             select(Draw)
@@ -74,6 +79,8 @@ class DrawRepository(BaseRepository[Draw]):
             stmt = stmt.where(Draw.draw_date >= date_from)
         if date_to is not None:
             stmt = stmt.where(Draw.draw_date <= date_to)
+        if is_deleted is not None:
+            stmt = stmt.where(Draw.is_deleted.is_(is_deleted))
 
         order_column = Draw.draw_date.desc() if order == "desc" else Draw.draw_date.asc()
         stmt = stmt.order_by(order_column, Draw.id).offset((page - 1) * page_size).limit(page_size)
