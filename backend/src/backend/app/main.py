@@ -20,6 +20,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from backend.app.api.v1.router import api_v1_router
 from backend.app.config.settings import get_settings
+from backend.app.core.db import init_db
 from backend.app.core.logging import configure_logging
 from backend.app.repositories.base import engine
 from backend.app.schemas.envelope import ErrorDetail, ErrorEnvelope
@@ -29,12 +30,15 @@ logger = getLogger("backend.app.main")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-    """Startup/shutdown hooks: log the configured level and engine readiness.
+    """Startup/shutdown hooks: ensure DB file, log level and engine readiness.
 
-    No table creation here — the schema is owned by Fase 1 migrations. Emitting
-    the startup line through the structured format exercises the logging seam.
+    ``init_db`` creates the local SQLite file (and its parent directory) on
+    first startup when it does not exist — no schema or tables, those belong to
+    Fase 1 migrations. Emitting the startup line through the structured format
+    exercises the logging seam.
     """
     settings = get_settings()
+    init_db(settings.database_url)
     logger.info(
         "Fase 0 backend starting (app=%s, version=%s)", settings.app_name, settings.app_version
     )
