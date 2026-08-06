@@ -1,13 +1,21 @@
-"""API v1 router: health and version endpoints wrapped in the standard envelope."""
+"""API v1 router: system endpoints plus the Fase 1 CRUD routers (CD-07).
+
+Mounts the lotteries and draws routers (API_SPEC §3/§4 subset) alongside the
+Fase 0 health/version endpoints. Every endpoint shares the standard envelope.
+"""
 
 from __future__ import annotations
 
 from fastapi import APIRouter
 
+from backend.app.api.v1.draws import router as draws_router
+from backend.app.api.v1.lotteries import router as lotteries_router
 from backend.app.config.settings import get_settings
 from backend.app.schemas.envelope import SuccessEnvelope
 
 api_v1_router = APIRouter()
+api_v1_router.include_router(lotteries_router)
+api_v1_router.include_router(draws_router)
 
 
 @api_v1_router.get("/health", response_model=SuccessEnvelope[dict[str, str]], tags=["system"])
