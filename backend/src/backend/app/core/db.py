@@ -24,8 +24,9 @@ def init_db(database_url: str | None = None) -> Path:
     """Create an empty database file at the configured path; no schema is created.
 
     Local-file dialects (SQLite) require a filesystem step; remote dialects have
-    nothing to create. Schema creation is deliberately deferred to Fase 1
-    migrations — ``Base.metadata.create_all`` is out of scope for Fase 0.
+    nothing to create. Schema is owned exclusively by the Fase 1 alembic
+    migrations (REQ-09): ``Base.metadata.create_all`` is never used, and the
+    schema exists only after ``alembic upgrade head``.
     """
     settings = get_settings()
     url = database_url or settings.database_url
