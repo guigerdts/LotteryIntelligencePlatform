@@ -1,9 +1,10 @@
 """FastAPI application factory: wires the Fase 0 backend foundation together.
 
 Bootstrap responsibility only — logging, engine, CORS, routing, and a global
-error boundary. No business/engine logic and no schema/table creation (Fase 1
-migrations own ``Base.metadata.create_all``). Exposes ``create_app`` for both
-``uvicorn backend.app.main:create_app`` and the test suite.
+error boundary. No business/engine logic and no schema/table creation: Alembic
+migrations own the schema (REQ-09), and ``Base.metadata.create_all`` is never
+called. Exposes ``create_app`` for both ``uvicorn backend.app.main:create_app``
+and the test suite.
 """
 
 from __future__ import annotations

@@ -333,17 +333,22 @@ pertenece a fases posteriores (1–19).
 
 ```
 backend/
-├── pyproject.toml          # Dependencias, pytest y ruff (single source)
+├── pyproject.toml          # Dependencias, extras, pytest y ruff (single source)
 ├── uv.lock                 # Pines reproducibles (REQ-08)
+├── alembic.ini             # Config alembic (dialecto por URL, REQ-09)
+├── alembic/                # Sole schema owner (env.py → Base.metadata)
+│   └── versions/           # 0001_initial_core_domain, 0002_performance_indexes
 ├── src/backend/app/
 │   ├── main.py             # App factory FastAPI (create_app)
-│   ├── api/v1/router.py    # GET /health, GET /version
+│   ├── api/v1/router.py    # /health, /version + lotteries + draws
 │   ├── config/settings.py  # Config centralizada (pydantic-settings)
-│   ├── core/               # logging.py, db.py
-│   ├── repositories/       # base.py (Base declarativa + sesión)
-│   ├── schemas/envelope.py # Envelope {success, data|error, timestamp}
+│   ├── core/               # logging.py, db.py (engine + init_db file-only)
+│   ├── models/             # Lottery, Draw, DrawNumber, SuperNumber, Dataset, DatasetDraw
+│   ├── repositories/       # base.py + BaseRepository + per-entity repos
+│   ├── services/           # draw_service, dataset_service, lottery_service
+│   ├── schemas/            # envelope.py, lottery.py, draw.py, dataset.py
 │   └── <motores>/          # Seams vacíos (Fases 3+)
-├── tests/                  # test_smoke.py, test_config.py
+├── tests/                  # test_smoke, test_migrations, test_dialect_compat, CRUD...
 config/.env.example         # Plantilla de variables (sin secretos)
 scripts/                    # run_backend.sh, init_db.sh
 database/                   # lip.db (ignorado por git)
@@ -371,10 +376,47 @@ Ejemplos: `LIP_APP_NAME`, `LIP_DATABASE_URL`, `LIP_ALLOWED_ORIGINS`,
 
 ## Base de datos
 
-SQLite en `<repo>/database/lip.db`. Solo se crea el archivo vacío y el engine;
-la construcción del schema (`Base.metadata.create_all`) **queda para migraciones
-de Fase 1**. El dialecto se maneja por URL de configuración (SQLite hoy,
-PostgreSQL después como swap config-only).
+SQLite en `<repo>/database/lip.db` por defecto. **Alembic es el único dueño del
+schema (REQ-09)**: `init_db()` solo crea el archivo vacío y el engine; el schema
+no se construye con `Base.metadata.create_all` sino exclusivamente vía
+`alembic upgrade head`. El dialecto se maneja por URL de configuración (SQLite
+hoy, PostgreSQL después como swap config-only, ver `pyproject.toml` extra
+`dialect-pg`).
+
+## Database Initialization & Migration Flow (Fase 1)
+
+Schema is owned entirely by the Alembic migration set (`backend/alembic/`,
+`env.py` → `Base.metadata`). Execution order is deterministic:
+
+1. **`init_db()`** — creates the empty database file at the configured path
+   (`database/lip.db`) with **zero tables** (file-only bootstrap; `init_db` never
+   creates schema).
+2. **`alembic upgrade head`** — applies the Fase 1 migration set. Current head is
+   **0002**:
+   - `0001_initial_core_domain` — the six tables (`lottery`, `draw`,
+     `draw_numbers`, `super_number`, `datasets`, `dataset_draws`) with
+     PK/FK/UNIQUE/CHECK and constraint-implied indexes only.
+   - `0002_performance_indexes` — the four pre-approved performance indexes
+     (`ix_draw_lottery_date`, `ix_draw_lottery_id`, `ix_draw_numbers_draw_id`,
+     `ix_dataset_draws_draw_id`). **Additive and functionally optional**: the app
+     works with only `0001`, merely slower on those paths.
+3. **Boot** — start the backend (`./scripts/run_backend.sh`); the app reads
+   through the ORM/repositories over the migrated schema.
+
+Fresh-install bootstrap: `./scripts/init_db.sh && alembic upgrade head`
+(from `backend/`), then run the backend.
+
+Upgrade / downgrade (from `backend/`):
+
+```bash
+uv run alembic upgrade head     # apply all revisions (base → 0001 → 0002)
+uv run alembic upgrade +1        # single step forward
+uv run alembic downgrade 0001_initial_core_domain   # drop the perf indexes only
+uv run alembic downgrade base     # drop the whole schema
+```
+
+The execution order is `init_db()` → `alembic upgrade head` → boot. Never call
+`Base.metadata.create_all`; Alembic alone owns the schema.
 
 ## Límite del frente
 
