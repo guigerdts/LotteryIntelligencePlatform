@@ -1,0 +1,25 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# --- Virtualenv ---
+.venv/
+
+# --- Environment ---
+.env
+
+# --- Database (repo-root SQLite dir) ---
+*.db*
+/database/
+
+# --- Tooling caches ---
+.ruff_cache/
+.pytest_cache/
+.mypy_cache/
+.coverage
+
+# --- Editors / OS ---
+.idea/
+.vscode/
+.DS_Store
