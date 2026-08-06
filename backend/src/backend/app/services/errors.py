@@ -47,3 +47,21 @@ class SoftDeletedError(ServiceError):
     """Functional access to a soft-deleted draw. Envelope ``RESOURCE_SOFT_DELETED`` (404)."""
 
     code = "RESOURCE_SOFT_DELETED"
+
+
+class ImportConflictError(ServiceError):
+    """A new import for a lottery was launched while another run is in progress (D-J).
+
+    Envelope ``IMPORT_CONFLICT`` (409). Registered in the API by PR-3 (S3-02).
+    """
+
+    code = "IMPORT_CONFLICT"
+
+
+class ImportStateConflictError(ServiceError):
+    """An illegal import state transition was attempted (terminal immutability, D-E).
+
+    Envelope ``IMPORT_STATE_CONFLICT`` (409). Registered in the API by PR-3 (S3-02).
+    """
+
+    code = "IMPORT_STATE_CONFLICT"
