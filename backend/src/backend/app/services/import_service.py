@@ -314,9 +314,7 @@ def _checksum_of(source_path) -> str:
 # --- dataset generation helpers (D5/IE-09) ---------------------------------
 
 
-def _dataset_checksum(
-    filters: str | None, generator_version: str, draw_ids: list[int]
-) -> str:
+def _dataset_checksum(filters: str | None, generator_version: str, draw_ids: list[int]) -> str:
     """SHA-256 over the canonical ``{filters, generator_version, draw_ids}``.
 
     ``sort_keys`` + compact separators give a deterministic serialization so any
