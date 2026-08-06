@@ -1,19 +1,25 @@
 """Import use-case service: run lifecycle, state machine, resume, concurrency.
 
-Implements ``run_import``, the F2 import use case (D-A/D-D/D-D2/D-E/D-G/D-H/D-J,
-IE-02/04/05/06/07/10). The service owns: the Phase A -> rejected terminal,
-creating the audit run, the per-draw atomic loop (via
+Implements ``run_import`` — the F2 import use case — and ``generate_dataset``,
+the on-demand immutable dataset operator (D-A/D-D/D-D2/D-E/D-G/D-H/D-J plus
+D5/IE-09). The service owns: the Phase A -> rejected terminal, creating the
+audit run, the per-draw atomic loop (via
 :class:`backend.app.importers.importer.DrawImporter`), counter reconciliation
-(IE-06), the resume contract (D-D2), and the concurrency pre-check (D-J). All
-draw persistence is delegated exclusively to ``DrawService.create_draw_bundle``
-(user mandate) — no draw/numbers/super writes happen here.
+(IE-06), the resume contract (D-D2), the concurrency pre-check (D-J), and — for
+``generate_dataset`` — the filters -> batched selection -> SHA-256 checksum ->
+immutable locked dataset contract (IE-09). All draw persistence is delegated
+exclusively to ``DrawService.create_draw_bundle`` (user mandate) — no
+draw/numbers/super writes happen here. Import NEVER creates a dataset: dataset
+generation is an explicit, independent operation only (D5/IE-09).
 
 No HTTP, no CLI, no request parsing (PR-3 owns the surface).
 """
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+import hashlib
+import json
+from datetime import UTC, date, datetime
 from pathlib import Path
 
 from sqlalchemy.orm import Session
@@ -23,8 +29,11 @@ from backend.app.importers.importer import DrawImporter, ImportCounters
 from backend.app.importers.sources import FileAdapter
 from backend.app.importers.validate import ValidationRules, validate_phase_a
 from backend.app.importers.version import get_parser_version
+from backend.app.models import Dataset
+from backend.app.repositories.draw_repository import DrawRepository
 from backend.app.repositories.import_repository import ImportRepository
 from backend.app.repositories.lottery_repository import LotteryRepository
+from backend.app.services.dataset_service import DatasetService
 from backend.app.services.errors import (
     ImportConflictError,
     ValidationError,
@@ -39,6 +48,8 @@ class ImportService:
         self._session = session
         self._lotteries = LotteryRepository(session)
         self._imports = ImportRepository(session)
+        self._draws = DrawRepository(session)
+        self._datasets = DatasetService(session)
 
     def run_import(
         self,
@@ -122,6 +133,47 @@ class ImportService:
             self._mark_failed(run)
             raise
         return self._finish(run, counters, status="completed")
+
+    def generate_dataset(
+        self,
+        *,
+        version: str,
+        lottery_id: int,
+        generator_version: str,
+        filters: str | None = None,
+        description: str | None = None,
+    ) -> Dataset:
+        """Generate an immutable, locked dataset on demand (D5/IE-09).
+
+        Contract: ``filters -> selection -> checksum -> generator_version ->
+        immutable -> lock``. The draws are selected in ONE batched query
+        (``is_deleted=False`` plus the optional date window), the SHA-256 checksum
+        is computed over the canonical ``{filters, generator_version, draw_ids}``
+        (stable ordering → stable checksum), and the row is created via
+        ``DatasetService.create_dataset`` with that checksum and ``is_locked=True``
+        — immutability and the lock are DatasetService-owned (CD-03). Import
+        itself NEVER creates a dataset: this operation is explicit and independent.
+
+        An unknown ``lottery_id`` maps to ``NotFoundError`` (RESOURCE_NOT_FOUND,
+        404); an already-used ``version`` maps to ``DuplicateError``
+        (DUPLICATE_RESOURCE, 409); a malformed ``filters`` JSON or date raises
+        ``ValidationError`` (422).
+        """
+        lottery = get_lottery_or_raise(self._lotteries, lottery_id)
+        date_from, date_to = _parse_dataset_filters(filters)
+        draw_ids = self._draws.list_dataset_draw_ids(
+            lottery_id=lottery.id, date_from=date_from, date_to=date_to
+        )
+        checksum = _dataset_checksum(filters, generator_version, draw_ids)
+        return self._datasets.create_dataset(
+            version=version,
+            lottery_id=lottery.id,
+            generator_version=generator_version,
+            draw_ids=draw_ids,
+            description=description,
+            filters=filters,
+            checksum=checksum,
+        )
 
     # --- lifecycle helpers -------------------------------------------------
 
@@ -257,3 +309,59 @@ def _checksum_of(source_path) -> str:
     adapter = FileAdapter(source_path)
     list(adapter.stream())
     return adapter.checksum
+
+
+# --- dataset generation helpers (D5/IE-09) ---------------------------------
+
+
+def _dataset_checksum(
+    filters: str | None, generator_version: str, draw_ids: list[int]
+) -> str:
+    """SHA-256 over the canonical ``{filters, generator_version, draw_ids}``.
+
+    ``sort_keys`` + compact separators give a deterministic serialization so any
+    two generations over the same content produce an identical checksum (CD-03 —
+    the checksum depends only on dataset content and algorithm, IE-09).
+    """
+    canonical = json.dumps(
+        {"filters": filters, "generator_version": generator_version, "draw_ids": draw_ids},
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("utf-8")
+    return hashlib.sha256(canonical).hexdigest()
+
+
+def _parse_dataset_filters(filters: str | None) -> tuple[date | None, date | None]:
+    """Parse the optional JSON ``filters`` into a ``(date_from, date_to)`` window.
+
+    Only ``date_from`` and ``date_to`` keys are supported; any other key or a
+    malformed JSON/date raises ``ValidationError`` (422). The raw ``filters``
+    string is preserved verbatim on the dataset row (CD-03), so parsing here does
+    not change what is recorded.
+    """
+    if not filters:
+        return None, None
+    try:
+        raw = json.loads(filters)
+    except json.JSONDecodeError as exc:
+        raise ValidationError("dataset filters must be valid JSON") from exc
+    if not isinstance(raw, dict):
+        raise ValidationError("dataset filters must be a JSON object")
+    unknown = set(raw) - {"date_from", "date_to"}
+    if unknown:
+        raise ValidationError(f"unknown dataset filter keys: {sorted(unknown)}")
+    date_from = _parse_dataset_date("date_from", raw.get("date_from"))
+    date_to = _parse_dataset_date("date_to", raw.get("date_to"))
+    return date_from, date_to
+
+
+def _parse_dataset_date(key: str, value) -> date | None:
+    """Parse a ``YYYY-MM-DD`` filter value; ``None`` passes through unchanged."""
+    if value is None:
+        return None
+    if not isinstance(value, str):
+        raise ValidationError(f"dataset filter {key} must be a YYYY-MM-DD string")
+    try:
+        return date.fromisoformat(value)
+    except ValueError as exc:
+        raise ValidationError(f"dataset filter {key} must be a YYYY-MM-DD date") from exc

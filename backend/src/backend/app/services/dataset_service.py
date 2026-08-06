@@ -59,6 +59,7 @@ class DatasetService:
         draw_ids: list[int],
         description: str | None = None,
         filters: str | None = None,
+        checksum: str | None = None,
     ) -> Dataset:
         """Create a dataset + its composition + the lock in ONE transaction (CD-03).
 
@@ -67,10 +68,12 @@ class DatasetService:
         immutable artifacts and MUST NOT be silently de-duplicated (mandate A).
         ``draw_ids`` are de-duplicated before composing. The row is created with
         ``is_locked=True`` in the same transaction that inserts the composition,
-        so the artifact is immutable from its first visible state (checksum is
-        left NULL — computed in F2, CD-03). Any failure — version UNIQUE, FK to
-        a missing lottery/draw, composition constraint — rolls the whole
-        operation back, leaving zero dataset rows and zero composition rows.
+        so the artifact is immutable from its first visible state. ``checksum``
+        is an additive parameter: it defaults to ``None`` (F1 behaviour, computed
+        in F2) and, when provided (F2 ``ImportService.generate_dataset``), is
+        stored and makes the dataset reproducible (CD-03). Any failure — version
+        UNIQUE, FK to a missing lottery/draw, composition constraint — rolls the
+        whole operation back, leaving zero dataset rows and zero composition rows.
         """
         get_lottery_or_raise(self._lotteries, lottery_id)
         if self._datasets.get_by_version(version) is not None:
@@ -85,7 +88,7 @@ class DatasetService:
                     "lottery_id": lottery_id,
                     "filters": filters,
                     "generator_version": generator_version,
-                    "checksum": None,
+                    "checksum": checksum,
                     "is_locked": True,
                 }
             )

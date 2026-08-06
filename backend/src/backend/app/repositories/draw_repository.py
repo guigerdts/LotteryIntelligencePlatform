@@ -86,6 +86,33 @@ class DrawRepository(BaseRepository[Draw]):
         stmt = stmt.order_by(order_column, Draw.id).offset((page - 1) * page_size).limit(page_size)
         return list(self._session.scalars(stmt).all())
 
+    def list_dataset_draw_ids(
+        self,
+        *,
+        lottery_id: int,
+        date_from: date | None = None,
+        date_to: date | None = None,
+    ) -> list[int]:
+        """Return ALL non-deleted draw ids for a dataset in one batched query (D5/IE-09).
+
+        Dataset generation selects the full draw set — NOT a page — so the
+        composition can be checksummed and persisted in a single pass
+        (repositories own loading, CD-07). ``is_deleted=False`` always applies
+        the functional CD-06 exclusion policy; the optional date window mirrors
+        the ``date_from``/``date_to`` filters. Ids are ordered by primary key so
+        the resulting checksum is deterministic/stable across generations.
+        """
+        stmt = select(Draw.id).where(
+            Draw.lottery_id == lottery_id,
+            Draw.is_deleted.is_(False),
+        )
+        if date_from is not None:
+            stmt = stmt.where(Draw.draw_date >= date_from)
+        if date_to is not None:
+            stmt = stmt.where(Draw.draw_date <= date_to)
+        stmt = stmt.order_by(Draw.id)
+        return list(self._session.scalars(stmt).all())
+
     def upsert_draw(
         self,
         *,
