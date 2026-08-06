@@ -3,12 +3,14 @@
 Covers FK RESTRICT enforcement, UNIQUE rejections, IntegrityError -> typed
 domain errors, natural-key idempotency, N+1 avoidance and the SQLite FK PRAGMA
 wiring (validations V1-V6). All tests run against a throwaway SQLite file
-migrated by alembic 0001; the real database/lip.db is never touched and alembic
-never runs against it.
+migrated by alembic (default head = 0002; override with ``LIP_TEST_MIGRATION_TARGET``
+to pin 0001); the real database/lip.db is never touched and alembic never runs
+against it.
 """
 
 from __future__ import annotations
 
+import os
 from datetime import date
 from pathlib import Path
 
@@ -32,14 +34,18 @@ from backend.app.repositories.super_number_repository import SuperNumberReposito
 _BACKEND_DIR = Path(__file__).resolve().parents[1]
 _ALEMBIC_INI = _BACKEND_DIR / "alembic.ini"
 
+# Defaults to "head" (0002); override to 0001_initial_core_domain to prove the
+# performance-index revision is functionally optional (PR-5, P5-01).
+MIGRATION_TARGET = os.environ.get("LIP_TEST_MIGRATION_TARGET", "head")
+
 
 @pytest.fixture
 def migrated_db(tmp_path: Path) -> Path:
-    """A tmp SQLite file with the 0001 schema applied (alembic owns the schema)."""
+    """A tmp SQLite file with the schema applied (alembic owns the schema)."""
     db = tmp_path / "repo_test.db"
     cfg = Config(str(_ALEMBIC_INI))
     cfg.set_main_option("sqlalchemy.url", f"sqlite:///{db}")
-    command.upgrade(cfg, "head")
+    command.upgrade(cfg, MIGRATION_TARGET)
     return db
 
 

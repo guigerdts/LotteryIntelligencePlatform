@@ -19,6 +19,13 @@ dependencies = [
     "uvicorn[standard]>=0.52.1",
 ]
 
+# Optional dialect extra: PostgreSQL driver for the CI-gated dialect smoke
+# (tests/test_dialect_compat.py). NOT a hard dependency — SQLite is the default
+# and works with zero DB drivers; install with `uv sync --extra dialect-pg` only
+# when exercising the PG portability path.
+[project.optional-dependencies]
+dialect-pg = ["psycopg[binary]>=3.2.0"]
+
 [build-system]
 requires = ["uv_build>=0.11.19,<0.12.0"]
 build-backend = "uv_build"
