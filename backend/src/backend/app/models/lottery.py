@@ -12,6 +12,7 @@ from backend.app.repositories.base import Base
 
 if TYPE_CHECKING:
     from backend.app.models.draw import Draw
+    from backend.app.models.import_job import ImportJob
 
 
 class Lottery(Base):
@@ -38,6 +39,7 @@ class Lottery(Base):
     )
 
     draws: Mapped[list[Draw]] = relationship(back_populates="lottery")
+    import_jobs: Mapped[list[ImportJob]] = relationship(back_populates="lottery")
 
     __table_args__ = (
         UniqueConstraint("code", name="uq_lottery_code"),
