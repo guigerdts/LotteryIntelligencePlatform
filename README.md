@@ -319,3 +319,78 @@ Principios
 Estado del Proyecto
 
 Fase 0 — Diseño y Arquitectura.
+
+---
+
+# Fase 0 — Fundación Backend (implementada)
+
+El backend base ya está operativo (src-layout): arranca con FastAPI, centraliza
+la configuración, configura logging estructurado, crea la base SQLite vacía y
+expone los endpoints mínimos. **No hay lógica de negocio ni de motores** — eso
+pertenece a fases posteriores (1–19).
+
+## Estructura del repositorio
+
+```
+backend/
+├── pyproject.toml          # Dependencias, pytest y ruff (single source)
+├── uv.lock                 # Pines reproducibles (REQ-08)
+├── src/backend/app/
+│   ├── main.py             # App factory FastAPI (create_app)
+│   ├── api/v1/router.py    # GET /health, GET /version
+│   ├── config/settings.py  # Config centralizada (pydantic-settings)
+│   ├── core/               # logging.py, db.py
+│   ├── repositories/       # base.py (Base declarativa + sesión)
+│   ├── schemas/envelope.py # Envelope {success, data|error, timestamp}
+│   └── <motores>/          # Seams vacíos (Fases 3+)
+├── tests/                  # test_smoke.py, test_config.py
+config/.env.example         # Plantilla de variables (sin secretos)
+scripts/                    # run_backend.sh, init_db.sh
+database/                   # lip.db (ignorado por git)
+```
+
+## Seams de paquetes
+
+`analytics/` compone los motores `statistics` + `probability` (no inventa un
+árbol `domain/`). Los motores (`statistics`, `probability`, `feature_engineering`,
+`ml`, `dl`, `generators`, `backtesting`, `experiments`, `optimization`,
+`simulations`, `importers`, `exporters`, `utils`) existen solo como `__init__.py`
+vacíos con docstring de responsabilidad — **sin lógica**.
+
+## Configuración (precedencia LIP_)
+
+Regla determinista: **defaults del código < variables de entorno `.env` con
+prefijo `LIP_`**. Los secretos solo vienen del entorno, nunca hardcodeados.
+Ejemplos: `LIP_APP_NAME`, `LIP_DATABASE_URL`, `LIP_ALLOWED_ORIGINS`,
+`LIP_LOGGING_LEVEL`. Ver `config/.env.example`.
+
+## Scripts
+
+- `scripts/run_backend.sh` → `uv run uvicorn backend.app.main:create_app --reload`
+- `scripts/init_db.sh` → crea `database/lip.db` vacía (sin schema)
+
+## Base de datos
+
+SQLite en `<repo>/database/lip.db`. Solo se crea el archivo vacío y el engine;
+la construcción del schema (`Base.metadata.create_all`) **queda para migraciones
+de Fase 1**. El dialecto se maneja por URL de configuración (SQLite hoy,
+PostgreSQL después como swap config-only).
+
+## Límite del frente
+
+El **frontend (React + Vite + Tailwind) se entrega como un slice encadenado
+separado**, NO en este cambio. Aquí no aterriza código de frontend, ni schema
+(Fase 1), ni algoritmos de motores (Fases 3+).
+
+## Comandos de desarrollo
+
+```bash
+# Tests (desde backend/)
+cd backend && uv run pytest
+
+# Lint y formato
+cd backend && uv run ruff check .   && uv run ruff format --check .
+
+# Backend con recarga
+./scripts/run_backend.sh
+```
