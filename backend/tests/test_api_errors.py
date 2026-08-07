@@ -20,9 +20,13 @@ from backend.app.main import create_app
 from backend.app.repositories.errors import DuplicateError, ReferentialError
 from backend.app.services.errors import (
     DatasetLockedError,
+    FeatureDefinitionError,
+    GenerationError,
     ImportConflictError,
     ImportStateConflictError,
     NotFoundError,
+    SnapshotLockedError,
+    SnapshotNotFoundError,
     SoftDeletedError,
     ValidationError,
 )
@@ -92,6 +96,41 @@ def test_import_state_conflict_error_maps_to_409() -> None:
 
     assert status == 409
     assert body["error"]["code"] == "IMPORT_STATE_CONFLICT"
+
+
+# --- F4 feature-engine channel (P2-01) ---------------------------------------
+
+
+def test_feature_definition_error_maps_to_500() -> None:
+    """A broken feature registry definition is a 500 definition_error (P2-01)."""
+    status, body = _run_handler(FeatureDefinitionError("cycle: {a, b}"))
+
+    assert status == 500
+    assert body["error"]["code"] == "definition_error"
+
+
+def test_generation_error_maps_to_500() -> None:
+    """An unrecoverable feature generation failure maps to 500 generation_error."""
+    status, body = _run_handler(GenerationError("feature generation failed"))
+
+    assert status == 500
+    assert body["error"]["code"] == "generation_error"
+
+
+def test_snapshot_not_found_error_maps_to_404() -> None:
+    """A missing feature snapshot read maps to 404 SNAPSHOT_NOT_FOUND."""
+    status, body = _run_handler(SnapshotNotFoundError("no feature snapshot"))
+
+    assert status == 404
+    assert body["error"]["code"] == "SNAPSHOT_NOT_FOUND"
+
+
+def test_snapshot_locked_error_maps_to_409() -> None:
+    """In-place mutation of a locked feature snapshot maps to 409 SNAPSHOT_LOCKED."""
+    status, body = _run_handler(SnapshotLockedError("snapshot is immutable"))
+
+    assert status == 409
+    assert body["error"]["code"] == "SNAPSHOT_LOCKED"
 
 
 # --- unexpected errors never expose stack traces -----------------------------

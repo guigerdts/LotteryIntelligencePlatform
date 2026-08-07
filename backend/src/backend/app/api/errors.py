@@ -43,6 +43,10 @@ _CODE_TO_STATUS: dict[str, int] = {
     "generation_error": 500,
     "SNAPSHOT_NOT_FOUND": 404,
     "SNAPSHOT_LOCKED": 409,
+    # F4 feature-engine channel (P2-01): a registry/definition fault is a 500
+    # ``definition_error``; feature generation reuses the shared ``generation_error``
+    # (500) and the snapshot 404/409 rows above already cover feature reads/mutation.
+    "definition_error": 500,
 }
 
 _UNKNOWN_STATUS = 500

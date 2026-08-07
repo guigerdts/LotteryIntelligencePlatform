@@ -97,3 +97,15 @@ class SnapshotLockedError(ServiceError):
     """
 
     code = "SNAPSHOT_LOCKED"
+
+
+class FeatureDefinitionError(ServiceError):
+    """A feature registry definition is invalid (cycle, unknown dep, bad contract) (P2-01).
+
+    Registration fails-fast on a dependency cycle (FES-07, design §6) and the
+    service surfaces this as a non-retryable definition failure. Envelope
+    ``definition_error`` (500). Distinct from ``GenerationError``: this is a
+    definition/registry fault, not a batch/engine runtime failure.
+    """
+
+    code = "definition_error"
