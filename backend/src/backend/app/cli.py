@@ -1,13 +1,15 @@
-"""Command-line interface: on-demand import and dataset generation (IE-07/08/09).
+"""Command-line interface: on-demand import, dataset generation, and snapshot generation (FES-09).
 
 Backs the ``lip`` console script declared in ``pyproject.toml``
-(``[project.scripts]``). Both commands are explicit, on-demand operations — no
+(``[project.scripts]``). All commands are explicit, on-demand operations — no
 scheduler exists anywhere (IE-08). ``lip import`` records a run with
 ``import_type="cli"`` and ``started_by`` set from the invoking user (IE-07);
 ``lip dataset-generate`` builds an immutable, locked dataset (D5/IE-09) — import
-never creates a dataset. The CLI never shells out and never touches the HTTP
-layer; it resolves the lottery code via the repository and delegates all work to
-``ImportService``.
+never creates a dataset; ``lip statistics`` and ``lip feature-engine`` generate
+versioned, immutable snapshots on demand (design §6, FES-09). None of these ever
+auto-run during an import (FES-09: no import hooks). The CLI never shells out and
+never touches the HTTP layer; it resolves the lottery code via the repository and
+delegates all work to the services.
 """
 
 from __future__ import annotations
@@ -21,6 +23,7 @@ from backend.app.config.settings import get_settings
 from backend.app.repositories.base import SessionLocal
 from backend.app.repositories.lottery_repository import LotteryRepository
 from backend.app.services.errors import NotFoundError, ServiceError
+from backend.app.services.feature_engine_service import FEATURE_SET_CORE, FeatureEngineService
 from backend.app.services.import_service import ImportService
 from backend.app.services.statistics_service import StatisticsService
 
@@ -89,6 +92,27 @@ def main(argv: list[str] | None = None) -> int:
     statistics_rebuild.add_argument("--lottery", required=True, help="lottery code (natural key)")
     statistics_rebuild.add_argument("--metrics", default="core", help="metric bundle")
     statistics_rebuild.set_defaults(func=_cmd_statistics_rebuild)
+
+    feature_parser = subparsers.add_parser(
+        "feature-engine",
+        help="generate or rebuild a feature snapshot on demand (design §6, FES-09)",
+    )
+    feature_sub = feature_parser.add_subparsers(dest="feature_command", required=True)
+
+    feature_generate = feature_sub.add_parser(
+        "generate", help="generate a feature snapshot (incremental over an existing one)"
+    )
+    feature_generate.add_argument("--lottery", required=True, help="lottery code (natural key)")
+    feature_generate.add_argument(
+        "--scope", default="incremental", choices=["incremental", "full"], help="fold scope"
+    )
+    feature_generate.set_defaults(func=_cmd_feature_generate)
+
+    feature_rebuild = feature_sub.add_parser(
+        "rebuild", help="force a full rebuild as a NEW version (never mutates a snapshot)"
+    )
+    feature_rebuild.add_argument("--lottery", required=True, help="lottery code (natural key)")
+    feature_rebuild.set_defaults(func=_cmd_feature_rebuild)
 
     args = parser.parse_args(argv)
     try:
@@ -170,6 +194,65 @@ def _metric_set_arg(metrics: str) -> str:
     API collapses its list.
     """
     return metrics if metrics else "core"
+
+
+def _cmd_feature_generate(args: argparse.Namespace) -> None:
+    """Generate a feature snapshot; print the snapshot header as JSON (FES-09).
+
+    Accepts an optional ``--scope`` (default ``incremental``) for the ``core``
+    feature bundle. Mirrors ``_cmd_statistics_generate``: resolve the lottery code,
+    delegate to ``FeatureEngineService.generate``, print the snapshot JSON. Explicit,
+    on-demand, manual-only — an import never triggers this (FES-09).
+    """
+    with SessionLocal() as session:
+        lottery_id = _resolve_lottery(session, args.lottery)
+        snapshot = FeatureEngineService(session).generate(
+            lottery_id=lottery_id,
+            feature_set=FEATURE_SET_CORE,
+            scope=args.scope,
+        )
+    print(_feature_snapshot_json(args.lottery, snapshot))
+
+
+def _cmd_feature_rebuild(args: argparse.Namespace) -> None:
+    """Force a full feature rebuild as a NEW version; print the new snapshot JSON.
+
+    ``rebuild`` maps to ``scope="full"`` (design §7), which ALWAYS writes a new
+    version — it never mutates a locked snapshot (FES-04).
+    """
+    with SessionLocal() as session:
+        lottery_id = _resolve_lottery(session, args.lottery)
+        snapshot = FeatureEngineService(session).generate(
+            lottery_id=lottery_id,
+            feature_set=FEATURE_SET_CORE,
+            scope="full",
+        )
+    print(_feature_snapshot_json(args.lottery, snapshot))
+
+
+def _feature_snapshot_json(lottery_code: str, snapshot) -> str:
+    """Render a feature snapshot header as the CLI's deterministic JSON line.
+
+    Mirrors ``_snapshot_json`` with the feature-engine field names (``feature_set``,
+    ``feature_engine_version``) so the CLI output is a faithful, machine-parseable
+    echo of the stored header (design §6).
+    """
+    return json.dumps(
+        {
+            "lottery_code": lottery_code,
+            "snapshot_id": snapshot.id,
+            "feature_set": snapshot.feature_set,
+            "version": snapshot.version,
+            "feature_engine_version": snapshot.feature_engine_version,
+            "draws_from": snapshot.draws_from,
+            "draws_to": snapshot.draws_to,
+            "draw_count": snapshot.draw_count,
+            "checksum": snapshot.checksum,
+            "status": snapshot.status,
+            "is_locked": snapshot.is_locked,
+        },
+        indent=2,
+    )
 
 
 def _snapshot_json(lottery_code: str, snapshot) -> str:
