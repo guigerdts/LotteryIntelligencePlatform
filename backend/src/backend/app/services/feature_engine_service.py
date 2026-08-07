@@ -286,6 +286,27 @@ class FeatureEngineService:
             )
         return snapshot
 
+    def read_features(
+        self,
+        *,
+        lottery_code: str | None = None,
+        lottery_id: int | None = None,
+        feature: str | None = None,
+        last: int = 0,
+    ) -> tuple[FeatureSnapshot, list]:
+        """Return the active snapshot and its persisted feature rows (FES-09 read).
+
+        Rows come ONLY from the stored ``feature_values`` of the active snapshot,
+        ordered by ``(feature_id, draw_number)`` — the same deterministic key order
+        the writer used (FES-05) — optionally filtered to one ``feature_id`` and
+        bounded to ``last`` rows (``0`` = all). A missing lottery surfaces
+        ``NotFoundError``; a missing snapshot surfaces ``SnapshotNotFoundError``
+        (404 SNAPSHOT_NOT_FOUND). This read NEVER triggers a precompute (FES-09).
+        """
+        snapshot = self.get_active(lottery_code=lottery_code, lottery_id=lottery_id)
+        rows = self._values.values_for_snapshot(snapshot.id, feature=feature, last=last)
+        return snapshot, rows
+
     # --- resolution / validation -----------------------------------------------
 
     def _resolve_lottery(self, *, lottery_code: str | None, lottery_id: int | None) -> object:

@@ -116,3 +116,28 @@ class FeatureValueRepository:
         for index in range(0, len(payload_rows), batch_size):
             self._session.add_all(payload_rows[index : index + batch_size])
             self._session.flush()
+
+    def values_for_snapshot(
+        self,
+        snapshot_id: int,
+        *,
+        feature: str | None = None,
+        last: int = 0,
+    ) -> list[FeatureValue]:
+        """Read one snapshot's payload rows in deterministic order (FES-05/09 reads).
+
+        ``ORDER BY feature_id, draw_number`` — the same key order ``bulk_insert``
+        wrote them in — so every read returns the byte-stable sequence the checksum
+        covers (GF1). ``feature`` filters to a single ``feature_id`` and ``last>0``
+        caps the list (``0`` = unbounded). Reads answer from stored ``feature_*``
+        only; generation is never triggered here (FES-09).
+        """
+        stmt = (
+            select(FeatureValue)
+            .where(FeatureValue.snapshot_id == snapshot_id)
+            .order_by(FeatureValue.feature_id, FeatureValue.draw_number)
+        )
+        if feature is not None:
+            stmt = stmt.where(FeatureValue.feature_id == feature)
+        rows = list(self._session.execute(stmt).scalars().all())
+        return rows[:last] if last else rows
