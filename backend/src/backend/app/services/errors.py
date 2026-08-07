@@ -44,7 +44,7 @@ class DatasetLockedError(ServiceError):
 
 
 class SoftDeletedError(ServiceError):
-    """Functional access to a soft-deleted draw. Envelope ``RESOURCE_SOFT_DELETED`` (404)."""
+    """Functional access to a soft-deleted draw. Envelope ``RESOURCE_SOFT_DELETED`` (410)."""
 
     code = "RESOURCE_SOFT_DELETED"
 
@@ -65,3 +65,35 @@ class ImportStateConflictError(ServiceError):
     """
 
     code = "IMPORT_STATE_CONFLICT"
+
+
+class GenerationError(ServiceError):
+    """A statistics generation run failed during a batch or engine step (design §3).
+
+    Unrecoverable engine/batch failures raise this after the snapshot is marked
+    terminal ``failed`` — never ``active``/``partial``. Envelope ``generation_error``
+    (500). Registered in the API by PR-3.
+    """
+
+    code = "generation_error"
+
+
+class SnapshotNotFoundError(ServiceError):
+    """A statistics snapshot was requested but none exists for the (lottery, metric_set).
+
+    Read paths surface this (STE-10) and MUST NOT auto-precompute. Envelope
+    ``SNAPSHOT_NOT_FOUND`` (404). Registered in the API by PR-3.
+    """
+
+    code = "SNAPSHOT_NOT_FOUND"
+
+
+class SnapshotLockedError(ServiceError):
+    """An immutable (locked) snapshot was targeted for in-place mutation (design §7).
+
+    Snapshots are never recomputed in place; this is unreachable by design but
+    guards the immutability contract. Envelope ``SNAPSHOT_LOCKED`` (409).
+    Registered in the API by PR-3.
+    """
+
+    code = "SNAPSHOT_LOCKED"
