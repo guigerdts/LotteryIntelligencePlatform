@@ -36,8 +36,21 @@ EXPECTED_TABLES = {
 # The two import-engine audit tables added by 0003 (design §4).
 IMPORT_TABLES = {"imports", "import_errors"}
 
-# The full schema at head (0004) = F1 tables + import tables.
-HEAD_TABLES = EXPECTED_TABLES | IMPORT_TABLES
+# The six statistics tables added by 0005 (design §2) — independent stat_* domain.
+STAT_TABLES = {
+    "stat_snapshots",
+    "stat_frequency",
+    "stat_frequency_positions",
+    "stat_gaps",
+    "stat_averages",
+    "stat_scalars",
+}
+
+# The full schema at head (0005) = F1 tables + import tables + stat_* tables.
+HEAD_TABLES = EXPECTED_TABLES | IMPORT_TABLES | STAT_TABLES
+
+# The schema reached at 0003 (before the 0005 stat_* domain).
+IMPORT_HEAD_TABLES = EXPECTED_TABLES | IMPORT_TABLES
 
 # Alembic's own version-tracking table; not part of the domain schema.
 _ALEMBIC_VERSION = "alembic_version"
@@ -86,6 +99,24 @@ IMPORT_PERF_INDEXES = {
 
 # Revision identifiers used to pin migration states.
 _REV_0003 = "0003_imports_audit"
+_REV_0004 = "0004_import_performance_indexes"
+_REV_0005 = "0005_stat_tables"
+
+
+# The statistics (0005) indexes (design §4, Indexes table: stat_* only).
+STAT_INDEXES = {
+    "ix_snap_lottery_metric_status": ("stat_snapshots", ("lottery_id", "metric_set", "status")),
+    "ix_stat_frequency_snapshot_id": ("stat_frequency", ("snapshot_id",)),
+    "ix_stat_frequency_positions_snapshot_id": ("stat_frequency_positions", ("snapshot_id",)),
+    "ix_stat_gaps_snapshot_id": ("stat_gaps", ("snapshot_id",)),
+    "ix_stat_averages_snapshot_id": ("stat_averages", ("snapshot_id",)),
+    "ix_stat_scalars_snapshot_id": ("stat_scalars", ("snapshot_id",)),
+}
+
+# 0005 expectation: the stat_* tables present at head have their integrity
+# constraints (UNIQUE/CHECK) and the full import + core set remains intact.
+STAT_SNAPSHOT_CHECKS = {"ck_stat_snapshots_range", "ck_stat_snapshots_status"}
+STAT_SNAPSHOT_UNIQUE = {"uq_stat_snapshots_scope_version"}
 
 
 def _config(db_path: Path) -> Config:
@@ -194,7 +225,9 @@ def test_upgrade_0003_creates_import_tables_with_integrity_no_import_perf_indexe
     engine = sa.create_engine(f"sqlite:///{db}")
     insp = inspect(engine)
     try:
-        assert _domain_tables(db) == HEAD_TABLES  # 0004 only adds perf indexes -> still present
+        assert (
+            _domain_tables(db) == IMPORT_HEAD_TABLES
+        )  # 0004 only adds perf indexes -> still present
 
         # Integrity: PK, CHECK on imports status/import_type and per-counter >= 0.
         check_names = {ck["name"] for ck in insp.get_check_constraints("imports")}
@@ -251,3 +284,94 @@ def test_downgrade_base_drops_all_then_reupgrade_succeeds(tmp_path: Path) -> Non
 
     command.upgrade(cfg, "head")
     assert _domain_tables(db) == HEAD_TABLES
+
+
+def test_upgrade_0005_creates_stat_tables_with_integrity_and_indexes(tmp_path: Path) -> None:
+    """0005 adds the six stat_* tables (integrity + indexes); core/import untouched."""
+    db = tmp_path / "up_stat.db"
+    cfg = _config(db)
+    command.upgrade(cfg, _REV_0005)
+
+    engine = sa.create_engine(f"sqlite:///{db}")
+    insp = inspect(engine)
+    try:
+        assert _domain_tables(db) == HEAD_TABLES
+
+        # stat_snapshots integrity: UNIQUE(lottery_id, metric_set, version) and
+        # CHECK(range/status) constraints, plus FK RESTRICT to lottery.
+        unique = {uc["name"] for uc in insp.get_unique_constraints("stat_snapshots")}
+        assert STAT_SNAPSHOT_UNIQUE.issubset(unique)
+        checks = {ck["name"] for ck in insp.get_check_constraints("stat_snapshots")}
+        assert STAT_SNAPSHOT_CHECKS.issubset(checks)
+        fk_lottery = {
+            fk["constrained_columns"][0] for fk in insp.get_foreign_keys("stat_snapshots")
+        }
+        assert "lottery_id" in fk_lottery
+
+        # Every payload table has a composite PK (snapshot_id first) and FK to the header.
+        for table in STAT_TABLES - {"stat_snapshots"}:
+            pk = set(insp.get_pk_constraint(table)["constrained_columns"])
+            assert "snapshot_id" in pk, f"{table} missing snapshot_id in PK"
+            fk_cols = {
+                col for fk in insp.get_foreign_keys(table) for col in fk["constrained_columns"]
+            }
+            assert fk_cols == {"snapshot_id"}, f"{table} missing FK to stat_snapshots"
+
+        # All stat_* indexes exist with the correct columns (design §4).
+        for name, (table, columns) in STAT_INDEXES.items():
+            idx = {i["name"]: i for i in insp.get_indexes(table)}
+            assert name in idx, f"missing index {name} on {table}"
+            assert tuple(idx[name]["column_names"]) == columns
+            assert not idx[name]["unique"]  # performance, not integrity
+
+        # The status CHECK must accept 'failed' (design §3 batch-fail policy).
+        # Insert a parent lottery first so the FK RESTRICT does not block the
+        # snapshot row regardless of the SQLite FK pragma default.
+        with engine.begin() as conn:
+            conn.exec_driver_sql(
+                "INSERT INTO lottery (id, code, name, country, min_number, max_number,"
+                " numbers_to_select, super_number_min, super_number_max,"
+                " created_at)"
+                " VALUES (1, 'L1', 'Lottery 1', 'AR', 1, 45, 5, NULL, NULL,"
+                "  '2026-08-07T00:00:00Z')"
+            )
+            conn.exec_driver_sql(
+                "INSERT INTO stat_snapshots"
+                " (id, lottery_id, metric_set, version, generator_version, engine_version,"
+                "  checksum, status, is_locked, draw_count, draws_from, draws_to,"
+                "  created_at, updated_at)"
+                " VALUES (1, 1, 'core', '1', '1.0.0', '1',"
+                "  'ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff',"
+                "  'failed', 0, 0, 0, 0,"
+                "  '2026-08-07T00:00:00Z', '2026-08-07T00:00:00Z')"
+            )
+
+        # Core-domain tables keep their UNIQUE integrity (Option A: no core change).
+        for table, expected in EXPECTED_UNIQUE.items():
+            names = {uc["name"] for uc in insp.get_unique_constraints(table)}
+            assert expected.issubset(names), f"{table} missing UNIQUE {expected - names}"
+    finally:
+        engine.dispose()
+
+
+def test_downgrade_0005_drops_only_stat_tables_core_untouched(tmp_path: Path) -> None:
+    """Downgrade from head to 0004 removes ONLY stat_*; core/import tables survive."""
+    db = tmp_path / "down_stat.db"
+    cfg = _config(db)
+    command.upgrade(cfg, "head")
+    assert _domain_tables(db) == HEAD_TABLES
+
+    command.downgrade(cfg, _REV_0004)
+
+    engine = sa.create_engine(f"sqlite:///{db}")
+    insp = inspect(engine)
+    try:
+        # Exactly the F1 + import tables remain — no stat_* residue, no core loss.
+        assert _domain_tables(db) == IMPORT_HEAD_TABLES
+        # No stat_* index leaks.
+        for name, (table, _columns) in STAT_INDEXES.items():
+            if table in _domain_tables(db):
+                idx = {i["name"] for i in insp.get_indexes(table)}
+                assert name not in idx, f"{name} leaked after downgrade"
+    finally:
+        engine.dispose()

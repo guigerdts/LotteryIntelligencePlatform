@@ -37,6 +37,12 @@ _CODE_TO_STATUS: dict[str, int] = {
     # transition both surface 409 Conflict (D-J, D-E).
     "IMPORT_CONFLICT": 409,
     "IMPORT_STATE_CONFLICT": 409,
+    # F3 statistics channel (STE-05/07/§13): unrecoverable generation failure is
+    # 500, a missing snapshot read is 404 (never auto-precompute, STE-10), and an
+    # in-place mutation of an immutable snapshot is 409 (unreachable by design).
+    "generation_error": 500,
+    "SNAPSHOT_NOT_FOUND": 404,
+    "SNAPSHOT_LOCKED": 409,
 }
 
 _UNKNOWN_STATUS = 500

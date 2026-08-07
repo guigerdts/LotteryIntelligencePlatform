@@ -22,6 +22,7 @@ from backend.app.repositories.base import SessionLocal
 from backend.app.repositories.lottery_repository import LotteryRepository
 from backend.app.services.errors import NotFoundError, ServiceError
 from backend.app.services.import_service import ImportService
+from backend.app.services.statistics_service import StatisticsService
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -64,6 +65,31 @@ def main(argv: list[str] | None = None) -> int:
     )
     generate_parser.set_defaults(func=_cmd_dataset_generate)
 
+    statistics_parser = subparsers.add_parser(
+        "statistics",
+        help="generate or rebuild a statistics snapshot on demand (design §6)",
+    )
+    statistics_sub = statistics_parser.add_subparsers(dest="statistics_command", required=True)
+
+    statistics_generate = statistics_sub.add_parser(
+        "generate", help="generate a snapshot (incremental over an existing one)"
+    )
+    statistics_generate.add_argument("--lottery", required=True, help="lottery code (natural key)")
+    statistics_generate.add_argument(
+        "--metrics", default="core", help="metric bundle (only 'core' is supported)"
+    )
+    statistics_generate.add_argument(
+        "--scope", default="incremental", choices=["incremental", "full"], help="fold scope"
+    )
+    statistics_generate.set_defaults(func=_cmd_statistics_generate)
+
+    statistics_rebuild = statistics_sub.add_parser(
+        "rebuild", help="force a full rebuild as a NEW version (never mutates a snapshot)"
+    )
+    statistics_rebuild.add_argument("--lottery", required=True, help="lottery code (natural key)")
+    statistics_rebuild.add_argument("--metrics", default="core", help="metric bundle")
+    statistics_rebuild.set_defaults(func=_cmd_statistics_rebuild)
+
     args = parser.parse_args(argv)
     try:
         args.func(args)
@@ -100,6 +126,70 @@ def _cmd_dataset_generate(args: argparse.Namespace) -> None:
     print(
         f"dataset {dataset.version!r} created "
         f"(checksum={dataset.checksum}, locked={dataset.is_locked})"
+    )
+
+
+def _cmd_statistics_generate(args: argparse.Namespace) -> None:
+    """Generate a statistics snapshot; print it as JSON (design §6).
+
+    Accepts an optional ``--scope`` (default ``incremental``); a metric bundle is
+    selected via ``--metrics`` (only ``core``). Mirrors ``_cmd_dataset_generate``:
+    resolve the lottery code, delegate to the service, print the snapshot JSON.
+    """
+    with SessionLocal() as session:
+        lottery_id = _resolve_lottery(session, args.lottery)
+        snapshot = StatisticsService(session).generate(
+            lottery_id=lottery_id,
+            metric_set=_metric_set_arg(args.metrics),
+            scope=args.scope,
+        )
+    print(_snapshot_json(args.lottery, snapshot))
+
+
+def _cmd_statistics_rebuild(args: argparse.Namespace) -> None:
+    """Force a full rebuild as a NEW version; print the new snapshot JSON.
+
+    ``rebuild`` maps to ``scope="full"`` (design §6), which ALWAYS writes a new
+    version — it never mutates a locked snapshot.
+    """
+    with SessionLocal() as session:
+        lottery_id = _resolve_lottery(session, args.lottery)
+        snapshot = StatisticsService(session).generate(
+            lottery_id=lottery_id,
+            metric_set=(args.metrics or "core"),
+            scope="full",
+        )
+    print(_snapshot_json(args.lottery, snapshot))
+
+
+def _metric_set_arg(metrics: str) -> str:
+    """Collapse the CLI ``--metrics`` flag onto the supported bundle.
+
+    Only the ``core`` bundle exists this release (design §8); anything else is
+    rejected by ``StatisticsService.generate`` (validation_error) the same way the
+    API collapses its list.
+    """
+    return metrics if metrics else "core"
+
+
+def _snapshot_json(lottery_code: str, snapshot) -> str:
+    """Render a snapshot header as the CLI's deterministic JSON line."""
+    return json.dumps(
+        {
+            "lottery_code": lottery_code,
+            "snapshot_id": snapshot.id,
+            "metric_set": snapshot.metric_set,
+            "version": snapshot.version,
+            "generator_version": snapshot.generator_version,
+            "engine_version": snapshot.engine_version,
+            "draws_from": snapshot.draws_from,
+            "draws_to": snapshot.draws_to,
+            "draw_count": snapshot.draw_count,
+            "checksum": snapshot.checksum,
+            "status": snapshot.status,
+            "is_locked": snapshot.is_locked,
+        },
+        indent=2,
     )
 
 
