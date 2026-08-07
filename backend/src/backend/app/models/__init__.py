@@ -8,6 +8,8 @@ from backend.app.models.dataset import Dataset
 from backend.app.models.dataset_draw import DatasetDraw
 from backend.app.models.draw import Draw
 from backend.app.models.draw_number import DrawNumber
+from backend.app.models.feature_snapshot import FeatureSnapshot
+from backend.app.models.feature_value import FeatureValue
 from backend.app.models.import_error import ImportError
 from backend.app.models.import_job import ImportJob
 from backend.app.models.lottery import Lottery
@@ -26,6 +28,8 @@ __all__ = [
     "DatasetDraw",
     "Draw",
     "DrawNumber",
+    "FeatureSnapshot",
+    "FeatureValue",
     "ImportError",
     "ImportJob",
     "Lottery",

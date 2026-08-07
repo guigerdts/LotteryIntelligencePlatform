@@ -46,8 +46,14 @@ STAT_TABLES = {
     "stat_scalars",
 }
 
-# The full schema at head (0005) = F1 tables + import tables + stat_* tables.
-HEAD_TABLES = EXPECTED_TABLES | IMPORT_TABLES | STAT_TABLES
+# The two feature-engine tables added by 0006 (design §2) — independent feature_* domain.
+FEATURE_TABLES = {"feature_snapshots", "feature_values"}
+
+# The full schema at head (0006) = F1 tables + import tables + stat_* + feature_* tables.
+HEAD_TABLES = EXPECTED_TABLES | IMPORT_TABLES | STAT_TABLES | FEATURE_TABLES
+
+# The schema reached at 0005 (before the feature_* domain).
+STAT_HEAD_TABLES = HEAD_TABLES - FEATURE_TABLES
 
 # The schema reached at 0003 (before the 0005 stat_* domain).
 IMPORT_HEAD_TABLES = EXPECTED_TABLES | IMPORT_TABLES
@@ -101,6 +107,7 @@ IMPORT_PERF_INDEXES = {
 _REV_0003 = "0003_imports_audit"
 _REV_0004 = "0004_import_performance_indexes"
 _REV_0005 = "0005_stat_tables"
+_REV_0006 = "0006_feature_tables"
 
 
 # The statistics (0005) indexes (design §4, Indexes table: stat_* only).
@@ -117,6 +124,20 @@ STAT_INDEXES = {
 # constraints (UNIQUE/CHECK) and the full import + core set remains intact.
 STAT_SNAPSHOT_CHECKS = {"ck_stat_snapshots_range", "ck_stat_snapshots_status"}
 STAT_SNAPSHOT_UNIQUE = {"uq_stat_snapshots_scope_version"}
+
+# The feature-engine indexes shipped by 0006 (design §3, Feature tables).
+FEATURE_INDEXES = {
+    "ix_fsnap_lottery_set_status": (
+        "feature_snapshots",
+        ("lottery_id", "feature_set", "status"),
+    ),
+    "ix_fval_snapshot_id": ("feature_values", ("snapshot_id",)),
+    "ix_fval_feature_draw": ("feature_values", ("feature_id", "draw_number")),
+}
+
+# 0006 expectations: feature_snapshots integrity + FK RESTRICT to lottery.
+FEATURE_SNAPSHOT_CHECKS = {"ck_feature_snapshots_range", "ck_feature_snapshots_status"}
+FEATURE_SNAPSHOT_UNIQUE = {"uq_feature_snapshots_scope_version"}
 
 
 def _config(db_path: Path) -> Config:
@@ -295,7 +316,7 @@ def test_upgrade_0005_creates_stat_tables_with_integrity_and_indexes(tmp_path: P
     engine = sa.create_engine(f"sqlite:///{db}")
     insp = inspect(engine)
     try:
-        assert _domain_tables(db) == HEAD_TABLES
+        assert _domain_tables(db) == STAT_HEAD_TABLES
 
         # stat_snapshots integrity: UNIQUE(lottery_id, metric_set, version) and
         # CHECK(range/status) constraints, plus FK RESTRICT to lottery.
@@ -373,5 +394,105 @@ def test_downgrade_0005_drops_only_stat_tables_core_untouched(tmp_path: Path) ->
             if table in _domain_tables(db):
                 idx = {i["name"] for i in insp.get_indexes(table)}
                 assert name not in idx, f"{name} leaked after downgrade"
+    finally:
+        engine.dispose()
+
+
+def test_upgrade_0006_creates_feature_tables_with_integrity_and_indexes(
+    tmp_path: Path,
+) -> None:
+    """0006 adds the two feature_* tables (integrity + indexes); core/stat_* untouched."""
+    db = tmp_path / "up_feature.db"
+    cfg = _config(db)
+    command.upgrade(cfg, _REV_0006)
+
+    engine = sa.create_engine(f"sqlite:///{db}")
+    insp = inspect(engine)
+    try:
+        assert _domain_tables(db) == HEAD_TABLES
+
+        # feature_snapshots integrity: UNIQUE(...), CHECK(range/status), FK RESTRICT.
+        unique = {uc["name"] for uc in insp.get_unique_constraints("feature_snapshots")}
+        assert FEATURE_SNAPSHOT_UNIQUE.issubset(unique)
+        checks = {ck["name"] for ck in insp.get_check_constraints("feature_snapshots")}
+        assert FEATURE_SNAPSHOT_CHECKS.issubset(checks)
+        fk_lottery = {
+            fk["constrained_columns"][0] for fk in insp.get_foreign_keys("feature_snapshots")
+        }
+        assert "lottery_id" in fk_lottery
+
+        # feature_values: composite PK (snapshot_id first) + FK to the header, no FK to draw.
+        pk = set(insp.get_pk_constraint("feature_values")["constrained_columns"])
+        assert "snapshot_id" in pk
+        assert "feature_id" in pk
+        assert "draw_number" in pk
+        fk_cols = {
+            col
+            for fk in insp.get_foreign_keys("feature_values")
+            for col in fk["constrained_columns"]
+        }
+        assert fk_cols == {"snapshot_id"}
+
+        # All feature_* indexes exist with the correct columns (design §3).
+        for name, (table, columns) in FEATURE_INDEXES.items():
+            idx = {i["name"]: i for i in insp.get_indexes(table)}
+            assert name in idx, f"missing index {name} on {table}"
+            assert tuple(idx[name]["column_names"]) == columns
+            assert not idx[name]["unique"]  # performance, not integrity
+
+        # The excepted status CHECK accepts 'failed' (design §7 fail policy).
+        with engine.begin() as conn:
+            conn.exec_driver_sql(
+                "INSERT INTO lottery (id, code, name, country, min_number, max_number,"
+                " numbers_to_select, super_number_min, super_number_max, created_at)"
+                " VALUES (1, 'L1', 'Lottery 1', 'AR', 1, 45, 5, NULL, NULL,"
+                "  '2026-08-07T00:00:00Z')"
+            )
+            conn.exec_driver_sql(
+                "INSERT INTO feature_snapshots"
+                " (id, lottery_id, feature_set, version, feature_engine_version, checksum,"
+                "  input_fingerprint, status, is_locked, draw_count, draws_from, draws_to,"
+                "  created_at, updated_at)"
+                " VALUES (1, 1, 'core', '1', '1.0.0',"
+                "  'ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff',"
+                "  'eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee',"
+                "  'failed', 0, 0, 0, 0,"
+                "  '2026-08-07T00:00:00Z', '2026-08-07T00:00:00Z')"
+            )
+
+        # Core + stat_* domains keep their integrity (Option A: no change to those).
+        for table, expected in EXPECTED_UNIQUE.items():
+            names = {uc["name"] for uc in insp.get_unique_constraints(table)}
+            assert expected.issubset(names), f"{table} missing UNIQUE {expected - names}"
+        stat_unique = {uc["name"] for uc in insp.get_unique_constraints("stat_snapshots")}
+        assert STAT_SNAPSHOT_UNIQUE.issubset(stat_unique)
+    finally:
+        engine.dispose()
+
+
+def test_downgrade_0006_drops_only_feature_tables_core_stat_untouched(
+    tmp_path: Path,
+) -> None:
+    """Downgrade from head to 0005 removes ONLY feature_*; core/import/stat_* survive."""
+    db = tmp_path / "down_feature.db"
+    cfg = _config(db)
+    command.upgrade(cfg, "head")
+    assert _domain_tables(db) == HEAD_TABLES
+
+    command.downgrade(cfg, _REV_0005)
+
+    engine = sa.create_engine(f"sqlite:///{db}")
+    insp = inspect(engine)
+    try:
+        # Exactly F1 + import + stat_* remain — no feature_* residue, no core loss.
+        assert _domain_tables(db) == STAT_HEAD_TABLES
+        # No feature_* index leaks.
+        for name, (table, _columns) in FEATURE_INDEXES.items():
+            if table in _domain_tables(db):  # pragma: no cover - defensive
+                idx = {i["name"] for i in insp.get_indexes(table)}
+                assert name not in idx, f"{name} leaked after downgrade"
+        # stat_* integrity survives.
+        stat_unique = {uc["name"] for uc in insp.get_unique_constraints("stat_snapshots")}
+        assert STAT_SNAPSHOT_UNIQUE.issubset(stat_unique)
     finally:
         engine.dispose()
