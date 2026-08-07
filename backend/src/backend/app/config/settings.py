@@ -48,6 +48,11 @@ class Settings(BaseSettings):
     # --- paths ---
     database_dir: Path = _DEFAULT_DATABASE_DIR
 
+    # --- statistics ---
+    # Retired snapshots kept for repro before the retention job deletes beyond
+    # this generation count (design §7, APPROVED: configuration, not a constant).
+    stats_retention_generations: int = 10
+
 
 @lru_cache
 def get_settings() -> Settings:
