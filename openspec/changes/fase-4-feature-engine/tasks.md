@@ -55,17 +55,17 @@ Chain strategy: stacked-to-main
 
 ## PR3 — Surface
 
-- [ ] P3-01 `schemas/feature_engine.py` — GenerateRequest(`lottery_code`, scope full/incremental), snapshot+feature read models (statistics parity). FES-09.
-- [ ] P3-02 `api/v1/feature_engine.py` — `POST /feature-engine/generate` (idempotent) + `GET /{code}/features?...`; reads never precompute; missing snapshot→404. FES-09.
-- [ ] P3-03 `api/v1/router.py` — `include_router(feature_engine_router)`.
-- [ ] P3-04 `cli.py` — `feature-engine generate`/`rebuild` (mirror statistics; argparse only), print snapshot JSON. FES-09.
-- [ ] P3-05 RED tests `tests/api/test_feature_engine_api.py` — POST idempotent, unknown lottery 404, GET missing snapshot 404+no-autocreate. FES-09.
-- [ ] P3-06 E2E tests — CLI generate/rebuild; import never auto-generates (FES-09). `tests/test_feature_engine_e2e.py`.
-- [ ] P3-07 `tests/test_migrations.py` — 0006 head + downgrade drops only `feature_*`; core/stat_* intact. FES-10.
-- [ ] P3-08 `tests/test_determinism.py` — **GF1 e2e** repeat determinism via CLI/API (checksum+row count+content+insertion order+hash). FES-05.
-- [ ] P3-09 `tests/test_registry_isolation.py` — **GF2 e2e** via surface: add feature → Δ only that feature; future feature no rows. FES-07/08.
-- [ ] P3-10 **Final gates GF1+GF2** recorded as verify step; G1 ruff, G2 pytest full, G3 upgrade head 0006, G4 downgrade chain, G7 API contract, no regression/debt.
-- [ ] P3-11 docs/comments: feature-engine determinism contract + GF1/GF2 explanations.
+- [x] P3-01 `schemas/feature_engine.py` — GenerateRequest(`lottery_code`, scope full/incremental), snapshot+feature read models (statistics parity). FES-09.
+- [x] P3-02 `api/v1/feature_engine.py` — `POST /feature-engine/generate` (idempotent) + `GET /{code}/features?...`; reads never precompute; missing snapshot→404. FES-09.
+- [x] P3-03 `api/v1/router.py` — `include_router(feature_engine_router)`.
+- [x] P3-04 `cli.py` — `feature-engine generate`/`rebuild` (mirror statistics; argparse only), print snapshot JSON. FES-09.
+- [x] P3-05 RED tests `tests/api/test_feature_engine_api.py` — POST idempotent, unknown lottery 404, GET missing snapshot 404+no-autocreate. FES-09.
+- [x] P3-06 E2E tests — CLI generate/rebuild; import never auto-generates (FES-09). `tests/test_feature_engine_e2e.py`.
+- [x] P3-07 `tests/test_migrations.py` — 0006 head + downgrade drops only `feature_*`; core/stat_* intact. FES-10.
+- [x] P3-08 `tests/test_determinism.py` — **GF1 e2e** repeat determinism via CLI/API (checksum+row count+content+insertion order+hash). FES-05.
+- [x] P3-09 `tests/test_registry_isolation.py` — **GF2 e2e** via surface: add feature → Δ only that feature; future feature no rows. FES-07/08.
+- [x] P3-10 **Final gates GF1+GF2** recorded as verify step; G1 ruff, G2 pytest full, G3 upgrade head 0006, G4 downgrade chain, G7 API contract, no regression/debt.
+- [x] P3-11 docs/comments: feature-engine determinism contract + GF1/GF2 explanations.
 
 ## Rules
 - Strict TDD (`backend/.venv/bin/pytest`); RED tests before production. Tasks ordered by dependency across PR1→PR3 (stacked).
