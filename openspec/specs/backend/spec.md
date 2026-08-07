@@ -20,6 +20,9 @@ Define the backend-only foundation of Lottery Intelligence Platform: a layered F
 | REQ-07 | Dev scripts & repo hygiene | MUST |
 | REQ-08 | Non-functional: reproducible, no business logic, chained-frontend out of scope | MUST |
 | REQ-09 | Alembic migration ownership | MUST |
+| REQ-10 | Manual stats generation endpoint (`POST /statistics/generate`) | MUST |
+| REQ-11 | Separate read endpoints, no precompute (`GET /statistics/...`) | MUST |
+| REQ-12 | CLI manual trigger for stats generation | MUST |
 
 ### REQ-01: Folder & Package Tree
 
@@ -117,6 +120,54 @@ Alembic (`backend/alembic/`, `env.py` → `target_metadata = Base.metadata`) SHA
 - GIVEN a fresh DB file created by `init_db`
 - WHEN `alembic upgrade head` runs
 - THEN tables `lottery`, `draw`, `draw_numbers`, `super_number`, `datasets`, `dataset_draws` exist with their constraints.
+
+---
+
+## Requirements Added by `fase-3-statistics` (2026-08-07)
+
+> Delta merged at archive. All behavior follows the statistics-engine STE-01..13 contract. Read/write separation (C5), read-only re core tables (C3), and out-of-scope rules are owned by statistics-engine (STE-02/05/10/13); backend re-exposes them through these API/CLI seams.
+
+### REQ-10: Manual Stats Generation Endpoint
+
+`POST /statistics/generate` SHALL trigger snapshot generation/update on demand (C5, D6) and MUST NOT overlap `GET /statistics/...`. The request SHALL identify the lottery (`lottery_id` or code) and an optional bounded scope; the response SHALL be the envelope. An invalid lottery SHALL map to `RESOURCE_NOT_FOUND` (404); generation failure SHALL return `generation_error` (500). The endpoint SHALL never fire during import.
+
+#### Scenario: generation is manual only
+
+- GIVEN a configured lottery and a running app
+- WHEN `POST /statistics/generate` is called
+- THEN a `stat_*` snapshot is produced (incremental over an existing valid snapshot, full otherwise per C4) and the response is the 200 envelope.
+
+#### Scenario: unknown lottery maps to 404
+
+- GIVEN a running app
+- WHEN `POST /statistics/generate` targets an unknown lottery
+- THEN the response is 404 `{code:"RESOURCE_NOT_FOUND"}` and no snapshot is written.
+
+### REQ-11: Separate Read Endpoints, No Precompute
+
+`GET /statistics/...` SHALL serve reads only and MUST NOT trigger automatic precompute (C5). Point queries and small windows (LAST N, bounded filters) SHALL be answered on demand (D1) against existing snapshots; a MISSING snapshot SHALL surface a resolution error rather than silently precompute.
+
+#### Scenario: read does not precompute
+
+- GIVEN a valid snapshot for a lottery
+- WHEN `GET /statistics/{lottery}/frequencies?last=10` runs
+- THEN it returns the bounded on-demand result and no generation occurs.
+
+#### Scenario: missing snapshot signals, not computes
+
+- GIVEN a lottery with no snapshot
+- WHEN a read targets it
+- THEN the response signals the absence (error) and does NOT trigger generation.
+
+### REQ-12: CLI Manual Trigger
+
+The CLI (`cli.py`) SHALL expose a manual generation/update command matching the API (D6), accepting lottery scope and optional bounded-window configuration. The run's trigger SHALL be recorded as manual/CLI.
+
+#### Scenario: CLI generates snapshot
+
+- GIVEN a CLI invocation for a lottery
+- WHEN the command runs
+- THEN a snapshot is generated (incremental/full per C4), reported, and no import hook fires.
 
 ---
 

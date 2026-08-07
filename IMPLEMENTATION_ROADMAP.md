@@ -128,6 +128,26 @@ Resultado
 
 Motor completamente desacoplado.
 
+Estado de implementación (2026-08-07)
+
+Entregado en el primer slice (bundle `core`, generator_version `1.0.0`):
+
+- Frecuencias por número y posición.
+- Gaps por número (count, min, max, avg).
+- Promedios NULL-aware de series (jackpot/winners).
+- Snapshots versionados e inmutables con contrato de determinismo (G9) y
+  garantía de solo lectura sobre el Core Domain (G10).
+
+Pendiente para slices futuros de la Fase 3 (NO implementado aún):
+
+- Distribuciones.
+- Tendencias.
+- Entropía.
+- Correlaciones.
+
+El motor está desacoplado (no toca el Core Domain) y los snapshots
+`active | retired | failed` gobiernan las lecturas. Ver README → Fase 3.
+
 ---
 
 Fase 4 — Feature Engine

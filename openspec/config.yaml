@@ -10,8 +10,8 @@ context: |
   Optimization, Generator, Backtesting, Experiment, Graph) behind well-defined
   interfaces; config outside code; observability (logs, errors, timing,
   resource usage, model versions).
-  Testing: no test runner detected yet (documentation-only repository as of
-  2026-08-05; no pyproject.toml/requirements/go.mod/package.json present).
+  Testing: pytest runner detected in backend/ (Python 3.13 on .venv; runner
+  `backend/.venv/bin/pytest`, ruff linter+formatter). enabled as of 2026-08-06.
   Style: modularity, low coupling, high cohesion, reproducibility, extensibility;
   Spanish project documentation, English technical artifacts per SDD contract.
   Project state: Fase 0 (Design & Architecture) per README; IMPLEMENTATION_ROADMAP.md
@@ -34,24 +34,24 @@ rules:
     guidelines:
       - Follow existing code patterns
       - Respect IMPLEMENTATION_ROADMAP.md phase ordering
-    tdd: false           # No test runner detected yet; enable when pytest is introduced
-    test_command: ""
+    tdd: true            # pytest detected in backend (2026-08-06)
+    test_command: "backend/.venv/bin/pytest"
   verify:
-    test_command: ""
-    build_command: ""
+    test_command: "backend/.venv/bin/pytest"
+    build_command: "backend/.venv/bin/ruff check ."
     coverage_threshold: 0
   archive:
     - Warn before merging destructive deltas
 
 testing:
-  strict_tdd: false      # No test runner detected in documentation-only repo
-  runner: ""
+  strict_tdd: true       # pytest detected in backend (2026-08-06)
+  runner: "backend/.venv/bin/pytest"
   layers:
-    unit: false
-    integration: false
+    unit: true
+    integration: true
     e2e: false
   coverage: false
   quality:
-    linter: false
+    linter: true         # ruff
     typechecker: false
-    formatter: false
+    formatter: true      # ruff format

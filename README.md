@@ -436,3 +436,125 @@ cd backend && uv run ruff check .   && uv run ruff format --check .
 # Backend con recarga
 ./scripts/run_backend.sh
 ```
+
+---
+
+# Fase 3 — Statistics Engine (implementada)
+
+El motor de estadísticas calcula métricas agregadas sobre el historial de
+sorteos de una lotería y las persiste como **snapshots** versionados e
+inmutables. No predice ni simula: solo describe evidencia cuantitativa de
+forma determinista y reproducible.
+
+## Statistics Engine
+
+`backend/src/backend/app/statistics/` implementa el motor:
+
+- `engine.py` — cálculo de frecuencias, gaps y promedios sobre una ventana de
+  sorteo, sin estado compartido.
+- `generator.py` — orquesta el cómputo del payload y deriva el checksum de
+  contenido; define `STATS_GENERATOR_VERSION = "1.0.0"`, la identidad del
+  algoritmo que participa en el contrato de determinismo.
+- `checksum.py` — hashing determinista del contenido agregado.
+
+El valor que produce es **función de**: el dataset de sorteos + la versión del
+generador + el bundle de métricas. Con esos tres fijos, el checksum y el
+resultado son idénticos en cualquier ejecución.
+
+## Flujo de generación manual
+
+No hay scheduler: la generación es **bajo demanda**. Se dispara por CLI o por
+API, y el resultado queda persistido como snapshot antes de poder leerse.
+Generar nunca muta el Historial (Core Domain): solo se escriben filas `stat_*`.
+
+- `generate` — genera con scope `incremental` por defecto. Si ya existe un
+  snapshot `active` que reproduce exactamente el resultado prospectivo,
+  devuelve ese mismo snapshot (idempotente, no duplica versión). Con scope
+  `full`, siempre escribe una versión nueva.
+- `rebuild` — fuerza un rebuild completo como **nueva versión** (scope
+  `full`); nunca muta un snapshot ya persistido.
+
+## CLI
+
+```bash
+cd backend
+
+# Generar un snapshot incremental para una lotería (código natural)
+lip statistics generate --lottery <code> [--metrics core] [--scope incremental|full]
+
+# Forzar un rebuild completo como NUEVA versión
+lip statistics rebuild --lottery <code> [--metrics core]
+```
+
+Cada comando imprime el snapshot generado en JSON: `snapshot_id`, `version`,
+`generator_version`, `draws_from`, `draws_to`, `draw_count`, `checksum` y `incremental`.
+
+## API
+
+Prefijo `/statistics`. Generar es un `POST` (escribe); leer es un `GET`
+(nunca precompute).
+
+| Método | Ruta | Descripción |
+|--------|------|-------------|
+| POST | `/statistics/generate` | Genera (o devuelve idempotente) un snapshot. `201` si se crea una versión nueva; `200` si se devuelve un `active` idéntico. |
+| GET | `/statistics/{code}/frequencies?last=0` | Frecuencia por número desde el snapshot activo. `last=0` → todos; `last>0` limita. |
+| GET | `/statistics/{code}/gaps?last=0` | Resumen de gaps por número (count, min, max, avg) desde el snapshot activo. |
+| GET | `/statistics/{code}/averages` | Promedios NULL-aware de las series (D4: jackpot/winners) desde el snapshot activo. |
+
+Errores: lotería desconocida → `RESOURCE_NOT_FOUND` (404); snapshot ausente →
+`SNAPSHOT_NOT_FOUND` (404); fallo irrecuperable del motor → `generation_error` (500).
+
+## Contrato de determinismo (G9)
+
+El motor es reproducible si y solo si se cumplen **las tres invariantes**:
+
+1. **mismo dataset** de sorteos (caracterizado por su checksum de origen);
+2. **misma versión de generador** (`generator_version` = `1.0.0`);
+3. **mismo checksum de contenido** del payload agregado.
+
+Bajo esas tres condiciones, dos ejecuciones independientes producen checksum,
+conteo de filas, contenido por tabla, orden de inserción y hash final del
+snapshot **byte-idénticos**. El gate G9 lo prueba con dos generaciones
+independientes. Si una ejecución se aparta de la especificación del generador,
+el resultado ya no es comparable.
+
+## Garantía de solo lectura sobre Core Domain
+
+La generación de snapshots **no modifica** ninguna tabla del Core Domain. Los
+gates de integridad verifican que `draw`, `draw_numbers`, `super_number`,
+`dataset`, `import_job` e `import_error` quedan byte-idénticos antes/después;
+solo aparecen filas `stat_*`. Las lecturas (`GET`) nunca fuerzan generación, no
+precompute: sirven desde el snapshot activo.
+
+## Diferencia entre generación y consultas
+
+- **Generación (`POST /statistics/generate`)** — crea/persiste una versión de
+  snapshot (transacción con commit); puede retirar la `active` previa y volverla
+  `retired`. Es el único path de escritura.
+- **Consultas (`GET`)** — de solo lectura: leen la versión activa, nunca
+  generan ni mutan estado. `Read `frequencies`, `gaps` y `averages` son puros.
+
+## Política de snapshots (`active | retired | failed`)
+
+Cada `(lottery_id, metric_set)` tiene **exactamente una** snapshot `active`. El
+ciclo de vida:
+
+- `active` — la versión vigente desde la que se atienden las lecturas.
+- `retired` — una versión que fue activa y quedó superada; se conserva como
+  audit trail, no se lee.
+- `failed` — una generación que no pudo completarse; la fila queda marcada en
+  la misma transacción para auditar el intento fallido sin contaminar la
+  versión vigente.
+
+La migración `0005_stat_tables` impone la restricción
+`status IN ('active', 'retired', 'failed')` y alembic es el único dueño del
+schema. Al generar una versión nueva, la `active` anterior se pasa a `retired`
+en la misma transacción (no hay dos `active` simultáneas).
+
+## Comandos de desarrollo (Fase 3)
+
+```bash
+cd backend && ./../backend/.venv/bin/pytest tests/statistics -q -p no:cacheprovider  # foco
+cd backend && uv run pytest   # suite
+cd backend && uv run ruff check . && uv run ruff format --check .  # lint/formato
+```
