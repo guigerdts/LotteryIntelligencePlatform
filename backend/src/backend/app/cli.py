@@ -25,6 +25,7 @@ from backend.app.repositories.lottery_repository import LotteryRepository
 from backend.app.services.errors import NotFoundError, ServiceError
 from backend.app.services.feature_engine_service import FEATURE_SET_CORE, FeatureEngineService
 from backend.app.services.import_service import ImportService
+from backend.app.services.probability_service import PROB_MODEL_SET_CORE, ProbabilityService
 from backend.app.services.statistics_service import StatisticsService
 
 
@@ -113,6 +114,33 @@ def main(argv: list[str] | None = None) -> int:
     )
     feature_rebuild.add_argument("--lottery", required=True, help="lottery code (natural key)")
     feature_rebuild.set_defaults(func=_cmd_feature_rebuild)
+
+    probability_parser = subparsers.add_parser(
+        "probability",
+        help="generate or rebuild a probability snapshot on demand (design §6, PES-08)",
+    )
+    probability_sub = probability_parser.add_subparsers(dest="probability_command", required=True)
+
+    probability_generate = probability_sub.add_parser(
+        "generate", help="generate a probability snapshot (incremental over an existing one)"
+    )
+    probability_generate.add_argument("--lottery", required=True, help="lottery code (natural key)")
+    probability_generate.add_argument(
+        "--model-set", default="core", help="model bundle (only 'core' is supported)"
+    )
+    probability_generate.add_argument(
+        "--scope", default="incremental", choices=["incremental", "full"], help="fold scope"
+    )
+    probability_generate.set_defaults(func=_cmd_probability_generate)
+
+    probability_rebuild = probability_sub.add_parser(
+        "rebuild", help="force a full probability rebuild as a NEW version"
+    )
+    probability_rebuild.add_argument("--lottery", required=True, help="lottery code (natural key)")
+    probability_rebuild.add_argument(
+        "--model-set", default="core", help="model bundle"
+    )
+    probability_rebuild.set_defaults(func=_cmd_probability_rebuild)
 
     args = parser.parse_args(argv)
     try:
@@ -231,12 +259,7 @@ def _cmd_feature_rebuild(args: argparse.Namespace) -> None:
 
 
 def _feature_snapshot_json(lottery_code: str, snapshot) -> str:
-    """Render a feature snapshot header as the CLI's deterministic JSON line.
-
-    Mirrors ``_snapshot_json`` with the feature-engine field names (``feature_set``,
-    ``feature_engine_version``) so the CLI output is a faithful, machine-parseable
-    echo of the stored header (design §6).
-    """
+    """Render a feature snapshot header as the CLI's deterministic JSON line."""
     return json.dumps(
         {
             "lottery_code": lottery_code,
@@ -244,6 +267,59 @@ def _feature_snapshot_json(lottery_code: str, snapshot) -> str:
             "feature_set": snapshot.feature_set,
             "version": snapshot.version,
             "feature_engine_version": snapshot.feature_engine_version,
+            "draws_from": snapshot.draws_from,
+            "draws_to": snapshot.draws_to,
+            "draw_count": snapshot.draw_count,
+            "checksum": snapshot.checksum,
+            "status": snapshot.status,
+            "is_locked": snapshot.is_locked,
+        },
+        indent=2,
+    )
+
+
+def _cmd_probability_generate(args: argparse.Namespace) -> None:
+    """Generate a probability snapshot; print the snapshot header as JSON (PES-08).
+
+    Accepts an optional ``--scope`` (default ``incremental``) for the ``core``
+    model bundle. Mirrors ``_cmd_feature_generate``: resolve the lottery code,
+    delegate to ``ProbabilityService.generate``, print the snapshot JSON.
+    """
+    with SessionLocal() as session:
+        lottery_id = _resolve_lottery(session, args.lottery)
+        snapshot = ProbabilityService(session).generate(
+            lottery_id=lottery_id,
+            model_set=args.model_set or PROB_MODEL_SET_CORE,
+            scope=args.scope,
+        )
+    print(_probability_snapshot_json(args.lottery, snapshot))
+
+
+def _cmd_probability_rebuild(args: argparse.Namespace) -> None:
+    """Force a full probability rebuild as a NEW version; print the new snapshot JSON.
+
+    ``rebuild`` maps to ``scope="full"`` (design §7), which ALWAYS writes a new
+    version — it never mutates a locked snapshot (PES-04).
+    """
+    with SessionLocal() as session:
+        lottery_id = _resolve_lottery(session, args.lottery)
+        snapshot = ProbabilityService(session).generate(
+            lottery_id=lottery_id,
+            model_set=args.model_set or PROB_MODEL_SET_CORE,
+            scope="full",
+        )
+    print(_probability_snapshot_json(args.lottery, snapshot))
+
+
+def _probability_snapshot_json(lottery_code: str, snapshot) -> str:
+    """Render a probability snapshot header as the CLI's deterministic JSON line."""
+    return json.dumps(
+        {
+            "lottery_code": lottery_code,
+            "snapshot_id": snapshot.id,
+            "model_set": snapshot.model_set,
+            "version": snapshot.version,
+            "prob_generator_version": snapshot.prob_generator_version,
             "draws_from": snapshot.draws_from,
             "draws_to": snapshot.draws_to,
             "draw_count": snapshot.draw_count,
