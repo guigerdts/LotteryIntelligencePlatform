@@ -24,6 +24,7 @@ from backend.app.repositories.base import SessionLocal
 from backend.app.repositories.lottery_repository import LotteryRepository
 from backend.app.services.errors import NotFoundError, ServiceError
 from backend.app.services.feature_engine_service import FEATURE_SET_CORE, FeatureEngineService
+from backend.app.services.graph_service import GraphService
 from backend.app.services.import_service import ImportService
 from backend.app.services.probability_service import PROB_MODEL_SET_CORE, ProbabilityService
 from backend.app.services.statistics_service import StatisticsService
@@ -141,6 +142,39 @@ def main(argv: list[str] | None = None) -> int:
         "--model-set", default="core", help="model bundle"
     )
     probability_rebuild.set_defaults(func=_cmd_probability_rebuild)
+
+    graph_parser = subparsers.add_parser(
+        "graph",
+        help="compute or list graph snapshots on demand (REQ-08, REQ-09)",
+    )
+    graph_sub = graph_parser.add_subparsers(dest="graph_command", required=True)
+
+    graph_compute = graph_sub.add_parser(
+        "compute", help="compute a graph snapshot (idempotent)"
+    )
+    graph_compute.add_argument("--lottery", required=True, help="lottery code (natural key)")
+    graph_compute.add_argument(
+        "--graph-type", default="cooccurrence", help="graph type (default: cooccurrence)"
+    )
+    graph_compute.add_argument(
+        "--window", type=int, default=None, help="rolling window (None for full-history)"
+    )
+    graph_compute.add_argument(
+        "--threshold", type=int, default=1, help="edge threshold (default: 1)"
+    )
+    graph_compute.set_defaults(func=_cmd_graph_compute)
+
+    graph_list = graph_sub.add_parser("list", help="list graph snapshots for a lottery")
+    graph_list.add_argument("--lottery", required=True, help="lottery code (natural key)")
+    graph_list.add_argument(
+        "--graph-type", default="cooccurrence", help="graph type filter"
+    )
+    graph_list.set_defaults(func=_cmd_graph_list)
+
+    graph_show = graph_sub.add_parser("show", help="show graph snapshot values")
+    graph_show.add_argument("--lottery", required=True, help="lottery code (natural key)")
+    graph_show.add_argument("--snapshot-id", required=True, type=int, help="snapshot ID")
+    graph_show.set_defaults(func=_cmd_graph_show)
 
     args = parser.parse_args(argv)
     try:
@@ -326,6 +360,109 @@ def _probability_snapshot_json(lottery_code: str, snapshot) -> str:
             "checksum": snapshot.checksum,
             "status": snapshot.status,
             "is_locked": snapshot.is_locked,
+        },
+        indent=2,
+    )
+
+
+def _cmd_graph_compute(args: argparse.Namespace) -> None:
+    """Compute a graph snapshot; print the snapshot header as JSON (REQ-08)."""
+    with SessionLocal() as session:
+        lottery_id = _resolve_lottery(session, args.lottery)
+        result = GraphService(session).compute(
+            lottery_id=lottery_id,
+            graph_type=args.graph_type,
+            window=args.window,
+            threshold=args.threshold,
+        )
+    print(_graph_snapshot_json(args.lottery, result.snapshot))
+
+
+def _cmd_graph_list(args: argparse.Namespace) -> None:
+    """List graph snapshots for a lottery; print as JSON (REQ-08)."""
+    from sqlalchemy import select
+
+    from backend.app.models.graph_snapshot import GraphSnapshot
+
+    with SessionLocal() as session:
+        lottery_id = _resolve_lottery(session, args.lottery)
+        stmt = (
+            select(GraphSnapshot)
+            .where(
+                GraphSnapshot.lottery_id == lottery_id,
+                GraphSnapshot.graph_type == args.graph_type,
+            )
+            .order_by(GraphSnapshot.version.desc())
+        )
+        snapshots = session.scalars(stmt).all()
+        items = [
+            {
+                "snapshot_id": s.id,
+                "version": s.version,
+                "status": s.status,
+                "draw_count": s.draw_count,
+                "checksum": s.checksum,
+            }
+            for s in snapshots
+        ]
+    print(json.dumps({"lottery_code": args.lottery, "snapshots": items}, indent=2))
+
+
+def _cmd_graph_show(args: argparse.Namespace) -> None:
+    """Show graph snapshot values; print as JSON (REQ-08, no precompute)."""
+    from sqlalchemy import select
+
+    from backend.app.graph.snapshot_store import load_snapshot_values
+    from backend.app.models.graph_snapshot import GraphSnapshot
+
+    with SessionLocal() as session:
+        lottery_id = _resolve_lottery(session, args.lottery)
+        stmt = select(GraphSnapshot).where(
+            GraphSnapshot.id == args.snapshot_id,
+            GraphSnapshot.lottery_id == lottery_id,
+        )
+        snapshot = session.scalar(stmt)
+        if snapshot is None:
+            raise NotFoundError(f"snapshot {args.snapshot_id!r} not found")
+        db_values = load_snapshot_values(session, args.snapshot_id)
+        rows = [
+            {
+                "metric_type": v.metric_type,
+                "subject": v.subject,
+                "draw_number": v.draw_number,
+                "value": str(v.value),
+            }
+            for v in db_values
+        ]
+    print(
+        json.dumps(
+            {
+                "snapshot_id": args.snapshot_id,
+                "graph_type": snapshot.graph_type,
+                "version": snapshot.version,
+                "values": rows,
+                "count": len(rows),
+            },
+            indent=2,
+        )
+    )
+
+
+def _graph_snapshot_json(lottery_code: str, snapshot) -> str:
+    """Render a graph snapshot header as the CLI's deterministic JSON line."""
+    return json.dumps(
+        {
+            "lottery_code": lottery_code,
+            "snapshot_id": snapshot.id,
+            "graph_type": snapshot.graph_type,
+            "version": snapshot.version,
+            "generator_version": snapshot.graph_generator_version,
+            "draws_from": snapshot.draws_from,
+            "draws_to": snapshot.draws_to,
+            "draw_count": snapshot.draw_count,
+            "checksum": snapshot.checksum,
+            "fingerprint": snapshot.input_fingerprint,
+            "status": snapshot.status,
         },
         indent=2,
     )
