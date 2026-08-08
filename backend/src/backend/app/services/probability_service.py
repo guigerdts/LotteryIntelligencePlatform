@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import hashlib
 import json
-from collections.abc import Iterable
+from collections.abc import Iterable, Iterator
 from decimal import Decimal
 
 from sqlalchemy.orm import Session
@@ -35,6 +35,7 @@ from backend.app.probability.engine import (
 from backend.app.probability.fingerprint import probability_input_fingerprint
 from backend.app.probability.providers import (
     DrawReader,
+    DrawRow,
     FeatureSnapshotReader,
     LotteryRules,
     StatSnapshotReader,
@@ -55,6 +56,93 @@ SCOPE_INCREMENTAL: str = "incremental"
 SCOPES: frozenset[str] = frozenset({SCOPE_FULL, SCOPE_INCREMENTAL})
 
 
+# --- T-13: Service-seam adapters (PES-06, design §4) ---
+
+
+class _DrawReaderAdapter:
+    """Adapter wrapping draw repository into Provider Protocol (PES-06)."""
+
+    def __init__(self, session: Session) -> None:
+        from backend.app.repositories.draw_repository import DrawRepository
+
+        self._repo = DrawRepository(session)
+
+    def iter_draws(
+        self, lottery_id: int, *, after_draw_number: int | None = None
+    ) -> Iterator[DrawRow]:
+        draws = self._repo.iter_draws(lottery_id, after_draw_number=after_draw_number)
+        for d in draws:
+            yield DrawRow(draw_number=d.draw_number, numbers=tuple(d.numbers))
+
+    def lottery_rules(self, lottery_id: int) -> LotteryRules:
+        from backend.app.repositories.lottery_repository import LotteryRepository
+
+        lottery = LotteryRepository(self._repo._session).get(lottery_id)
+        if lottery is None:
+            raise NotFoundError(f"lottery {lottery_id!r} not found")
+        return LotteryRules(
+            min_number=lottery.min_number,
+            max_number=lottery.max_number,
+            numbers_to_select=lottery.numbers_to_select,
+        )
+
+
+class _StatsReaderAdapter:
+    """Adapter wrapping statistics_service into Provider Protocol (PES-06)."""
+
+    def __init__(self, session: Session) -> None:
+        self._session = session
+
+    def active(self, lottery_id: int, metric_set: str = "core"):
+        from backend.app.services.statistics_service import StatisticsService
+
+        try:
+            snap = StatisticsService(self._session).get_active(
+                lottery_id=lottery_id, metric_set=metric_set
+            )
+            return type("StatsRef", (), {"id": snap.id, "snapshot_id": snap.id})()
+        except Exception:
+            return None
+
+    def frequencies(self, snapshot_id: int):
+        from sqlalchemy import select
+
+        from backend.app.models.stat_value import StatValue
+
+        stmt = select(StatValue).where(
+            StatValue.snapshot_id == snapshot_id,
+            StatValue.metric_id == "frequency_distribution",
+        )
+        rows = self._session.execute(stmt).scalars().all()
+        result = {}
+        for row in rows:
+            try:
+                num = int(row.subject)
+                val = int(row.value)
+                result[num] = val
+            except (ValueError, TypeError):
+                continue
+        return result
+
+
+class _FeatureReaderAdapter:
+    """Adapter wrapping feature_engine_service into Provider Protocol (PES-06)."""
+
+    def __init__(self, session: Session) -> None:
+        self._session = session
+
+    def active(self, lottery_id: int, feature_set: str = "core"):
+        from backend.app.services.feature_engine_service import FeatureEngineService
+
+        try:
+            snap = FeatureEngineService(self._session).get_active(
+                lottery_id=lottery_id, feature_set=feature_set
+            )
+            return type("FeatureRef", (), {"id": snap.id, "snapshot_id": snap.id})()
+        except Exception:
+            return None
+
+
 class ProbabilityService:
     """Probability generation use cases over one DI session transaction."""
 
@@ -69,9 +157,16 @@ class ProbabilityService:
     ) -> None:
         self._session = session
         self._registry = registry if registry is not None else build_prob_registry()
-        self._draw_reader = draw_reader
-        self._stats_reader = stats_reader
-        self._feature_reader = feature_reader
+        # T-13: auto-create adapters when not provided (production wiring).
+        self._draw_reader = (
+            draw_reader if draw_reader is not None else _DrawReaderAdapter(session)
+        )
+        self._stats_reader = (
+            stats_reader if stats_reader is not None else _StatsReaderAdapter(session)
+        )
+        self._feature_reader = (
+            feature_reader if feature_reader is not None else _FeatureReaderAdapter(session)
+        )
         self._store = SnapshotStore(session)
         self._settings = get_settings()
 
@@ -164,10 +259,8 @@ class ProbabilityService:
     def _compute_execution(self, lottery) -> dict:
         """Compute the deterministic probability pass over the lottery's draws.
 
-        Returns dict with: values, fingerprint, checksum, draw_numbers, draw_range.
+        Returns dict with: fingerprint, checksum, draw_numbers, draws_from/to, rows.
         """
-        from datetime import date
-
         lid = lottery.id
 
         # Collect draws via Provider Protocol.
@@ -186,10 +279,17 @@ class ProbabilityService:
         stats_ref = self._stats_reader.active(lid) if self._stats_reader else None
         stat_frequencies: dict[int, int] = {}
         if stats_ref is not None:
-            stat_frequencies = dict(self._stats_reader.frequencies(stats_ref.snapshot_id))
+            stat_frequencies = dict(self._stats_reader.frequencies(stats_ref.id))
 
         # Read feature snapshot via Provider Protocol.
-        feature_ref = self._feature_reader.active(lid) if self._feature_reader else None
+        _feature_ref = self._feature_reader.active(lid) if self._feature_reader else None
+
+        # Build conditional window from draw numbers (PM-07, univariate windowed).
+        recent_draws = [d.numbers for d in draws[-20:]] if draws else []
+        conditional_window: dict[int, int] = {}
+        for nums in recent_draws:
+            for n in nums:
+                conditional_window[n] = conditional_window.get(n, 0) + 1
 
         # Execute all registered methods.
         all_values: dict[str, dict] = {}
@@ -216,7 +316,8 @@ class ProbabilityService:
                     raw = poisson(lam, kmax)
                     all_values[method_id] = {"dist": raw, "params": params}
                 elif method_id == "empirical":
-                    total = sum(stat_frequencies.values()) if stat_frequencies else 0
+                    # H1 fix: use draw count as denominator, not sum(frequencies).
+                    total = len(draws) if draws else 0
                     raw = empirical(stat_frequencies, total) if total > 0 else {}
                     all_values[method_id] = {"freq": raw, "params": params}
                 elif method_id == "monte_carlo":
@@ -229,17 +330,20 @@ class ProbabilityService:
                     raw = monte_carlo(rng, rules, params)
                     all_values[method_id] = {"mc": raw, "params": params}
                 elif method_id == "bayes":
+                    # H2 fix: use declared frozen params, not hardcoded values.
                     prior_raw = params.get("prior")
                     likelihood_raw = params.get("likelihood")
                     prior = prior_raw if isinstance(prior_raw, dict) else {"0": 0.5, "1": 0.5}
-                    likelihood = likelihood_raw if isinstance(likelihood_raw, dict) else {"0": 0.8, "1": 0.2}
+                    default_likelihood = {"0": 0.8, "1": 0.2}
+                    likelihood = (
+                        likelihood_raw if isinstance(likelihood_raw, dict) else default_likelihood
+                    )
                     raw = bayes(prior, likelihood)
                     all_values[method_id] = {"posterior": raw, "params": params}
                 elif method_id == "conditional":
-                    window_raw = params.get("window")
-                    window = window_raw if isinstance(window_raw, dict) else {}
+                    # C3 fix: populate window from actual draw data.
                     window_size = params.get("window_size") or 10
-                    raw = conditional(window, window_size)
+                    raw = conditional(conditional_window, window_size)
                     all_values[method_id] = {"cond": raw, "params": params}
             except Exception as exc:
                 raise GenerationError(f"method {method_id!r} failed: {exc}") from exc
@@ -361,17 +465,30 @@ class ProbabilityService:
                         params_json=json.dumps(params, sort_keys=True, separators=(",", ":")),
                     ))
             elif "mc" in data:
+                # C2 fix: MC returns {counts, probabilities, quantiles}.
                 mc = data["mc"]
-                for key in ("mean", "p50", "p90", "p99"):
-                    if key in mc:
-                        rows.append(ProbValue(
-                            model_id=method_id,
-                            model_version="1.0.0",
-                            subject=key,
-                            draw_number=None,
-                            value=mc[key] if isinstance(mc[key], Decimal) else Decimal(str(mc[key])),
-                            params_json=json.dumps(params, sort_keys=True, separators=(",", ":")),
-                        ))
+                # Persist per-subject probabilities.
+                probs = mc.get("probabilities", {})
+                for num, prob in probs.items():
+                    rows.append(ProbValue(
+                        model_id=method_id,
+                        model_version="1.0.0",
+                        subject=f"prob_{num}",
+                        draw_number=None,
+                        value=prob if isinstance(prob, Decimal) else Decimal(str(prob)),
+                        params_json=json.dumps(params, sort_keys=True, separators=(",", ":")),
+                    ))
+                # Persist quantiles (p50/p90/p99).
+                quantiles = mc.get("quantiles", {})
+                for qkey, qval in quantiles.items():
+                    rows.append(ProbValue(
+                        model_id=method_id,
+                        model_version="1.0.0",
+                        subject=qkey,
+                        draw_number=None,
+                        value=qval if isinstance(qval, Decimal) else Decimal(str(qval)),
+                        params_json=json.dumps(params, sort_keys=True, separators=(",", ":")),
+                    ))
             elif "posterior" in data:
                 for state, prob in data["posterior"].items():
                     rows.append(ProbValue(

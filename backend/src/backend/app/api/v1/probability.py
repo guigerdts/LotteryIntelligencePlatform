@@ -16,18 +16,17 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Query, Response, status
 from sqlalchemy.orm import Session
 
-from backend.app.probability.providers import DrawReader, FeatureSnapshotReader, StatSnapshotReader
 from backend.app.repositories.base import get_db
 from backend.app.repositories.lottery_repository import LotteryRepository
 from backend.app.schemas.envelope import SuccessEnvelope
 from backend.app.schemas.probability import (
     GenerateRequest,
     GenerateSnapshot,
-    ProbRow,
     ProbabilityList,
+    ProbRow,
 )
 from backend.app.services.errors import NotFoundError
-from backend.app.services.probability_service import PROB_MODEL_SET_CORE, ProbabilityService
+from backend.app.services.probability_service import ProbabilityService
 
 router = APIRouter(prefix="/probability", tags=["probability"])
 

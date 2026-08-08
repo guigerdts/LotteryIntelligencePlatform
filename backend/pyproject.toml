@@ -37,6 +37,10 @@ build-backend = "uv_build"
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
+# Alternating test modules that share a basename across directories tree
+# (e.g. tests/probability/test_fingerprint.py and tests/feature_engineering/
+# test_fingerprint.py) must import by unique file hash, not bare module.
+addopts = "--import-mode=importlib"
 
 [tool.ruff]
 line-length = 100

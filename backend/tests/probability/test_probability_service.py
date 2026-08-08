@@ -46,7 +46,7 @@ class MockStatsReader:
 
     def active(self, lottery_id, metric_set="core"):
         if self._frequencies:
-            return type("Ref", (), {"snapshot_id": 1})()
+            return type("Ref", (), {"id": 1, "snapshot_id": 1})()
         return None
 
     def frequencies(self, snapshot_id):
