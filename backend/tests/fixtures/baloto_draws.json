@@ -1,0 +1,12 @@
+[
+  {"draw_number": 1, "draw_date": "2024-01-05", "numbers": [3, 15, 22, 34, 41], "super_number": 7},
+  {"draw_number": 2, "draw_date": "2024-01-12", "numbers": [5, 12, 18, 29, 38], "super_number": 14},
+  {"draw_number": 3, "draw_date": "2024-01-19", "numbers": [8, 14, 21, 31, 42], "super_number": 3},
+  {"draw_number": 4, "draw_date": "2024-01-26", "numbers": [2, 11, 25, 33, 40], "super_number": 9},
+  {"draw_number": 5, "draw_date": "2024-02-02", "numbers": [6, 17, 23, 30, 39], "super_number": 21},
+  {"draw_number": 6, "draw_date": "2024-02-09", "numbers": [1, 13, 20, 28, 37], "super_number": 11},
+  {"draw_number": 7, "draw_date": "2024-02-16", "numbers": [9, 16, 24, 32, 43], "super_number": 5},
+  {"draw_number": 8, "draw_date": "2024-02-23", "numbers": [4, 10, 19, 27, 36], "super_number": 18},
+  {"draw_number": 9, "draw_date": "2024-03-01", "numbers": [7, 15, 22, 35, 41], "super_number": 2},
+  {"draw_number": 10, "draw_date": "2024-03-08", "numbers": [3, 12, 26, 31, 38], "super_number": 15}
+]
