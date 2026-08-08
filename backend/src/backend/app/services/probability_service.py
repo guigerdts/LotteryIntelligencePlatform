@@ -341,8 +341,11 @@ class ProbabilityService:
                     raw = bayes(prior, likelihood)
                     all_values[method_id] = {"posterior": raw, "params": params}
                 elif method_id == "conditional":
-                    # C3 fix: populate window from actual draw data.
-                    window_size = params.get("window_size") or 10
+                    # C3 fix: use actual window size from collected draws.
+                    if conditional_window:
+                        window_size = min(len(conditional_window), params.get("window_size") or 20)
+                    else:
+                        window_size = params.get("window_size") or 10
                     raw = conditional(conditional_window, window_size)
                     all_values[method_id] = {"cond": raw, "params": params}
             except Exception as exc:
