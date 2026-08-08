@@ -13,6 +13,8 @@ from backend.app.models.feature_value import FeatureValue
 from backend.app.models.import_error import ImportError
 from backend.app.models.import_job import ImportJob
 from backend.app.models.lottery import Lottery
+from backend.app.models.graph_snapshot import GraphSnapshot
+from backend.app.models.graph_value import GraphValue
 from backend.app.models.prob_snapshot import ProbSnapshot
 from backend.app.models.prob_value import ProbValue
 from backend.app.models.stat_average import StatAverage
@@ -32,6 +34,8 @@ __all__ = [
     "DrawNumber",
     "FeatureSnapshot",
     "FeatureValue",
+    "GraphSnapshot",
+    "GraphValue",
     "ImportError",
     "ImportJob",
     "Lottery",
