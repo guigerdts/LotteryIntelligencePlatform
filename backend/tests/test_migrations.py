@@ -624,3 +624,142 @@ def test_downgrade_0007_drops_only_prob_tables_core_stat_feature_untouched(
         assert FEATURE_SNAPSHOT_UNIQUE.issubset(feat_unique)
     finally:
         engine.dispose()
+
+
+# --- 0008 Graph Engine ---
+
+# The two graph-engine tables added by 0008 (design Data Model) — graph_* domain.
+GRAPH_TABLES = {"graph_snapshots", "graph_values"}
+
+# The full schema at head (0008) = all prior tables + graph_*.
+HEAD_TABLES_0008 = HEAD_TABLES | GRAPH_TABLES
+
+# The schema reached at 0007 (before the graph_* domain).
+GRAPH_HEAD_TABLES = HEAD_TABLES_0008 - GRAPH_TABLES
+
+# The graph-engine indexes shipped by 0008 (design Migration).
+GRAPH_INDEXES = {
+    "ix_gsnap_lottery_type_status": (
+        "graph_snapshots",
+        ("lottery_id", "graph_type", "status"),
+    ),
+    "ix_gval_snapshot_id": ("graph_values", ("snapshot_id",)),
+    "ix_gval_metric_type": ("graph_values", ("metric_type",)),
+}
+
+# 0008 expectations: graph_snapshots integrity + FK RESTRICT to lottery.
+GRAPH_SNAPSHOT_CHECKS = {"ck_graph_snapshots_range", "ck_graph_snapshots_status"}
+GRAPH_SNAPSHOT_UNIQUE = {"uq_graph_snapshots_scope_version"}
+
+_REV_0008 = "0008_graph_tables"
+
+
+def test_upgrade_0008_creates_graph_tables_with_integrity_and_indexes(
+    tmp_path: Path,
+) -> None:
+    """0008 adds the two graph_* tables (integrity + indexes); core/stat_*/feature_*/prob_* untouched."""
+    db = tmp_path / "up_graph.db"
+    cfg = _config(db)
+    command.upgrade(cfg, _REV_0008)
+
+    engine = sa.create_engine(f"sqlite:///{db}")
+    insp = inspect(engine)
+    try:
+        assert _domain_tables(db) == HEAD_TABLES_0008
+
+        # graph_snapshots integrity: UNIQUE(...), CHECK(range/status), FK RESTRICT.
+        unique = {uc["name"] for uc in insp.get_unique_constraints("graph_snapshots")}
+        assert GRAPH_SNAPSHOT_UNIQUE.issubset(unique)
+        checks = {ck["name"] for ck in insp.get_check_constraints("graph_snapshots")}
+        assert GRAPH_SNAPSHOT_CHECKS.issubset(checks)
+        fk_lottery = {
+            fk["constrained_columns"][0] for fk in insp.get_foreign_keys("graph_snapshots")
+        }
+        assert "lottery_id" in fk_lottery
+
+        # graph_values: surrogate id PK (D-A4) + FK to the header only, no FK to draw
+        # (draw_number axis only, stat_*/feature_*/prob_* parity), nullable draw_number
+        # for grid rows, cell UNIQUE.
+        pk = set(insp.get_pk_constraint("graph_values")["constrained_columns"])
+        assert pk == {"id"}
+        fk_cols = {
+            col for fk in insp.get_foreign_keys("graph_values") for col in fk["constrained_columns"]
+        }
+        assert fk_cols == {"snapshot_id"}
+        draw_cols = {col["name"]: col for col in insp.get_columns("graph_values")}
+        assert draw_cols["draw_number"]["nullable"]
+        gval_unique = {uc["name"] for uc in insp.get_unique_constraints("graph_values")}
+        assert "uq_graph_values_cell" in gval_unique
+
+        # All graph_* indexes exist with the correct columns (design Migration).
+        for name, (table, columns) in GRAPH_INDEXES.items():
+            idx = {i["name"]: i for i in insp.get_indexes(table)}
+            assert name in idx, f"missing index {name} on {table}"
+            assert tuple(idx[name]["column_names"]) == columns
+            assert not idx[name]["unique"]  # performance, not integrity
+
+        # The status CHECK accepts 'failed' (design fail policy). Parent lottery first
+        # so the FK RESTRICT does not block the snapshot row.
+        with engine.begin() as conn:
+            conn.exec_driver_sql(
+                "INSERT INTO lottery (id, code, name, country, min_number, max_number,"
+                " numbers_to_select, super_number_min, super_number_max, created_at)"
+                " VALUES (1, 'L1', 'Lottery 1', 'AR', 1, 45, 5, NULL, NULL,"
+                "  '2026-08-07T00:00:00Z')"
+            )
+            conn.exec_driver_sql(
+                "INSERT INTO graph_snapshots"
+                " (id, lottery_id, graph_type, version, graph_generator_version, checksum,"
+                "  input_fingerprint, params_json, status, is_locked, draw_count,"
+                "  draws_from, draws_to, created_at, updated_at)"
+                " VALUES (1, 1, 'cooccurrence', '1', '1.0.0',"
+                "  'ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff',"
+                "  'eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee',"
+                "  '{}', 'failed', 0, 0, 0, 0,"
+                "  '2026-08-07T00:00:00Z', '2026-08-07T00:00:00Z')"
+            )
+
+        # Core + stat_* + feature_* + prob_* domains keep their integrity (no change).
+        for table, expected in EXPECTED_UNIQUE.items():
+            names = {uc["name"] for uc in insp.get_unique_constraints(table)}
+            assert expected.issubset(names), f"{table} missing UNIQUE {expected - names}"
+        stat_unique = {uc["name"] for uc in insp.get_unique_constraints("stat_snapshots")}
+        assert STAT_SNAPSHOT_UNIQUE.issubset(stat_unique)
+        feat_unique = {uc["name"] for uc in insp.get_unique_constraints("feature_snapshots")}
+        assert FEATURE_SNAPSHOT_UNIQUE.issubset(feat_unique)
+        prob_unique = {uc["name"] for uc in insp.get_unique_constraints("prob_snapshots")}
+        assert PROB_SNAPSHOT_UNIQUE.issubset(prob_unique)
+    finally:
+        engine.dispose()
+
+
+def test_downgrade_0008_drops_only_graph_tables_all_prior_domains_untouched(
+    tmp_path: Path,
+) -> None:
+    """Downgrade from head to 0007 removes ONLY graph_*; all prior domains survive."""
+    db = tmp_path / "down_graph.db"
+    cfg = _config(db)
+    command.upgrade(cfg, "head")
+    assert _domain_tables(db) == HEAD_TABLES_0008
+
+    command.downgrade(cfg, _REV_0007)
+
+    engine = sa.create_engine(f"sqlite:///{db}")
+    insp = inspect(engine)
+    try:
+        # Exactly F1 + import + stat_* + feature_* + prob_* remain — no graph_* residue.
+        assert _domain_tables(db) == GRAPH_HEAD_TABLES
+        # No graph_* index leaks.
+        for name, (table, _columns) in GRAPH_INDEXES.items():
+            if table in _domain_tables(db):  # pragma: no cover - defensive
+                idx = {i["name"]: i for i in insp.get_indexes(table)}
+                assert name not in idx, f"{name} leaked after downgrade"
+        # stat_*, feature_*, and prob_* integrity survive.
+        stat_unique = {uc["name"] for uc in insp.get_unique_constraints("stat_snapshots")}
+        assert STAT_SNAPSHOT_UNIQUE.issubset(stat_unique)
+        feat_unique = {uc["name"]: uc for uc in insp.get_unique_constraints("feature_snapshots")}
+        assert FEATURE_SNAPSHOT_UNIQUE.issubset(set(feat_unique.keys()))
+        prob_unique = {uc["name"] for uc in insp.get_unique_constraints("prob_snapshots")}
+        assert PROB_SNAPSHOT_UNIQUE.issubset(prob_unique)
+    finally:
+        engine.dispose()
