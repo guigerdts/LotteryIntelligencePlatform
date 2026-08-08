@@ -101,3 +101,30 @@ class GraphSnapshotInfo(BaseModel):
     status: str
     draw_count: int
     created_at: str
+
+
+class GraphSnapshotList(BaseModel):
+    """List of graph snapshots for a lottery (REQ-08)."""
+
+    class SnapshotItem(BaseModel):
+        snapshot_id: int
+        version: str
+        status: str
+        draw_count: int
+        checksum: str
+        created_at: str | None = None
+
+    snapshots: list[SnapshotItem]
+
+
+class GraphValuesResponse(BaseModel):
+    """Graph values read response (REQ-08, no precompute)."""
+
+    class Row(BaseModel):
+        metric_type: str
+        subject: str
+        draw_number: int | None = None
+        value: float
+
+    rows: list[Row]
+    count: int
