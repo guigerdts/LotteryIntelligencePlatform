@@ -15,7 +15,8 @@ Versión: 1.0 · Fecha de cierre: 2026-08-07
 | Fase 1 — Core Domain | Archivada |
 | Fase 2 — Data Engine (Import) | Archivada |
 | Fase 3 — Statistics Engine | ✅ Archivada y cerrada |
-| Fase 4 — Feature Engine | Pendiente (sin iniciar implementación) |
+| Fase 4 — Feature Engine | ✅ Archivada y cerrada |
+| Fase 5 — Probability Engine | ✅ Archivada y cerrada |
 
 - Último tag estable: `fase-3-statistics-complete` (anotado)
 - Commit final de la fase: `8c01f50` (docs(openspec): archive fase-3-statistics change)

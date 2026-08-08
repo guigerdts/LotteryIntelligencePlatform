@@ -12,7 +12,7 @@ La plataforma está diseñada para ser extensible y permitir la incorporación d
 Plataforma de investigación estadística para loterías (Baloto, Revancha).
 Stack: Python, FastAPI, React, Vite, Tailwind, SQLite.
 Filosofía: evidencia antes que conclusiones. Backtesting obligatorio.
-Estado: Fase 0 — Diseño y Arquitectura.
+Estado: Fase 5 — Probability Engine (implementada).
 EOF
 
 ---
