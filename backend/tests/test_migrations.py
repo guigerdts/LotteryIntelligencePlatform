@@ -49,11 +49,17 @@ STAT_TABLES = {
 # The two feature-engine tables added by 0006 (design §2) — independent feature_* domain.
 FEATURE_TABLES = {"feature_snapshots", "feature_values"}
 
-# The full schema at head (0006) = F1 tables + import tables + stat_* + feature_* tables.
-HEAD_TABLES = EXPECTED_TABLES | IMPORT_TABLES | STAT_TABLES | FEATURE_TABLES
+# The two probability-engine tables added by 0007 (design Data Model) — prob_* domain.
+PROB_TABLES = {"prob_snapshots", "prob_values"}
+
+# The full schema at head (0007) = F1 tables + import tables + stat_* + feature_* + prob_*.
+HEAD_TABLES = EXPECTED_TABLES | IMPORT_TABLES | STAT_TABLES | FEATURE_TABLES | PROB_TABLES
+
+# The schema reached at 0006 (before the prob_* domain).
+FEATURE_HEAD_TABLES = HEAD_TABLES - PROB_TABLES
 
 # The schema reached at 0005 (before the feature_* domain).
-STAT_HEAD_TABLES = HEAD_TABLES - FEATURE_TABLES
+STAT_HEAD_TABLES = HEAD_TABLES - FEATURE_TABLES - PROB_TABLES
 
 # The schema reached at 0003 (before the 0005 stat_* domain).
 IMPORT_HEAD_TABLES = EXPECTED_TABLES | IMPORT_TABLES
@@ -108,6 +114,7 @@ _REV_0003 = "0003_imports_audit"
 _REV_0004 = "0004_import_performance_indexes"
 _REV_0005 = "0005_stat_tables"
 _REV_0006 = "0006_feature_tables"
+_REV_0007 = "0007_probability_tables"
 
 
 # The statistics (0005) indexes (design §4, Indexes table: stat_* only).
@@ -138,6 +145,20 @@ FEATURE_INDEXES = {
 # 0006 expectations: feature_snapshots integrity + FK RESTRICT to lottery.
 FEATURE_SNAPSHOT_CHECKS = {"ck_feature_snapshots_range", "ck_feature_snapshots_status"}
 FEATURE_SNAPSHOT_UNIQUE = {"uq_feature_snapshots_scope_version"}
+
+# The probability-engine indexes shipped by 0007 (design Migration, PES-09 names).
+PROB_INDEXES = {
+    "ix_psnap_lottery_model_status": (
+        "prob_snapshots",
+        ("lottery_id", "model_set", "status"),
+    ),
+    "ix_pval_snapshot_id": ("prob_values", ("snapshot_id",)),
+    "ix_pval_subject": ("prob_values", ("subject",)),
+}
+
+# 0007 expectations: prob_snapshots integrity + FK RESTRICT to lottery.
+PROB_SNAPSHOT_CHECKS = {"ck_prob_snapshots_range", "ck_prob_snapshots_status"}
+PROB_SNAPSHOT_UNIQUE = {"uq_prob_snapshots_scope_version"}
 
 
 def _config(db_path: Path) -> Config:
@@ -409,7 +430,7 @@ def test_upgrade_0006_creates_feature_tables_with_integrity_and_indexes(
     engine = sa.create_engine(f"sqlite:///{db}")
     insp = inspect(engine)
     try:
-        assert _domain_tables(db) == HEAD_TABLES
+        assert _domain_tables(db) == FEATURE_HEAD_TABLES
 
         # feature_snapshots integrity: UNIQUE(...), CHECK(range/status), FK RESTRICT.
         unique = {uc["name"] for uc in insp.get_unique_constraints("feature_snapshots")}
@@ -494,5 +515,112 @@ def test_downgrade_0006_drops_only_feature_tables_core_stat_untouched(
         # stat_* integrity survives.
         stat_unique = {uc["name"] for uc in insp.get_unique_constraints("stat_snapshots")}
         assert STAT_SNAPSHOT_UNIQUE.issubset(stat_unique)
+    finally:
+        engine.dispose()
+
+
+def test_upgrade_0007_creates_prob_tables_with_integrity_and_indexes(
+    tmp_path: Path,
+) -> None:
+    """0007 adds the two prob_* tables (integrity + indexes); core/stat_*/feature_* untouched."""
+    db = tmp_path / "up_prob.db"
+    cfg = _config(db)
+    command.upgrade(cfg, _REV_0007)
+
+    engine = sa.create_engine(f"sqlite:///{db}")
+    insp = inspect(engine)
+    try:
+        assert _domain_tables(db) == HEAD_TABLES
+
+        # prob_snapshots integrity: UNIQUE(...), CHECK(range/status), FK RESTRICT.
+        unique = {uc["name"] for uc in insp.get_unique_constraints("prob_snapshots")}
+        assert PROB_SNAPSHOT_UNIQUE.issubset(unique)
+        checks = {ck["name"] for ck in insp.get_check_constraints("prob_snapshots")}
+        assert PROB_SNAPSHOT_CHECKS.issubset(checks)
+        fk_lottery = {
+            fk["constrained_columns"][0] for fk in insp.get_foreign_keys("prob_snapshots")
+        }
+        assert "lottery_id" in fk_lottery
+
+        # prob_values: surrogate id PK (D-A4) + FK to the header only, no FK to draw
+        # (PES-03), nullable draw_number for grid rows, cell UNIQUE.
+        pk = set(insp.get_pk_constraint("prob_values")["constrained_columns"])
+        assert pk == {"id"}
+        fk_cols = {
+            col for fk in insp.get_foreign_keys("prob_values") for col in fk["constrained_columns"]
+        }
+        assert fk_cols == {"snapshot_id"}
+        draw_cols = {col["name"]: col for col in insp.get_columns("prob_values")}
+        assert draw_cols["draw_number"]["nullable"]
+        pval_unique = {uc["name"] for uc in insp.get_unique_constraints("prob_values")}
+        assert "uq_prob_values_cell" in pval_unique
+
+        # All prob_* indexes exist with the correct columns (design Migration, PES-09).
+        for name, (table, columns) in PROB_INDEXES.items():
+            idx = {i["name"]: i for i in insp.get_indexes(table)}
+            assert name in idx, f"missing index {name} on {table}"
+            assert tuple(idx[name]["column_names"]) == columns
+            assert not idx[name]["unique"]  # performance, not integrity
+
+        # The status CHECK accepts 'failed' (PES-07 fail policy). Parent lottery first
+        # so the FK RESTRICT does not block the snapshot row regardless of the SQLite
+        # FK pragma default.
+        with engine.begin() as conn:
+            conn.exec_driver_sql(
+                "INSERT INTO lottery (id, code, name, country, min_number, max_number,"
+                " numbers_to_select, super_number_min, super_number_max, created_at)"
+                " VALUES (1, 'L1', 'Lottery 1', 'AR', 1, 45, 5, NULL, NULL,"
+                "  '2026-08-07T00:00:00Z')"
+            )
+            conn.exec_driver_sql(
+                "INSERT INTO prob_snapshots"
+                " (id, lottery_id, model_set, version, prob_generator_version, checksum,"
+                "  input_fingerprint, status, is_locked, draw_count, draws_from, draws_to,"
+                "  created_at, updated_at)"
+                " VALUES (1, 1, 'core', '1', '1.0.0',"
+                "  'ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff',"
+                "  'eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee',"
+                "  'failed', 0, 0, 0, 0,"
+                "  '2026-08-07T00:00:00Z', '2026-08-07T00:00:00Z')"
+            )
+
+        # Core + stat_* + feature_* domains keep their integrity (no change to those).
+        for table, expected in EXPECTED_UNIQUE.items():
+            names = {uc["name"] for uc in insp.get_unique_constraints(table)}
+            assert expected.issubset(names), f"{table} missing UNIQUE {expected - names}"
+        stat_unique = {uc["name"] for uc in insp.get_unique_constraints("stat_snapshots")}
+        assert STAT_SNAPSHOT_UNIQUE.issubset(stat_unique)
+        feat_unique = {uc["name"] for uc in insp.get_unique_constraints("feature_snapshots")}
+        assert FEATURE_SNAPSHOT_UNIQUE.issubset(feat_unique)
+    finally:
+        engine.dispose()
+
+
+def test_downgrade_0007_drops_only_prob_tables_core_stat_feature_untouched(
+    tmp_path: Path,
+) -> None:
+    """Downgrade from head to 0006 removes ONLY prob_*; all prior domains survive (PES-09)."""
+    db = tmp_path / "down_prob.db"
+    cfg = _config(db)
+    command.upgrade(cfg, "head")
+    assert _domain_tables(db) == HEAD_TABLES
+
+    command.downgrade(cfg, _REV_0006)
+
+    engine = sa.create_engine(f"sqlite:///{db}")
+    insp = inspect(engine)
+    try:
+        # Exactly F1 + import + stat_* + feature_* remain — no prob_* residue, no core loss.
+        assert _domain_tables(db) == FEATURE_HEAD_TABLES
+        # No prob_* index leaks.
+        for name, (table, _columns) in PROB_INDEXES.items():
+            if table in _domain_tables(db):  # pragma: no cover - defensive
+                idx = {i["name"] for i in insp.get_indexes(table)}
+                assert name not in idx, f"{name} leaked after downgrade"
+        # stat_* and feature_* integrity survive.
+        stat_unique = {uc["name"] for uc in insp.get_unique_constraints("stat_snapshots")}
+        assert STAT_SNAPSHOT_UNIQUE.issubset(stat_unique)
+        feat_unique = {uc["name"] for uc in insp.get_unique_constraints("feature_snapshots")}
+        assert FEATURE_SNAPSHOT_UNIQUE.issubset(feat_unique)
     finally:
         engine.dispose()

@@ -119,6 +119,7 @@ Chain strategy: stacked-to-main
 - **Dependencies**: T-01
 - **Acceptance**: ORM maps header + normalized payload; NULL draw_number grid rows OK; checks/unique per design.
 - **Est. LOC**: 120
+- **Status**: [x] Done — `ProbSnapshot` (surrogate id PK, model_set String(16)="core", uq_prob_snapshots_scope_version, range/status CHECKs) + `ProbValue` (surrogate id PK per D-A4, uq_prob_values_cell, nullable draw_number, params_json Text) registered in `models/__init__.py`; ORM smoke verified.
 
 #### T-10: Migration 0007
 - **Description**: Create `backend/alembic/versions/0007_probability_tables.py` — upgrade creates `prob_snapshots` + `prob_values` + 3 indexes (`ix_psnap_lottery_model_status`, `ix_pval_snapshot_id`, `ix_pval_subject`); downgrade drops ONLY `prob_*` (Core/stat_*/feature_* untouched); `down_revision="0006_feature_tables"`. Extend `tests/test_migrations.py`.
@@ -127,6 +128,7 @@ Chain strategy: stacked-to-main
 - **Dependencies**: T-09
 - **Acceptance**: upgrade head; downgrade drops only prob; Core/stat_*/feature_* tables still present.
 - **Est. LOC**: 90
+- **Status**: [x] Done — leaf on 0006; 3 indexes (PES-09 names); 2 new migration tests (upgrade integrity + downgrade-only-prob); full suite 315 passed, 1 skipped.
 
 ### PR2b: Store + Service + Adapters
 
