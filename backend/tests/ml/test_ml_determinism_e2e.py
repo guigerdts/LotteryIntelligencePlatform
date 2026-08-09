@@ -8,8 +8,8 @@ from __future__ import annotations
 from decimal import Decimal
 
 import sqlalchemy as sa
-from sqlalchemy.orm import Session, sessionmaker
 from fastapi.testclient import TestClient
+from sqlalchemy.orm import Session, sessionmaker
 
 _F4_FEATURES = [
     "consecutive_count",

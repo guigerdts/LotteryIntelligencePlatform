@@ -7,8 +7,8 @@ stats surface unchanged (REQ-10/11/12 scenarios intact).
 from __future__ import annotations
 
 import sqlalchemy as sa
-from sqlalchemy.orm import Session, sessionmaker
 from fastapi.testclient import TestClient
+from sqlalchemy.orm import sessionmaker
 
 
 def test_statistics_endpoint_still_200(

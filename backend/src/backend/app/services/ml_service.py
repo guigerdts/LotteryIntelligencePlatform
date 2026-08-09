@@ -20,7 +20,6 @@ from backend.app.ml.registry import MODEL_SET_CORE_5
 from backend.app.ml.snapshot_store import MlSnapshotStore
 from backend.app.ml.version import ML_GENERATOR_VERSION
 from backend.app.models.ml_metric import MlMetric
-from backend.app.services.errors import SnapshotNotFoundError
 
 # Core-5 families — the ONLY executed set (MLE-07).
 _CORE_5_FAMILIES: tuple[str, ...] = (
