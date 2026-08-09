@@ -26,6 +26,14 @@ dependencies = [
     # absence from installable deps (tests/test_ml_pr1.py::test_no_future_ml_imports).
     "numpy==2.2.6",
     "scikit-learn==1.6.1",
+    # Fase 8 — Deep Learning. ALLOWLIST EXCEPTION to the F6 stdlib-only gate
+    # (proposal D1, DLE-06): PyTorch CPU-only is the ONLY permitted runtime dep for
+    # dl/; signed exception registered 2026-08-09, limited to torch/Fase-8. Exact-pinned
+    # for reproducibility. torch transitively depends on networkx — this is an explicit,
+    # documented exception to the networkx ban, scoped exclusively to PyTorch/Fase-8.
+    # The dependency gate test (test_dl_pr1.py) asserts torch is present and the ban-gate
+    # test (test_ml_pr1.py) continues to enforce networkx absence from installable deps.
+    "torch==2.5.1",
 ]
 
 # Optional dialect extra: PostgreSQL driver for the CI-gated dialect smoke

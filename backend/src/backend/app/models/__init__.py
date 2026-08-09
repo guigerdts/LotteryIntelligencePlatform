@@ -6,6 +6,9 @@ Re-exports are the source of ``Base.metadata`` for alembic ``target_metadata``
 
 from backend.app.models.dataset import Dataset
 from backend.app.models.dataset_draw import DatasetDraw
+from backend.app.models.dl_metric import DlMetric
+from backend.app.models.dl_snapshot import DlSnapshot
+from backend.app.models.dl_weight import DlWeight
 from backend.app.models.draw import Draw
 from backend.app.models.draw_number import DrawNumber
 from backend.app.models.feature_snapshot import FeatureSnapshot
@@ -32,6 +35,9 @@ __all__ = [
     "Base",
     "Dataset",
     "DatasetDraw",
+    "DlMetric",
+    "DlSnapshot",
+    "DlWeight",
     "Draw",
     "DrawNumber",
     "FeatureSnapshot",

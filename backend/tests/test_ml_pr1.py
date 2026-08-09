@@ -195,3 +195,13 @@ def test_migration_downgrade_only_ml(tmp_path: Path) -> None:
     # Every pre-ml domain table (F1 core + stat_/feature_/prob_/graph_) survives:
     # the 0008 head set is exactly what remains after dropping ONLY ml_*.
     assert remaining == _PRIOR_HEAD_TABLES
+
+
+def test_ml_untouched_after_dl_migration(tmp_path: Path) -> None:
+    """Migration 0010 (dl_*) does not alter any ``ml_*`` table (DLE-16 additive isolation)."""
+    db = tmp_path / "ml_dl_intact.db"
+    cfg = _migration_config(db)
+    command.upgrade(cfg, "head")
+    # Both ml_* and dl_* exist at head (0010).
+    assert ML_TABLES.issubset(_table_names(db))
+    assert {"dl_snapshots", "dl_metrics", "dl_weights"}.issubset(_table_names(db))
