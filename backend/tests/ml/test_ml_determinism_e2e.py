@@ -116,7 +116,7 @@ def test_determinism_two_runs(
     result1 = _train()
     result2 = _train()
 
-    # Both runs return the same envelope
-    assert result1 == result2, (
-        f"Results differ: {result1} vs {result2}"
+    # Compare data only — timestamp naturally differs between runs
+    assert result1["data"] == result2["data"], (
+        f"Data differs: {result1['data']} vs {result2['data']}"
     )
