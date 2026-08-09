@@ -223,7 +223,7 @@ def test_upgrade_head_0004_adds_f1_and_import_performance_indexes(tmp_path: Path
     engine = sa.create_engine(f"sqlite:///{db}")
     insp = inspect(engine)
     try:
-        assert _domain_tables(db) == HEAD_TABLES
+        assert _domain_tables(db) == HEAD_TABLES_0009
 
         # Integrity contract survives: every UNIQUE constraint from 0001 is intact.
         for table, expected in EXPECTED_UNIQUE.items():
@@ -318,14 +318,14 @@ def test_downgrade_base_drops_all_then_reupgrade_succeeds(tmp_path: Path) -> Non
     cfg = _config(db)
 
     command.upgrade(cfg, "head")
-    assert _domain_tables(db) == HEAD_TABLES
+    assert _domain_tables(db) == HEAD_TABLES_0009
 
     command.downgrade(cfg, "base")
     # Alembic keeps its version table; every domain table must be dropped.
     assert _domain_tables(db) == set()
 
     command.upgrade(cfg, "head")
-    assert _domain_tables(db) == HEAD_TABLES
+    assert _domain_tables(db) == HEAD_TABLES_0009
 
 
 def test_upgrade_0005_creates_stat_tables_with_integrity_and_indexes(tmp_path: Path) -> None:
@@ -401,7 +401,7 @@ def test_downgrade_0005_drops_only_stat_tables_core_untouched(tmp_path: Path) ->
     db = tmp_path / "down_stat.db"
     cfg = _config(db)
     command.upgrade(cfg, "head")
-    assert _domain_tables(db) == HEAD_TABLES
+    assert _domain_tables(db) == HEAD_TABLES_0009
 
     command.downgrade(cfg, _REV_0004)
 
@@ -498,7 +498,7 @@ def test_downgrade_0006_drops_only_feature_tables_core_stat_untouched(
     db = tmp_path / "down_feature.db"
     cfg = _config(db)
     command.upgrade(cfg, "head")
-    assert _domain_tables(db) == HEAD_TABLES
+    assert _domain_tables(db) == HEAD_TABLES_0009
 
     command.downgrade(cfg, _REV_0005)
 
@@ -603,7 +603,7 @@ def test_downgrade_0007_drops_only_prob_tables_core_stat_feature_untouched(
     db = tmp_path / "down_prob.db"
     cfg = _config(db)
     command.upgrade(cfg, "head")
-    assert _domain_tables(db) == HEAD_TABLES
+    assert _domain_tables(db) == HEAD_TABLES_0009
 
     command.downgrade(cfg, _REV_0006)
 
@@ -652,6 +652,12 @@ GRAPH_SNAPSHOT_CHECKS = {"ck_graph_snapshots_range", "ck_graph_snapshots_status"
 GRAPH_SNAPSHOT_UNIQUE = {"uq_graph_snapshots_scope_version"}
 
 _REV_0008 = "0008_graph_tables"
+
+# The two ml-engine tables added by 0009 (design Data Model, MLE-01) — ml_* domain.
+ML_TABLES = {"ml_snapshots", "ml_metrics"}
+
+# The full schema at head (0009) = all prior tables + ml_*.
+HEAD_TABLES_0009 = HEAD_TABLES_0008 | ML_TABLES
 
 
 def test_upgrade_0008_creates_graph_tables_with_integrity_and_indexes(
@@ -740,7 +746,7 @@ def test_downgrade_0008_drops_only_graph_tables_all_prior_domains_untouched(
     db = tmp_path / "down_graph.db"
     cfg = _config(db)
     command.upgrade(cfg, "head")
-    assert _domain_tables(db) == HEAD_TABLES_0008
+    assert _domain_tables(db) == HEAD_TABLES_0009
 
     command.downgrade(cfg, _REV_0007)
 

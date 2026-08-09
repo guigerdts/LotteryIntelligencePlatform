@@ -12,6 +12,7 @@ from backend.app.api.v1.draws import router as draws_router
 from backend.app.api.v1.feature_engine import router as feature_engine_router
 from backend.app.api.v1.graph import router as graph_router
 from backend.app.api.v1.lotteries import router as lotteries_router
+from backend.app.api.v1.ml import router as ml_router
 from backend.app.api.v1.probability import router as probability_router
 from backend.app.api.v1.statistics import router as statistics_router
 from backend.app.config.settings import get_settings
@@ -24,6 +25,7 @@ api_v1_router.include_router(statistics_router)
 api_v1_router.include_router(feature_engine_router)
 api_v1_router.include_router(probability_router)
 api_v1_router.include_router(graph_router)
+api_v1_router.include_router(ml_router)
 
 
 @api_v1_router.get("/health", response_model=SuccessEnvelope[dict[str, str]], tags=["system"])

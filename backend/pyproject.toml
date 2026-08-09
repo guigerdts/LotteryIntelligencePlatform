@@ -18,6 +18,14 @@ dependencies = [
     "ruff>=0.16.1",
     "sqlalchemy>=2.0.51",
     "uvicorn[standard]>=0.52.1",
+    # Fase 7 — Machine Learning. ALLOWLIST EXCEPTION to the F6 stdlib-only gate
+    # (graph D8): scikit-learn (with numpy) is the ONLY permitted runtime dep for
+    # ml/; signed exception registered 2026-08-09 (proposal D1, M-A9). Exact-pinned
+    # for reproducibility. xgboost/lightgbm/catboost/networkx remain BANNED (future-ml
+    # declared-but-never-executed, MLE-07); the dependency gate test asserts their
+    # absence from installable deps (tests/test_ml_pr1.py::test_no_future_ml_imports).
+    "numpy==2.2.6",
+    "scikit-learn==1.6.1",
 ]
 
 # Optional dialect extra: PostgreSQL driver for the CI-gated dialect smoke

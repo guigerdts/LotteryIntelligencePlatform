@@ -138,9 +138,7 @@ def main(argv: list[str] | None = None) -> int:
         "rebuild", help="force a full probability rebuild as a NEW version"
     )
     probability_rebuild.add_argument("--lottery", required=True, help="lottery code (natural key)")
-    probability_rebuild.add_argument(
-        "--model-set", default="core", help="model bundle"
-    )
+    probability_rebuild.add_argument("--model-set", default="core", help="model bundle")
     probability_rebuild.set_defaults(func=_cmd_probability_rebuild)
 
     graph_parser = subparsers.add_parser(
@@ -149,9 +147,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     graph_sub = graph_parser.add_subparsers(dest="graph_command", required=True)
 
-    graph_compute = graph_sub.add_parser(
-        "compute", help="compute a graph snapshot (idempotent)"
-    )
+    graph_compute = graph_sub.add_parser("compute", help="compute a graph snapshot (idempotent)")
     graph_compute.add_argument("--lottery", required=True, help="lottery code (natural key)")
     graph_compute.add_argument(
         "--graph-type", default="cooccurrence", help="graph type (default: cooccurrence)"
@@ -166,15 +162,34 @@ def main(argv: list[str] | None = None) -> int:
 
     graph_list = graph_sub.add_parser("list", help="list graph snapshots for a lottery")
     graph_list.add_argument("--lottery", required=True, help="lottery code (natural key)")
-    graph_list.add_argument(
-        "--graph-type", default="cooccurrence", help="graph type filter"
-    )
+    graph_list.add_argument("--graph-type", default="cooccurrence", help="graph type filter")
     graph_list.set_defaults(func=_cmd_graph_list)
 
     graph_show = graph_sub.add_parser("show", help="show graph snapshot values")
     graph_show.add_argument("--lottery", required=True, help="lottery code (natural key)")
     graph_show.add_argument("--snapshot-id", required=True, type=int, help="snapshot ID")
     graph_show.set_defaults(func=_cmd_graph_show)
+
+    # --- ML commands (Fase 7, MLE-08) ---
+    ml_parser = subparsers.add_parser(
+        "ml",
+        help="ML engine: train models, list snapshots, view metrics (Fase 7)",
+    )
+    ml_sub = ml_parser.add_subparsers(dest="ml_command", required=True)
+
+    ml_train = ml_sub.add_parser("train", help="train one or all core-5 ML families")
+    ml_train.add_argument("--lottery", required=True, help="lottery code (natural key)")
+    ml_train.add_argument("--family", default=None, help="model family (omit for all 5)")
+    ml_train.set_defaults(func=_cmd_ml_train)
+
+    ml_models = ml_sub.add_parser("models", help="show active ML snapshot for a lottery")
+    ml_models.add_argument("--lottery", required=True, help="lottery code (natural key)")
+    ml_models.set_defaults(func=_cmd_ml_models)
+
+    ml_metrics = ml_sub.add_parser("metrics", help="show ML metrics for the active snapshot")
+    ml_metrics.add_argument("--lottery", required=True, help="lottery code (natural key)")
+    ml_metrics.add_argument("--model", default=None, help="filter by model_id")
+    ml_metrics.set_defaults(func=_cmd_ml_metrics)
 
     args = parser.parse_args(argv)
     try:
@@ -500,3 +515,132 @@ def _resolve_lottery(session, code: str) -> int:
 def _generator_version() -> str:
     """The dataset generator version recorded on every dataset (CD-03)."""
     return get_settings().app_version
+
+
+# --- ML CLI commands (Fase 7, MLE-08) ---
+
+
+def _cmd_ml_train(args: argparse.Namespace) -> None:
+    """Train one or all core-5 ML families; print results as JSON."""
+    from backend.app.services.ml_service import MlService
+
+    with SessionLocal() as session:
+        lottery_id = _resolve_lottery(session, args.lottery)
+        draw_reader = _CliDrawAdapter(session)
+        feature_provider = _CliFeatureAdapter(session)
+        service = MlService(session, draw_reader, feature_provider)
+        outcomes = service.train(lottery_id, family=args.family)
+    print(
+        json.dumps(
+            [
+                {
+                    "family": o.family,
+                    "status": o.status,
+                    "snapshot_id": o.snapshot_id,
+                    "fingerprint": o.fingerprint,
+                    "metrics_checksum": o.metrics_checksum,
+                    "error": o.error,
+                }
+                for o in outcomes
+            ],
+            indent=2,
+        )
+    )
+
+
+def _cmd_ml_models(args: argparse.Namespace) -> None:
+    """Show the active ML snapshot for a lottery; print as JSON."""
+    from backend.app.services.ml_service import MlService
+
+    with SessionLocal() as session:
+        lottery_id = _resolve_lottery(session, args.lottery)
+        draw_reader = _CliDrawAdapter(session)
+        feature_provider = _CliFeatureAdapter(session)
+        service = MlService(session, draw_reader, feature_provider)
+        result = service.get_active_snapshot(lottery_id)
+    if result is None:
+        print(json.dumps({"error": "no active ML snapshot"}))
+    else:
+        print(json.dumps(result, indent=2))
+
+
+def _cmd_ml_metrics(args: argparse.Namespace) -> None:
+    """Show ML metrics for the active snapshot; print as JSON."""
+    from backend.app.services.ml_service import MlService
+
+    with SessionLocal() as session:
+        lottery_id = _resolve_lottery(session, args.lottery)
+        draw_reader = _CliDrawAdapter(session)
+        feature_provider = _CliFeatureAdapter(session)
+        service = MlService(session, draw_reader, feature_provider)
+        metrics = service.get_metrics(lottery_id, model_id=args.model)
+    print(json.dumps(metrics, indent=2))
+
+
+class _CliDrawAdapter:
+    """Minimal draw adapter for CLI context."""
+
+    def __init__(self, session) -> None:
+        self._session = session
+
+    def iter_draws(self, lottery_id: int, *, after_draw_number: int | None = None):
+        from sqlalchemy import select
+
+        from backend.app.ml.providers import DrawRow
+        from backend.app.models.draw import Draw
+        from backend.app.models.draw_number import DrawNumber
+
+        stmt = select(Draw).where(Draw.lottery_id == lottery_id).order_by(Draw.draw_number)
+        if after_draw_number is not None:
+            stmt = stmt.where(Draw.draw_number > after_draw_number)
+
+        for draw in self._session.execute(stmt).scalars().all():
+            nums_stmt = (
+                select(DrawNumber.drawn_number)
+                .where(DrawNumber.draw_id == draw.id)
+                .order_by(DrawNumber.drawn_number)
+            )
+            numbers = tuple(self._session.execute(nums_stmt).scalars().all())
+            yield DrawRow(draw_number=draw.draw_number, numbers=numbers)
+
+
+class _CliFeatureAdapter:
+    """Minimal feature adapter for CLI context."""
+
+    def __init__(self, session) -> None:
+        self._session = session
+
+    def active_snapshot_id(self, lottery_id: int) -> int | None:
+        from sqlalchemy import select
+
+        from backend.app.models.feature_snapshot import FeatureSnapshot
+
+        stmt = (
+            select(FeatureSnapshot)
+            .where(
+                FeatureSnapshot.lottery_id == lottery_id,
+                FeatureSnapshot.status == "active",
+            )
+            .order_by(FeatureSnapshot.version.desc())
+            .limit(1)
+        )
+        snap = self._session.execute(stmt).scalar_one_or_none()
+        return snap.id if snap is not None else None
+
+    def feature_rows(self, snapshot_id: int):
+        from sqlalchemy import select
+
+        from backend.app.ml.feature_reader import FeatureValueRow
+        from backend.app.models.feature_value import FeatureValue
+
+        stmt = (
+            select(FeatureValue)
+            .where(FeatureValue.snapshot_id == snapshot_id)
+            .order_by(FeatureValue.draw_number, FeatureValue.feature_id)
+        )
+        for fv in self._session.execute(stmt).scalars().all():
+            yield FeatureValueRow(
+                feature_id=fv.feature_id,
+                draw_number=fv.draw_number,
+                value=float(fv.value),
+            )
