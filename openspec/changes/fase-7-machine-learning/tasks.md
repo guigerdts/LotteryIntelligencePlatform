@@ -118,3 +118,11 @@ PR1 (deps+models+0009) → PR2 (package+registry+fingerprint+determinism)
 - PR3/PR4/PR5 at 380–400 LOC: watch budget; split T-13 or T-17/T-19 into an extra stacked PR before review if running over (chain absorbs).
 - `ML_FEATURE_ORDER` must match F4 catalog ids EXACTLY (M-A5) — order participates in fingerprint; a different `cut` always yields a new version.
 - No weights/joblib anywhere; `params_json` holds frozen hyperparameters only (MLE-01 scenario "weights never persisted").
+
+## Archive
+
+- **Status**: CLOSED
+- **Date**: 2026-08-09
+- **Size:Exceptions**: PR4 (894 LOC, composition root atomicity), PR5 (611 LOC, post-hoc bug fix)
+- **Final state**: 512 tests passed, 1 skipped; ruff clean; working tree clean; HEAD a75cb8d
+- **Archive report**: `openspec/changes/fase-7-machine-learning/archive-report.md`
