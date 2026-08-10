@@ -47,6 +47,9 @@ _CODE_TO_STATUS: dict[str, int] = {
     # ``definition_error``; feature generation reuses the shared ``generation_error``
     # (500) and the snapshot 404/409 rows above already cover feature reads/mutation.
     "definition_error": 500,
+    # F10 backtesting channel (BTE-07): insufficient data is 422.
+    "INSUFFICIENT_DATA": 422,
+    "BT_RUN_ERROR": 500,
 }
 
 _UNKNOWN_STATUS = 500

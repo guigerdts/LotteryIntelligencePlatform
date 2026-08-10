@@ -226,6 +226,32 @@ def main(argv: list[str] | None = None) -> int:
     opt_params.add_argument("--optimizer", default="ga", help="optimizer slug")
     opt_params.set_defaults(func=_cmd_opt_params)
 
+    # --- Backtesting commands (Fase 10, BTS-02) ---
+    bt_parser = subparsers.add_parser(
+        "bt",
+        help="Backtesting engine: run backtests, view history and results (Fase 10)",
+    )
+    bt_sub = bt_parser.add_subparsers(dest="bt_command", required=True)
+
+    bt_run = bt_sub.add_parser("run", help="run a walk-forward backtest")
+    bt_run.add_argument("--lottery-id", required=True, type=int, help="lottery ID")
+    bt_run.add_argument("--strategy", required=True, help="strategy ID (e.g. ml-core-5)")
+    bt_run.add_argument("--train-years", type=int, default=5, help="training window in years")
+    bt_run.add_argument("--eval-count", type=int, default=1, help="eval draws per window")
+    bt_run.add_argument("--seed", type=int, default=42, help="RNG seed")
+    bt_run.set_defaults(func=_cmd_bt_run)
+
+    bt_history = bt_sub.add_parser("history", help="list backtest snapshots for a lottery")
+    bt_history.add_argument("--lottery-id", required=True, type=int, help="lottery ID")
+    bt_history.set_defaults(func=_cmd_bt_history)
+
+    bt_results = bt_sub.add_parser("results", help="show detailed backtest results")
+    bt_results.add_argument("--lottery-id", required=True, type=int, help="lottery ID")
+    bt_results.add_argument(
+        "--snapshot-id", type=int, default=None, help="snapshot ID (omit for active)"
+    )
+    bt_results.set_defaults(func=_cmd_bt_results)
+
     args = parser.parse_args(argv)
     try:
         args.func(args)
@@ -719,6 +745,73 @@ def _cmd_opt_params(args: argparse.Namespace) -> None:
         print(json.dumps({"error": str(exc)}))
         return
     print(json.dumps({"optimizer": args.optimizer, "params": params}, indent=2))
+
+
+# --- Backtesting CLI commands (Fase 10, BTS-02) ---
+
+
+def _cmd_bt_run(args: argparse.Namespace) -> None:
+    """Run a walk-forward backtest; print outcome as JSON."""
+    from backend.app.services.bt_service import BtService
+
+    with SessionLocal() as session:
+        service = BtService(session)
+        outcome = service.run(
+            lottery_id=args.lottery_id,
+            strategy_id=args.strategy,
+            train_years=args.train_years,
+            eval_count=args.eval_count,
+            seed=args.seed,
+        )
+    print(
+        json.dumps(
+            {
+                "snapshot_id": outcome.snapshot_id,
+                "lottery_id": outcome.lottery_id,
+                "strategy_id": outcome.strategy_id,
+                "fingerprint": outcome.fingerprint,
+                "version": outcome.version,
+                "status": outcome.status,
+            },
+            indent=2,
+        )
+    )
+
+
+def _cmd_bt_history(args: argparse.Namespace) -> None:
+    """List backtest snapshots for a lottery; print as JSON."""
+    from backend.app.services.bt_service import BtService
+
+    with SessionLocal() as session:
+        service = BtService(session)
+        entries = service.history(args.lottery_id)
+    print(
+        json.dumps(
+            [
+                {
+                    "snapshot_id": e.snapshot_id,
+                    "lottery_id": e.lottery_id,
+                    "strategy_id": e.strategy_id,
+                    "fingerprint": e.fingerprint,
+                    "version": e.version,
+                    "status": e.status,
+                    "created_at": e.created_at,
+                }
+                for e in entries
+            ],
+            indent=2,
+        )
+    )
+
+
+def _cmd_bt_results(args: argparse.Namespace) -> None:
+    """Show detailed backtest results; print as JSON."""
+    from backend.app.services.bt_service import BtService
+
+    with SessionLocal() as session:
+        service = BtService(session)
+        raw = service.results(args.lottery_id, snapshot_id=args.snapshot_id)
+    print(json.dumps(raw, indent=2))
 
 
 class _CliDrawAdapter:
