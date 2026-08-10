@@ -45,7 +45,7 @@ def test_lstm_input_shape_batch() -> None:
     model = LotteryLSTM()
     x = torch.randn(4, 10, N_FEATURES)
     out = model(x)
-    assert out.shape == (4, 1)
+    assert out.shape == (4, 10)
 
 
 def test_lstm_input_shape_single() -> None:
@@ -53,7 +53,7 @@ def test_lstm_input_shape_single() -> None:
     model = LotteryLSTM()
     x = torch.randn(1, 10, N_FEATURES)
     out = model(x)
-    assert out.shape == (1, 1)
+    assert out.shape == (1, 10)
 
 
 def test_lstm_output_sigmoid_range() -> None:
@@ -85,14 +85,11 @@ def test_lstm_forward_deterministic() -> None:
 
 def test_lstm_count_parameters() -> None:
     """Parameter count matches expected architecture."""
-    # LSTM(input=10, hidden=64, layers=2): PyTorch uses 4 separate weight/bias
-    # matrices per layer (weight_ih, weight_hh, bias_ih, bias_hh).
-    # Layer 0: 256*10 + 256*64 + 256 + 256 = 2560+16384+256+256 = 19456
-    # Layer 1: 256*64 + 256*64 + 256 + 256 = 16384+16384+256+256 = 33280
-    # Linear(64,1): 64+1 = 65
-    # Total: 19456+33280+65 = 52801
+    # LSTM(input=10, hidden=64, layers=2): 52736 params
+    # Linear(64, 10): 640+10 = 650 params
+    # Total: 53386
     model = LotteryLSTM()
-    assert model.count_parameters() == 52801
+    assert model.count_parameters() == 53386
 
 
 def test_lstm_get_hyperparameters() -> None:
@@ -136,7 +133,7 @@ def test_lstm_single_layer_no_dropout() -> None:
     # Verify it still runs without error
     x = torch.randn(2, 5, N_FEATURES)
     out = model(x)
-    assert out.shape == (2, 1)
+    assert out.shape == (2, 10)
 
 
 def test_lstm_registered_in_registry() -> None:

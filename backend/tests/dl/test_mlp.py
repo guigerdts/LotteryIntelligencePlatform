@@ -41,7 +41,7 @@ def test_mlp_input_shape_batch() -> None:
     model = LotteryMLP(W=10)
     x = torch.randn(4, 10, N_FEATURES)
     out = model(x)
-    assert out.shape == (4, 1)
+    assert out.shape == (4, 10)
 
 
 def test_mlp_input_shape_single() -> None:
@@ -49,7 +49,7 @@ def test_mlp_input_shape_single() -> None:
     model = LotteryMLP(W=10)
     x = torch.randn(1, 10, N_FEATURES)
     out = model(x)
-    assert out.shape == (1, 1)
+    assert out.shape == (1, 10)
 
 
 def test_mlp_output_sigmoid_range() -> None:
@@ -81,10 +81,10 @@ def test_mlp_forward_deterministic() -> None:
 
 def test_mlp_count_parameters() -> None:
     """Parameter count matches expected architecture."""
-    # W=10 → input=100, layers=[64,32], output=1
-    # 100*64+64 + 64*32+32 + 32*1+1 = 6464+2080+33 = 8577
+    # W=10 → input=100, layers=[64,32], output=10
+    # 100*64+64 + 64*32+32 + 32*10+10 = 6464+2080+330 = 8874
     model = LotteryMLP(W=10)
-    assert model.count_parameters() == 8577
+    assert model.count_parameters() == 8874
 
 
 def test_mlp_get_hyperparameters() -> None:
@@ -120,7 +120,7 @@ def test_mlp_empty_hidden_layers() -> None:
     model = LotteryMLP(W=10, hidden_layers=())
     x = torch.randn(2, 10, N_FEATURES)
     out = model(x)
-    assert out.shape == (2, 1)
+    assert out.shape == (2, 10)
 
 
 def test_mlp_single_hidden() -> None:
@@ -128,7 +128,7 @@ def test_mlp_single_hidden() -> None:
     model = LotteryMLP(W=5, hidden_layers=(128,))
     x = torch.randn(3, 5, N_FEATURES)
     out = model(x)
-    assert out.shape == (3, 1)
+    assert out.shape == (3, 10)
 
 
 def test_mlp_registered_in_registry() -> None:

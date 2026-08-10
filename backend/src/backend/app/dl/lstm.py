@@ -21,6 +21,7 @@ DEFAULT_HIDDEN_SIZE: Final[int] = 64
 DEFAULT_NUM_LAYERS: Final[int] = 2
 DEFAULT_DROPOUT: Final[float] = 0.1
 N_FEATURES: Final[int] = 10
+N_NUMBERS: Final[int] = 10
 
 
 class LotteryLSTM(nn.Module):
@@ -67,7 +68,7 @@ class LotteryLSTM(nn.Module):
             batch_first=True,
             dropout=effective_dropout,
         )
-        self.head = nn.Linear(hidden_size, 1)
+        self.head = nn.Linear(hidden_size, N_NUMBERS)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Forward pass.
@@ -80,13 +81,13 @@ class LotteryLSTM(nn.Module):
         Returns
         -------
         torch.Tensor
-            Sigmoid probabilities of shape ``(batch, 1)``.
+            Sigmoid probabilities of shape ``(batch, 10)`` — one per number.
         """
         # lstm_out: (batch, W, hidden_size)
         lstm_out, _ = self.lstm(x)
         # Take the last timestep's hidden state
         last_hidden = lstm_out[:, -1, :]  # (batch, hidden_size)
-        logits = self.head(last_hidden)  # (batch, 1)
+        logits = self.head(last_hidden)   # (batch, 10)
         return torch.sigmoid(logits)
 
     def count_parameters(self) -> int:

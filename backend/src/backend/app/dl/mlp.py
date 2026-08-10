@@ -20,6 +20,7 @@ DEFAULT_HIDDEN_LAYERS: Final[tuple[int, ...]] = (64, 32)
 DEFAULT_ACTIVATION: Final[str] = "relu"
 DEFAULT_DROPOUT: Final[float] = 0.0
 N_FEATURES: Final[int] = 10
+N_NUMBERS: Final[int] = 10
 
 _ACTIVATION_MAP: dict[str, type[nn.Module]] = {
     "relu": nn.ReLU,
@@ -75,7 +76,7 @@ class LotteryMLP(nn.Module):
                 layers.append(nn.Dropout(dropout))
             prev_size = h
 
-        layers.append(nn.Linear(prev_size, 1))
+        layers.append(nn.Linear(prev_size, N_NUMBERS))
         self.network = nn.Sequential(*layers)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -89,11 +90,11 @@ class LotteryMLP(nn.Module):
         Returns
         -------
         torch.Tensor
-            Sigmoid probabilities of shape ``(batch, 1)``.
+            Sigmoid probabilities of shape ``(batch, 10)`` — one per number.
         """
         batch_size = x.shape[0]
         flat = x.view(batch_size, -1)  # (batch, W*10)
-        logits = self.network(flat)  # (batch, 1)
+        logits = self.network(flat)     # (batch, 10)
         return torch.sigmoid(logits)
 
     def count_parameters(self) -> int:
