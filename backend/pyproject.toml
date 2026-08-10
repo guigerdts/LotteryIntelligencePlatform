@@ -36,6 +36,20 @@ dependencies = [
     # NOTE: torch 2.5.1 lacks cp313 wheels; 2.13.0+cpu is the first stable CPU-only
     # release with Python 3.13 support (resolved at apply, 2026-08-09).
     "torch==2.13.0+cpu",
+    # Fase 9 — Optimization Engine. ALLOWLIST EXCEPTION to the F6 stdlib-only gate
+    # (proposal D2, OE-09): deap is the ONLY permitted runtime dep for opt/ga.py;
+    # signed exception registered 2026-08-10, limited to opt/Fase-9. Exact-pinned
+    # for reproducibility. The dependency gate test (test_opt_pr1.py) asserts deap
+    # is present and the ban-gate tests (test_ml_pr1.py, test_dl_pr1.py) enforce
+    # deap absence from the F7/F8 trees.
+    "deap==1.4.1",
+    # Fase 9 — Optimization Engine. ALLOWLIST EXCEPTION to the F6 stdlib-only gate
+    # (proposal D2, OE-09): optuna is the ONLY permitted runtime dep for opt/bayesian.py;
+    # signed exception registered 2026-08-10, limited to opt/Fase-9. Exact-pinned
+    # for reproducibility. The dependency gate test (test_opt_pr1.py) asserts optuna
+    # is present and the ban-gate tests (test_ml_pr1.py, test_dl_pr1.py) enforce
+    # optuna absence from the F7/F8 trees.
+    "optuna==4.0.0",
 ]
 
 # Optional dialect extra: PostgreSQL driver for the CI-gated dialect smoke

@@ -20,6 +20,8 @@ from backend.app.models.import_job import ImportJob
 from backend.app.models.lottery import Lottery
 from backend.app.models.ml_metric import MlMetric
 from backend.app.models.ml_snapshot import MlSnapshot
+from backend.app.models.opt_result import OptResult
+from backend.app.models.opt_snapshot import OptSnapshot
 from backend.app.models.prob_snapshot import ProbSnapshot
 from backend.app.models.prob_value import ProbValue
 from backend.app.models.stat_average import StatAverage
@@ -49,6 +51,8 @@ __all__ = [
     "Lottery",
     "MlMetric",
     "MlSnapshot",
+    "OptResult",
+    "OptSnapshot",
     "ProbSnapshot",
     "ProbValue",
     "StatAverage",
