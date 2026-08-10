@@ -191,6 +191,41 @@ def main(argv: list[str] | None = None) -> int:
     ml_metrics.add_argument("--model", default=None, help="filter by model_id")
     ml_metrics.set_defaults(func=_cmd_ml_metrics)
 
+    # --- Opt commands (Fase 9, OE-10) ---
+    opt_parser = subparsers.add_parser(
+        "opt",
+        help="Optimization engine: train optimizers, list snapshots, view results (Fase 9)",
+    )
+    opt_sub = opt_parser.add_subparsers(dest="opt_command", required=True)
+
+    opt_train = opt_sub.add_parser("train", help="run one optimization pass")
+    opt_train.add_argument("--lottery", required=True, help="lottery code (natural key)")
+    opt_train.add_argument(
+        "--optimizer", default="ga", help="optimizer slug: ga, pso, bayesian, sa"
+    )
+    opt_train.add_argument(
+        "--metric", default="f1", help="objective metric: f1, roc_auc, accuracy, precision, recall"
+    )
+    opt_train.add_argument(
+        "--direction", default="maximize", help="direction: maximize or minimize"
+    )
+    opt_train.add_argument("--seed", type=int, default=42, help="RNG seed")
+    opt_train.set_defaults(func=_cmd_opt_train)
+
+    opt_models = opt_sub.add_parser("models", help="show active opt snapshot for a lottery")
+    opt_models.add_argument("--lottery", required=True, help="lottery code (natural key)")
+    opt_models.add_argument("--optimizer", default="ga", help="optimizer slug")
+    opt_models.set_defaults(func=_cmd_opt_models)
+
+    opt_metrics = opt_sub.add_parser("metrics", help="show opt results for the active snapshot")
+    opt_metrics.add_argument("--lottery", required=True, help="lottery code (natural key)")
+    opt_metrics.add_argument("--optimizer", default="ga", help="optimizer slug")
+    opt_metrics.set_defaults(func=_cmd_opt_metrics)
+
+    opt_params = opt_sub.add_parser("params", help="show default params for an optimizer")
+    opt_params.add_argument("--optimizer", default="ga", help="optimizer slug")
+    opt_params.set_defaults(func=_cmd_opt_params)
+
     args = parser.parse_args(argv)
     try:
         args.func(args)
@@ -575,6 +610,113 @@ def _cmd_ml_metrics(args: argparse.Namespace) -> None:
         service = MlService(session, draw_reader, feature_provider)
         metrics = service.get_metrics(lottery_id, model_id=args.model)
     print(json.dumps(metrics, indent=2))
+
+
+# --- Opt CLI commands (Fase 9, OE-10) ---
+
+
+def _cmd_opt_train(args: argparse.Namespace) -> None:
+    """Run one optimization pass; print results as JSON."""
+    from backend.app.opt.search_space import SearchParam, SearchSpace
+    from backend.app.services.opt_service import OptService
+
+    search_space = SearchSpace(
+        params=(
+            SearchParam(name="lr", param_type="continuous", low=1e-5, high=1e-1),
+            SearchParam(name="n_estimators", param_type="integer", low=10, high=200),
+        )
+    )
+
+    def dummy_objective(params: dict) -> float:
+        """Placeholder objective — returns 0.5 for testing."""
+        return 0.5
+
+    with SessionLocal() as session:
+        lottery_id = _resolve_lottery(session, args.lottery)
+        service = OptService(
+            session=session,
+            objective_fn=dummy_objective,
+            search_space=search_space,
+            lottery_id=lottery_id,
+            optimizer=args.optimizer,
+            metric=args.metric,
+            direction=args.direction,
+            seed=args.seed,
+        )
+        outcome = service.train()
+    print(
+        json.dumps(
+            {
+                "optimizer": outcome.optimizer,
+                "status": outcome.status,
+                "snapshot_id": outcome.snapshot_id,
+                "fingerprint": outcome.fingerprint,
+                "best_fitness": outcome.best_fitness,
+                "n_evaluations": outcome.n_evaluations,
+                "error": outcome.error,
+            },
+            indent=2,
+        )
+    )
+
+
+def _cmd_opt_models(args: argparse.Namespace) -> None:
+    """Show the active opt snapshot for a lottery; print as JSON."""
+    from backend.app.opt.search_space import SearchParam, SearchSpace
+    from backend.app.services.opt_service import OptService
+
+    search_space = SearchSpace(
+        params=(SearchParam(name="lr", param_type="continuous", low=1e-5, high=1e-1),)
+    )
+
+    with SessionLocal() as session:
+        lottery_id = _resolve_lottery(session, args.lottery)
+        service = OptService(
+            session=session,
+            objective_fn=lambda p: 0.5,
+            search_space=search_space,
+            lottery_id=lottery_id,
+            optimizer=args.optimizer,
+        )
+        result = service.get_active_snapshot()
+    if result is None:
+        print(json.dumps({"error": "no active opt snapshot"}))
+    else:
+        print(json.dumps(result, indent=2))
+
+
+def _cmd_opt_metrics(args: argparse.Namespace) -> None:
+    """Show opt results for the active snapshot; print as JSON."""
+    from backend.app.opt.search_space import SearchParam, SearchSpace
+    from backend.app.services.opt_service import OptService
+
+    search_space = SearchSpace(
+        params=(SearchParam(name="lr", param_type="continuous", low=1e-5, high=1e-1),)
+    )
+
+    with SessionLocal() as session:
+        lottery_id = _resolve_lottery(session, args.lottery)
+        service = OptService(
+            session=session,
+            objective_fn=lambda p: 0.5,
+            search_space=search_space,
+            lottery_id=lottery_id,
+            optimizer=args.optimizer,
+        )
+        results = service.get_results()
+    print(json.dumps(results, indent=2))
+
+
+def _cmd_opt_params(args: argparse.Namespace) -> None:
+    """Show default params for an optimizer; print as JSON."""
+    from backend.app.opt.registry import get_optimizer_defaults
+
+    try:
+        params = get_optimizer_defaults(args.optimizer)
+    except ValueError as exc:
+        print(json.dumps({"error": str(exc)}))
+        return
+    print(json.dumps({"optimizer": args.optimizer, "params": params}, indent=2))
 
 
 class _CliDrawAdapter:
