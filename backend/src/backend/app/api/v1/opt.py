@@ -41,6 +41,7 @@ def train_optimizer(
     Returns training outcome with status, fingerprint, and fitness.
     """
     _resolve_lottery(db, lottery_id)
+    draw_count = _count_draws(db, lottery_id)
 
     from backend.app.opt.search_space import SearchParam, SearchSpace
     from backend.app.services.opt_service import OptService
@@ -66,6 +67,7 @@ def train_optimizer(
         metric=metric,
         direction=direction,
         seed=seed,
+        draw_count=draw_count,
     )
     outcome = service.train()
 
@@ -175,3 +177,13 @@ def _resolve_lottery(db: Session, lottery_id: int) -> None:
     lottery = db.get(LotteryRepository.model, lottery_id)
     if lottery is None:
         raise NotFoundError(f"lottery {lottery_id} does not exist")
+
+
+def _count_draws(db: Session, lottery_id: int) -> int:
+    """Count the number of real draws for a lottery (OE-08)."""
+    from sqlalchemy import func, select
+
+    from backend.app.models.draw import Draw
+
+    stmt = select(func.count()).select_from(Draw).where(Draw.lottery_id == lottery_id)
+    return int(db.execute(stmt).scalar())

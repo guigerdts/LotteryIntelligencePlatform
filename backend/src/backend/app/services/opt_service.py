@@ -18,6 +18,10 @@ from backend.app.opt.optimizer_types import TerminationConfig
 from backend.app.opt.registry import get_optimizer_defaults
 from backend.app.opt.search_space import SearchSpace
 from backend.app.opt.snapshot_store import OptSnapshotStore
+from backend.app.services.errors import InsufficientDataError
+
+# OE-08: minimum real draws required for optimization.
+MIN_DRAWS: int = 100
 
 
 @dataclass(frozen=True)
@@ -49,6 +53,7 @@ class OptService:
         direction: str = "maximize",
         seed: int = 42,
         version: str = "1.0.0",
+        draw_count: int = 0,
         termination: TerminationConfig | None = None,
     ) -> None:
         self._session = session
@@ -60,12 +65,20 @@ class OptService:
         self._direction = direction
         self._seed = seed
         self._version = version
+        self._draw_count = draw_count
         self._termination = termination or TerminationConfig(
             termination="fixed", max_evaluations=50
         )
 
     def train(self) -> TrainOutcome:
         """Run one optimization pass within one atomic transaction."""
+        # OE-08: data floor check — reject if <100 draws.
+        if self._draw_count < MIN_DRAWS:
+            raise InsufficientDataError(
+                f"optimization requires ≥{MIN_DRAWS} real draws; "
+                f"lottery {self._lottery_id} has {self._draw_count}"
+            )
+
         store = OptSnapshotStore(self._session)
         version = store.next_version(self._lottery_id, self._optimizer)
 

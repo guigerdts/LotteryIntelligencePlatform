@@ -109,3 +109,13 @@ class FeatureDefinitionError(ServiceError):
     """
 
     code = "definition_error"
+
+
+class InsufficientDataError(ServiceError):
+    """Not enough data for the requested operation (OE-08).
+
+    Optimization requires ≥100 real draws. Below that threshold, a clean
+    ``INSUFFICIENT_DATA`` (422) response is returned with no opt_* rows written.
+    """
+
+    code = "INSUFFICIENT_DATA"

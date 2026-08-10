@@ -633,6 +633,7 @@ def _cmd_opt_train(args: argparse.Namespace) -> None:
 
     with SessionLocal() as session:
         lottery_id = _resolve_lottery(session, args.lottery)
+        draw_count = _cli_count_draws(session, lottery_id)
         service = OptService(
             session=session,
             objective_fn=dummy_objective,
@@ -642,6 +643,7 @@ def _cmd_opt_train(args: argparse.Namespace) -> None:
             metric=args.metric,
             direction=args.direction,
             seed=args.seed,
+            draw_count=draw_count,
         )
         outcome = service.train()
     print(
@@ -786,3 +788,13 @@ class _CliFeatureAdapter:
                 draw_number=fv.draw_number,
                 value=float(fv.value),
             )
+
+
+def _cli_count_draws(session, lottery_id: int) -> int:
+    """Count the number of real draws for a lottery (OE-08, CLI)."""
+    from sqlalchemy import func, select
+
+    from backend.app.models.draw import Draw
+
+    stmt = select(func.count()).select_from(Draw).where(Draw.lottery_id == lottery_id)
+    return int(session.execute(stmt).scalar())
