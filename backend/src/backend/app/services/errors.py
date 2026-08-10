@@ -119,3 +119,57 @@ class InsufficientDataError(ServiceError):
     """
 
     code = "INSUFFICIENT_DATA"
+
+
+class ExperimentError(ServiceError):
+    """Base class for experiment-related errors (EXP-008)."""
+
+    code = "EXPERIMENT_ERROR"
+
+
+class ExperimentNotFoundError(ExperimentError):
+    """Experiment not found."""
+
+    code = "EXPERIMENT_NOT_FOUND"
+
+
+class ExperimentRetiredError(ExperimentError):
+    """Cannot update retired experiment."""
+
+    code = "EXPERIMENT_RETIRED"
+
+
+class DuplicateExperimentError(ExperimentError):
+    """Duplicate experiment name within lottery."""
+
+    code = "DUPLICATE_EXPERIMENT"
+
+
+class ExpSnapshotNotFoundError(ExperimentError):
+    """Engine snapshot not found."""
+
+    code = "SNAPSHOT_NOT_FOUND"
+
+
+class SnapshotTypeMismatchError(ExperimentError):
+    """Engine snapshot type mismatch."""
+
+    code = "SNAPSHOT_TYPE_MISMATCH"
+
+
+class ExportFormatInvalidError(ExperimentError):
+    """Invalid export format."""
+
+    code = "EXPORT_FORMAT_INVALID"
+
+
+class ComparisonError(ServiceError):
+    """Base class for comparison-related errors (EXP-008)."""
+
+    code = "COMPARISON_ERROR"
+
+
+class ComparisonInsufficientRunsError(ComparisonError):
+    """Insufficient runs for comparison."""
+
+    code = "COMPARISON_INSUFFICIENT_RUNS"

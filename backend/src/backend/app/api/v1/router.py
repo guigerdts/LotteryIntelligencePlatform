@@ -10,6 +10,7 @@ from fastapi import APIRouter
 
 from backend.app.api.v1.bt import router as bt_router
 from backend.app.api.v1.draws import router as draws_router
+from backend.app.api.v1.exp import router as exp_router
 from backend.app.api.v1.feature_engine import router as feature_engine_router
 from backend.app.api.v1.graph import router as graph_router
 from backend.app.api.v1.lotteries import router as lotteries_router
@@ -30,6 +31,7 @@ api_v1_router.include_router(graph_router)
 api_v1_router.include_router(ml_router)
 api_v1_router.include_router(opt_router)
 api_v1_router.include_router(bt_router)
+api_v1_router.include_router(exp_router)
 
 
 @api_v1_router.get("/health", response_model=SuccessEnvelope[dict[str, str]], tags=["system"])

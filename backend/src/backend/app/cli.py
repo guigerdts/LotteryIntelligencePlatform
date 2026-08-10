@@ -226,6 +226,24 @@ def main(argv: list[str] | None = None) -> int:
     opt_params.add_argument("--optimizer", default="ga", help="optimizer slug")
     opt_params.set_defaults(func=_cmd_opt_params)
 
+    # --- Experiment commands (Fase 11, EXP-001) ---
+    exp_parser = subparsers.add_parser(
+        "exp",
+        help="Experiment engine: create, list, compare, export experiments (Fase 11)",
+    )
+    exp_sub = exp_parser.add_subparsers(dest="exp_command", required=True)
+
+    exp_create = exp_sub.add_parser("create", help="create a new experiment")
+    exp_create.add_argument("--lottery-id", required=True, type=int, help="lottery ID")
+    exp_create.add_argument("--name", required=True, help="experiment name")
+    exp_create.add_argument("--description", default=None, help="experiment description")
+    exp_create.set_defaults(func=_cmd_exp_create)
+
+    exp_list = exp_sub.add_parser("list", help="list experiments for a lottery")
+    exp_list.add_argument("--lottery-id", required=True, type=int, help="lottery ID")
+    exp_list.add_argument("--status", default=None, help="filter by status (active|retired|failed)")
+    exp_list.set_defaults(func=_cmd_exp_list)
+
     # --- Backtesting commands (Fase 10, BTS-02) ---
     bt_parser = subparsers.add_parser(
         "bt",
@@ -748,6 +766,60 @@ def _cmd_opt_params(args: argparse.Namespace) -> None:
 
 
 # --- Backtesting CLI commands (Fase 10, BTS-02) ---
+
+
+def _cmd_exp_create(args: argparse.Namespace) -> None:
+    """Create a new experiment; print the experiment as JSON."""
+    from backend.app.services.exp_service import ExpService
+
+    with SessionLocal() as session:
+        service = ExpService(session)
+        outcome = service.create(
+            lottery_id=args.lottery_id,
+            name=args.name,
+            description=args.description,
+        )
+    print(
+        json.dumps(
+            {
+                "experiment_id": outcome.experiment_id,
+                "lottery_id": outcome.lottery_id,
+                "name": outcome.name,
+                "fingerprint": outcome.fingerprint,
+                "version": outcome.version,
+                "status": outcome.status,
+            },
+            indent=2,
+        )
+    )
+
+
+def _cmd_exp_list(args: argparse.Namespace) -> None:
+    """List experiments for a lottery; print as JSON."""
+    from backend.app.services.exp_service import ExpService
+
+    with SessionLocal() as session:
+        service = ExpService(session)
+        entries = service.list_experiments(args.lottery_id, status=args.status)
+    print(
+        json.dumps(
+            [
+                {
+                    "experiment_id": e.experiment_id,
+                    "lottery_id": e.lottery_id,
+                    "name": e.name,
+                    "description": e.description,
+                    "fingerprint": e.fingerprint,
+                    "version": e.version,
+                    "status": e.status,
+                    "config_json": e.config_json,
+                    "created_at": e.created_at,
+                }
+                for e in entries
+            ],
+            indent=2,
+        )
+    )
 
 
 def _cmd_bt_run(args: argparse.Namespace) -> None:

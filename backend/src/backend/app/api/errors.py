@@ -50,6 +50,13 @@ _CODE_TO_STATUS: dict[str, int] = {
     # F10 backtesting channel (BTE-07): insufficient data is 422.
     "INSUFFICIENT_DATA": 422,
     "BT_RUN_ERROR": 500,
+    # F11 experiment engine channel (EXP-008): experiment and comparison errors.
+    "EXPERIMENT_NOT_FOUND": 404,
+    "EXPERIMENT_RETIRED": 409,
+    "DUPLICATE_EXPERIMENT": 409,
+    "SNAPSHOT_TYPE_MISMATCH": 422,
+    "COMPARISON_INSUFFICIENT_RUNS": 422,
+    "EXPORT_FORMAT_INVALID": 422,
 }
 
 _UNKNOWN_STATUS = 500
