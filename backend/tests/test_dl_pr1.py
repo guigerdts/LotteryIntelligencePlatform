@@ -114,7 +114,7 @@ def test_torch_exact_pin() -> None:
 
     project = tomllib.loads(_PYPROJECT.read_text(encoding="utf-8"))
     installable = " ".join(project["project"]["dependencies"])
-    assert "torch==2.5.1" in installable, "torch must be pinned to ==2.5.1"
+    assert "torch==2.13.0+cpu" in installable, "torch must be pinned to ==2.13.0+cpu"
 
 
 @pytest.mark.skipif(not _torch_available(), reason="torch not yet installed (PR1 dep gate only)")

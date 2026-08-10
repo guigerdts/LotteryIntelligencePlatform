@@ -33,7 +33,9 @@ dependencies = [
     # documented exception to the networkx ban, scoped exclusively to PyTorch/Fase-8.
     # The dependency gate test (test_dl_pr1.py) asserts torch is present and the ban-gate
     # test (test_ml_pr1.py) continues to enforce networkx absence from installable deps.
-    "torch==2.5.1",
+    # NOTE: torch 2.5.1 lacks cp313 wheels; 2.13.0+cpu is the first stable CPU-only
+    # release with Python 3.13 support (resolved at apply, 2026-08-09).
+    "torch==2.13.0+cpu",
 ]
 
 # Optional dialect extra: PostgreSQL driver for the CI-gated dialect smoke
