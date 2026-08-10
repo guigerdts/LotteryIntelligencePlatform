@@ -19,8 +19,8 @@ Versión: 1.0 · Fecha de cierre: 2026-08-10
 | Fase 5 — Probability Engine | ✅ Archivada y cerrada |
 | Fase 7 — Machine Learning | ✅ Archivada y cerrada |
 | Fase 8 — Deep Learning | ✅ Archivada y cerrada |
-| Fase 9 — Optimization Engine | ✅ Implementada |
-| Fase 10 — Backtesting Engine | ✅ Implementada |
+| Fase 9 — Optimization Engine | ✅ Archivada y cerrada |
+| Fase 10 — Backtesting Engine | ✅ Archivada y cerrada |
 
 ## Capacidades disponibles
 
