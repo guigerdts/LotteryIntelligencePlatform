@@ -252,7 +252,7 @@ PR6: E2E + Docs (~300 LOC) — GF1 determinism test, docs, archive
 
 ### PR5: Service + API + CLI
 
-- [ ] **T5.1: Service layer**
+- [x] **T5.1: Service layer**
 - **Files**: `backend/src/backend/app/services/opt_service.py`
 - **Action**: `OptService.train()` — floor check → providers → objective → optimize → snapshot
 - **Acceptance**: Atomic tx; INSUFFICIENT_DATA below floor; fingerprint idempotent
@@ -260,7 +260,7 @@ PR6: E2E + Docs (~300 LOC) — GF1 determinism test, docs, archive
 - **Depends**: PR1, PR4
 - **Est LOC**: ~100
 
-- [ ] **T5.2: API routes**
+- [x] **T5.2: API routes**
 - **Files**: `backend/src/backend/app/api/v1/opt.py`, `router.py`
 - **Action**: POST /opt/train, GET /opt/models, GET /opt/metrics, GET /opt/params
 - **Acceptance**: 404/422 maps; no /opt/predict; envelope responses
@@ -268,7 +268,7 @@ PR6: E2E + Docs (~300 LOC) — GF1 determinism test, docs, archive
 - **Depends**: T5.1
 - **Est LOC**: ~120
 
-- [ ] **T5.3: Schemas**
+- [x] **T5.3: Schemas**
 - **Files**: `backend/src/backend/app/schemas/opt.py`
 - **Action**: TrainRequest, ModelsList, MetricsRead, ParamsRead, response schemas
 - **Acceptance**: Match design; Pydantic v2
@@ -276,7 +276,7 @@ PR6: E2E + Docs (~300 LOC) — GF1 determinism test, docs, archive
 - **Depends**: —
 - **Est LOC**: ~60
 
-- [ ] **T5.4: CLI commands**
+- [x] **T5.4: CLI commands**
 - **Files**: `backend/src/backend/app/cli.py`
 - **Action**: `lip opt train|models|metrics|params` with same options as API
 - **Acceptance**: Parity with API; JSON output; floor behavior
@@ -286,7 +286,7 @@ PR6: E2E + Docs (~300 LOC) — GF1 determinism test, docs, archive
 
 ### PR6: E2E + Docs
 
-- [ ] **T6.1: GF1 determinism E2E**
+- [x] **T6.1: GF1 determinism E2E**
 - **Files**: `backend/tests/opt/test_opt_determinism_e2e.py`
 - **Action**: Two seeded runs on identical synthetic fixture → identical fingerprint + convergence + params
 - **Acceptance**: Byte-identical results; all 4 optimizers produce convergence
@@ -294,7 +294,7 @@ PR6: E2E + Docs (~300 LOC) — GF1 determinism test, docs, archive
 - **Depends**: PR5
 - **Est LOC**: ~100
 
-- [ ] **T6.2: Specs update**
+- [x] **T6.2: Specs update**
 - **Files**: `openspec/specs/opt-engine/spec.md`, `openspec/specs/backend/spec.md`
 - **Action**: Finalize specs with delivered state
 - **Acceptance**: Specs match implementation
@@ -302,7 +302,7 @@ PR6: E2E + Docs (~300 LOC) — GF1 determinism test, docs, archive
 - **Depends**: PR5
 - **Est LOC**: ~50
 
-- [ ] **T6.3: Docs + archive**
+- [x] **T6.3: Docs + archive**
 - **Files**: README.md, PROJECT_STATUS.md, API_SPECIFICATION.md §10, openspec archive
 - **Action**: Update docs; archive change
 - **Acceptance**: All docs reflect F9 delivery

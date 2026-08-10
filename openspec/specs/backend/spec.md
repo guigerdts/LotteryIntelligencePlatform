@@ -135,6 +135,8 @@ Alembic (`backend/alembic/`, `env.py` → `target_metadata = Base.metadata`) SHA
 
 `POST /dl/train` SHALL additionally trigger DL snapshot training on demand (DLE-14), with request fields `lottery_id|code`, `model_set` (`core-3` default), optional `window` (`W`, default 10, bounds 2..20), and optional `cut` for the window-aware split. An invalid lottery SHALL map to `RESOURCE_NOT_FOUND` (404); below the 100-real-draw floor the response SHALL be a clean `INSUFFICIENT_DATA` (DLE-10); a leakage-invalid (straddling/shuffled) split SHALL be rejected (DLE-05); a training failure SHALL return `training_error` (500). `POST /dl/train` MUST NOT overlap the GETs and SHALL never fire during import.
 
+`POST /opt/train` SHALL additionally trigger optimization on demand (OE-12), with request fields `lottery_id|code`, `optimizer` (`core-4` default: `ga`), `model_set` (`core-5` or `core-3`), `objective_metric` (default `f1`), `objective_direction` (default `maximize`), optional `search_space` (JSON), and optional termination params (`max_generations`, `max_evaluations`, `patience`, `min_delta`). An invalid lottery SHALL map to `RESOURCE_NOT_FOUND` (404); below the 100-real-draw floor the response SHALL be a clean `INSUFFICIENT_DATA` (OE-08); a training failure SHALL return `training_error` (500). `POST /opt/train` MUST NOT overlap the GETs and SHALL never fire during import.
+
 #### Scenario: generation is manual only
 
 - GIVEN a configured lottery and a running app
@@ -165,6 +167,18 @@ Alembic (`backend/alembic/`, `env.py` → `target_metadata = Base.metadata`) SHA
 - WHEN `POST /dl/train` is called
 - THEN the response is a clean `INSUFFICIENT_DATA` and no `dl_*` snapshot or weights are written.
 
+#### Scenario: opt train is manual, scoped, and floored
+
+- GIVEN a configured lottery with ≥100 real draws and F4 features
+- WHEN `POST /opt/train {optimizer:"ga", model_set:"core-5", objective_metric:"f1"}` is called
+- THEN an `opt_*` snapshot version is produced (idempotent per OE-10) and the response is the 200 envelope; never overlapping reads.
+
+#### Scenario: opt train refuses below the data floor
+
+- GIVEN a lottery with fewer than 100 real draws
+- WHEN `POST /opt/train` is called
+- THEN the response is a clean `INSUFFICIENT_DATA` and no `opt_*` rows are written.
+
 ### REQ-11: Separate Read Endpoints, No Precompute
 
 `GET /statistics/...` SHALL serve reads only and MUST NOT trigger automatic precompute (C5). Point queries and small windows (LAST N, bounded filters) SHALL be answered on demand (D1) against existing snapshots; a MISSING snapshot SHALL surface a resolution error rather than silently precompute.
@@ -172,6 +186,8 @@ Alembic (`backend/alembic/`, `env.py` → `target_metadata = Base.metadata`) SHA
 `GET /ml/models` SHALL list the model registry (executed + `future-ml` families per MLE-07) for a lottery and `GET /ml/metrics` SHALL return a lottery's active metrics — both read ONLY the stored `ml_*` snapshot and MUST NOT trigger training. A missing `ml_*` snapshot SHALL surface `SNAPSHOT_NOT_FOUND` (404).
 
 `GET /dl/models` SHALL list the DL model registry (executed + `future-dl` families per DLE-11) for a lottery and `GET /dl/metrics` SHALL return a lottery's active DL metrics — both read ONLY the stored `dl_*` snapshot and MUST NOT trigger training. A missing `dl_*` snapshot SHALL surface `SNAPSHOT_NOT_FOUND` (404). No `GET` SHALL expose model weights; `/dl/predict` and ranking/recommendation surfaces SHALL NOT be registered (DLE-14).
+
+`GET /opt/models` SHALL list the optimizer registry (core-4 families per OE-09) for a lottery and `GET /opt/metrics` SHALL return a lottery's active optimization metrics — both read ONLY the stored `opt_*` snapshot and MUST NOT trigger optimization. A missing `opt_*` snapshot SHALL surface `SNAPSHOT_NOT_FOUND` (404). `GET /opt/params` SHALL return the best found parameters for a specific model from the active optimization snapshot. No `GET` SHALL expose raw convergence history in the list endpoint; `/opt/predict` and ranking/recommendation surfaces SHALL NOT be registered (OE-12).
 
 #### Scenario: read does not precompute
 
@@ -203,6 +219,18 @@ Alembic (`backend/alembic/`, `env.py` → `target_metadata = Base.metadata`) SHA
 - WHEN route discovery runs
 - THEN only `POST /dl/train`, `GET /dl/models`, `GET /dl/metrics` are registered; `/dl/predict`, ranking, and weights-download routes do not exist.
 
+#### Scenario: opt reads never optimize
+
+- GIVEN a lottery without an `opt_*` snapshot
+- WHEN `GET /opt/metrics` targets it
+- THEN the response is 404 `SNAPSHOT_NOT_FOUND` and `POST /opt/train` is never fired.
+
+#### Scenario: opt routes are limited to train/models/metrics/params
+
+- GIVEN the API router after F9
+- WHEN route discovery runs
+- THEN only `POST /opt/train`, `GET /opt/models`, `GET /opt/metrics`, `GET /opt/params` are registered; `/opt/predict`, ranking, and export routes do not exist.
+
 ### REQ-12: CLI Manual Trigger
 
 The CLI (`cli.py`) SHALL expose a manual generation/update command matching the API (D6), accepting lottery scope and optional bounded-window configuration. The run's trigger SHALL be recorded as manual/CLI.
@@ -210,6 +238,8 @@ The CLI (`cli.py`) SHALL expose a manual generation/update command matching the 
 CLI parity SHALL add `lip ml train|models|metrics`: `lip ml train` mirrors `POST /ml/train` (same lottery/`model_set`/`cut` options), `lip ml models` and `lip ml metrics` mirror the reads, printing the same snapshot data.
 
 CLI parity SHALL add `lip dl train|models|metrics`: `lip dl train` mirrors `POST /dl/train` (same lottery/`model_set`/`window`/`cut` options and floor behavior), `lip dl models` and `lip dl metrics` mirror the reads, printing the same snapshot data. No CLI predict/export/weights command SHALL be added.
+
+CLI parity SHALL add `lip opt train|models|metrics|params`: `lip opt train` mirrors `POST /opt/train` (same lottery/`optimizer`/`model_set`/`objective`/termination options and floor behavior), `lip opt models`, `lip opt metrics`, and `lip opt params` mirror the reads, printing the same snapshot data. No CLI predict/export command SHALL be added.
 
 #### Scenario: CLI generates snapshot
 
@@ -229,6 +259,20 @@ CLI parity SHALL add `lip dl train|models|metrics`: `lip dl train` mirrors `POST
 - WHEN `lip dl train` runs
 - THEN a `dl_*` snapshot is produced or reported idempotent (or `INSUFFICIENT_DATA` below the floor), and reads (`lip dl metrics`) print stored rows without training.
 
+#### Scenario: CLI trains opt snapshot
+
+- GIVEN a CLI invocation with a lottery and `optimizer=ga`
+- WHEN `lip opt train` runs
+- THEN an `opt_*` snapshot is produced or reported idempotent (or `INSUFFICIENT_DATA` below the floor), and reads (`lip opt metrics`) print stored rows without training.
+
 ---
 
 **Next**: `sdd-design` (module seams/contracts). **Note**: this is a new foundation spec; per OpenSpec it would land in a domain subfolder at archive; the task directs it to `spec.md` root — recorded here for provenance.
+
+---
+
+## Requirements Added by `fase-9-optimization-engine` (2026-08-10)
+
+> Delta merged at archive. All behavior follows the opt-engine OE-01..15 and OA-01..04 contracts. OE-11 isolation (opt/ never imports ml/dl/services/repositories at module level; lazy imports inside functions OK) is enforced at module level. Read/write separation (OE-12), snapshot-only reads, and the 100-draw floor (OE-08) are owned by the opt-engine spec; backend re-exposes them through these API/CLI seams. `/opt/predict` and ranking surfaces remain out of scope.
+
+**Delta source**: `openspec/changes/fase-9-optimization-engine/specs/backend/spec.md`
