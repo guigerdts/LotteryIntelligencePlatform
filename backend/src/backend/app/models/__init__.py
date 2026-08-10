@@ -11,6 +11,9 @@ from backend.app.models.dl_snapshot import DlSnapshot
 from backend.app.models.dl_weight import DlWeight
 from backend.app.models.draw import Draw
 from backend.app.models.draw_number import DrawNumber
+from backend.app.models.exp_comparison import ExpComparison
+from backend.app.models.exp_experiment import ExpExperiment
+from backend.app.models.exp_run import ExpRun
 from backend.app.models.feature_snapshot import FeatureSnapshot
 from backend.app.models.feature_value import FeatureValue
 from backend.app.models.graph_snapshot import GraphSnapshot
@@ -42,6 +45,9 @@ __all__ = [
     "DlWeight",
     "Draw",
     "DrawNumber",
+    "ExpComparison",
+    "ExpExperiment",
+    "ExpRun",
     "FeatureSnapshot",
     "FeatureValue",
     "GraphSnapshot",
