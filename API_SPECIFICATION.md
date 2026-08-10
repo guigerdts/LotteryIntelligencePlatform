@@ -293,21 +293,21 @@ GET
 
 9. Deep Learning
 
-GET
-
-/dl/models
-
----
-
 POST
 
 /dl/train
 
 ---
 
-POST
+GET
 
-/dl/predict
+/dl/models
+
+---
+
+GET
+
+/dl/metrics
 
 ---
 
