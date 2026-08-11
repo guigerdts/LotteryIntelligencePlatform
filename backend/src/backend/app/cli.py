@@ -244,6 +244,18 @@ def main(argv: list[str] | None = None) -> int:
     exp_list.add_argument("--status", default=None, help="filter by status (active|retired|failed)")
     exp_list.set_defaults(func=_cmd_exp_list)
 
+    exp_compare = exp_sub.add_parser("compare", help="compare runs within an experiment")
+    exp_compare.add_argument("--experiment-id", required=True, type=int, help="experiment ID")
+    exp_compare.add_argument("--run-ids", required=True, help="comma-separated run IDs (min 2)")
+    exp_compare.set_defaults(func=_cmd_exp_compare)
+
+    exp_export = exp_sub.add_parser("export", help="export experiment results as JSON or CSV")
+    exp_export.add_argument("--experiment-id", required=True, type=int, help="experiment ID")
+    exp_export.add_argument(
+        "--format", default="json", choices=["json", "csv"], help="export format"
+    )
+    exp_export.set_defaults(func=_cmd_exp_export)
+
     # --- Backtesting commands (Fase 10, BTS-02) ---
     bt_parser = subparsers.add_parser(
         "bt",
@@ -820,6 +832,27 @@ def _cmd_exp_list(args: argparse.Namespace) -> None:
             indent=2,
         )
     )
+
+
+def _cmd_exp_compare(args: argparse.Namespace) -> None:
+    """Compare runs within an experiment; print comparison JSON."""
+    from backend.app.services.exp_service import ExpService
+
+    run_ids = [int(x.strip()) for x in args.run_ids.split(",")]
+    with SessionLocal() as session:
+        service = ExpService(session)
+        outcome = service.compare(args.experiment_id, run_ids=run_ids)
+    print(outcome.comparison_json)
+
+
+def _cmd_exp_export(args: argparse.Namespace) -> None:
+    """Export experiment results as JSON or CSV."""
+    from backend.app.services.exp_service import ExpService
+
+    with SessionLocal() as session:
+        service = ExpService(session)
+        content = service.export(args.experiment_id, format=args.format)
+    print(content)
 
 
 def _cmd_bt_run(args: argparse.Namespace) -> None:

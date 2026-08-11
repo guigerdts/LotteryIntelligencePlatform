@@ -1,25 +1,30 @@
-"""ExpService — experiment service layer (EXP-001/002/003/004).
+"""ExpService — experiment service layer (EXP-001/002/003/004/005/006).
 
-Exposes experiment CRUD and run association through a service boundary.
-API and CLI call this layer; the service owns DB access, validation,
-and persistence via ``ExpSnapshotStore``.
+Exposes experiment CRUD, run association, comparison, and export through
+a service boundary. API and CLI call this layer; the service owns DB
+access, validation, and persistence via ``ExpSnapshotStore``.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import UTC, datetime
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from backend.app.experiments.fingerprint import compute_exp_fingerprint
 from backend.app.experiments.snapshot_store import ExpSnapshotStore
+from backend.app.exporters.experiment_exporter import ExperimentExporter
+from backend.app.models.exp_comparison import ExpComparison
 from backend.app.models.exp_experiment import ExpExperiment
 from backend.app.models.exp_run import ExpRun
 from backend.app.services.errors import (
+    ComparisonInsufficientRunsError,
     DuplicateExperimentError,
     ExperimentNotFoundError,
     ExperimentRetiredError,
+    ExportFormatInvalidError,
     ExpSnapshotNotFoundError,
     NotFoundError,
     ValidationError,
@@ -72,6 +77,16 @@ class RunOutcome:
     engine_snapshot_id: int
     engine_fingerprint: str
     notes: str | None
+
+
+@dataclass(frozen=True)
+class ComparisonOutcome:
+    """Result of comparison persistence."""
+
+    comparison_id: int
+    experiment_id: int
+    comparison_json: str
+    created_at: str
 
 
 class ExpService:
@@ -303,6 +318,245 @@ class ExpService:
             )
             for e in experiments
         ]
+
+    # --- Comparison (EXP-005) ---
+
+    def compare(
+        self,
+        experiment_id: int,
+        *,
+        run_ids: list[int],
+    ) -> ComparisonOutcome:
+        """Compare runs within an experiment (EXP-005).
+
+        Reads metrics from referenced engine tables, builds a sorted
+        comparison matrix, and persists it as an immutable JSON snapshot.
+        Idempotent: same (experiment_id, run_ids) returns cached result.
+        """
+        store = ExpSnapshotStore(self._session)
+        experiment = store.get(experiment_id)
+        if experiment is None:
+            raise ExperimentNotFoundError(f"experiment {experiment_id} not found")
+
+        if len(run_ids) < 2:
+            raise ComparisonInsufficientRunsError(f"at least 2 runs required, got {len(run_ids)}")
+
+        # Check for cached comparison (idempotent)
+        sorted_ids = sorted(run_ids)
+        existing = self._find_cached_comparison(experiment_id, sorted_ids)
+        if existing is not None:
+            return ComparisonOutcome(
+                comparison_id=existing.id,
+                experiment_id=experiment_id,
+                comparison_json=existing.comparison_json,
+                created_at=existing.created_at.isoformat(),
+            )
+
+        # Fetch ExpRun rows for each run_id
+        stmt = select(ExpRun).where(
+            ExpRun.experiment_id == experiment_id,
+            ExpRun.id.in_(run_ids),
+        )
+        runs = list(self._session.execute(stmt).scalars().all())
+
+        if len(runs) != len(run_ids):
+            missing = set(run_ids) - {r.id for r in runs}
+            raise ExpSnapshotNotFoundError(f"runs not found: {missing}")
+
+        # Build comparison matrix — query engine result tables for metrics
+        run_entries = []
+        all_metric_names: set[str] = set()
+
+        for run in sorted(runs, key=lambda r: r.run_label):
+            metrics = self._read_run_metrics(run)
+            all_metric_names.update(metrics.keys())
+            run_entries.append(
+                {
+                    "run_id": run.id,
+                    "run_label": run.run_label,
+                    "engine_type": run.engine_type,
+                    "engine_snapshot_id": run.engine_snapshot_id,
+                    "metrics": metrics,
+                }
+            )
+
+        comparison_data = {
+            "experiment_id": experiment_id,
+            "runs": run_entries,
+            "metric_names": sorted(all_metric_names),
+            "created_at": datetime.now(UTC).isoformat(),
+        }
+
+        import json
+
+        comparison_json = json.dumps(comparison_data, default=str)
+
+        # Persist immutable comparison snapshot
+        comparison = ExpComparison(
+            experiment_id=experiment_id,
+            comparison_json=comparison_json,
+        )
+        self._session.add(comparison)
+        self._session.flush()
+        self._session.commit()
+
+        return ComparisonOutcome(
+            comparison_id=comparison.id,
+            experiment_id=experiment_id,
+            comparison_json=comparison_json,
+            created_at=comparison.created_at.isoformat(),
+        )
+
+    def _find_cached_comparison(
+        self, experiment_id: int, sorted_run_ids: list[int]
+    ) -> ExpComparison | None:
+        """Check for an existing comparison with the same run_ids (idempotent)."""
+        import json
+
+        stmt = select(ExpComparison).where(
+            ExpComparison.experiment_id == experiment_id,
+        )
+        for comp in self._session.execute(stmt).scalars().all():
+            data = json.loads(comp.comparison_json)
+            existing_ids = sorted(r["run_id"] for r in data["runs"])
+            if existing_ids == sorted_run_ids:
+                return comp
+        return None
+
+    def _read_run_metrics(self, run: ExpRun) -> dict[str, float]:
+        """Read metrics from the referenced engine result table."""
+        if run.engine_type == "backtesting":
+            return self._read_bt_metrics(run.engine_snapshot_id)
+        elif run.engine_type == "ml":
+            return self._read_ml_metrics(run.engine_snapshot_id)
+        elif run.engine_type == "dl":
+            return self._read_dl_metrics(run.engine_snapshot_id)
+        elif run.engine_type == "optimization":
+            return self._read_opt_metrics(run.engine_snapshot_id)
+        return {}
+
+    def _read_bt_metrics(self, snapshot_id: int) -> dict[str, float]:
+        """Read aggregate_metrics_json from bt_results."""
+        import json
+
+        from backend.app.models.bt_result import BtResult
+
+        stmt = select(BtResult).where(BtResult.snapshot_id == snapshot_id)
+        result = self._session.execute(stmt).scalar_one_or_none()
+        if result is None:
+            return {}
+        data = json.loads(result.aggregate_metrics_json)
+        # Normalize all values to float
+        return {k: float(v) for k, v in data.items()}
+
+    def _read_ml_metrics(self, snapshot_id: int) -> dict[str, float]:
+        """Read metrics from ml_metrics rows, building a dict by metric_name."""
+        from backend.app.models.ml_metric import MlMetric
+
+        stmt = select(MlMetric).where(MlMetric.snapshot_id == snapshot_id)
+        rows = self._session.execute(stmt).scalars().all()
+        metrics: dict[str, float] = {}
+        for row in rows:
+            # Use metric_name as key; if duplicate, average them
+            key = row.metric_name
+            val = float(row.value)
+            if key in metrics:
+                metrics[key] = (metrics[key] + val) / 2
+            else:
+                metrics[key] = val
+        return metrics
+
+    def _read_dl_metrics(self, snapshot_id: int) -> dict[str, float]:
+        """Read metrics from dl_metrics rows, building a dict by metric_name."""
+        from backend.app.models.dl_metric import DlMetric
+
+        stmt = select(DlMetric).where(DlMetric.snapshot_id == snapshot_id)
+        rows = self._session.execute(stmt).scalars().all()
+        metrics: dict[str, float] = {}
+        for row in rows:
+            key = row.metric_name
+            val = float(row.value)
+            if key in metrics:
+                metrics[key] = (metrics[key] + val) / 2
+            else:
+                metrics[key] = val
+        return metrics
+
+    def _read_opt_metrics(self, snapshot_id: int) -> dict[str, float]:
+        """Read metrics from opt_results rows, building a dict by target_model."""
+        from backend.app.models.opt_result import OptResult
+
+        stmt = select(OptResult).where(OptResult.snapshot_id == snapshot_id)
+        rows = self._session.execute(stmt).scalars().all()
+        metrics: dict[str, float] = {}
+        for row in rows:
+            metrics[f"best_fitness_{row.target_model}"] = float(row.best_fitness)
+        return metrics
+
+    # --- Export (EXP-006) ---
+
+    def export(self, experiment_id: int, *, format: str) -> str:
+        """Export experiment data in JSON or CSV format (EXP-006)."""
+        if format not in ("json", "csv"):
+            raise ExportFormatInvalidError(f"unsupported format: {format}")
+
+        store = ExpSnapshotStore(self._session)
+        experiment = store.get(experiment_id)
+        if experiment is None:
+            raise ExperimentNotFoundError(f"experiment {experiment_id} not found")
+
+        # Fetch runs
+        stmt = select(ExpRun).where(ExpRun.experiment_id == experiment_id)
+        runs = list(self._session.execute(stmt).scalars().all())
+
+        # Fetch comparisons
+        comp_stmt = select(ExpComparison).where(ExpComparison.experiment_id == experiment_id)
+        comparisons = list(self._session.execute(comp_stmt).scalars().all())
+
+        run_dicts = [
+            {
+                "run_id": r.id,
+                "run_label": r.run_label,
+                "engine_type": r.engine_type,
+                "engine_snapshot_id": r.engine_snapshot_id,
+                "engine_fingerprint": r.engine_fingerprint,
+                "notes": r.notes,
+                "created_at": r.created_at.isoformat(),
+            }
+            for r in runs
+        ]
+
+        comp_dicts = [
+            {
+                "comparison_id": c.id,
+                "experiment_id": c.experiment_id,
+                "comparison_json": c.comparison_json,
+                "created_at": c.created_at.isoformat(),
+            }
+            for c in comparisons
+        ]
+
+        experiment_dict = {
+            "experiment_id": experiment.id,
+            "lottery_id": experiment.lottery_id,
+            "name": experiment.name,
+            "description": experiment.description,
+            "fingerprint": experiment.fingerprint,
+            "version": experiment.version,
+            "status": experiment.status,
+            "config_json": experiment.config_json,
+            "created_at": experiment.created_at.isoformat(),
+        }
+
+        if format == "json":
+            data = {
+                "experiment": experiment_dict,
+                "runs": run_dicts,
+                "comparisons": comp_dicts,
+            }
+            return ExperimentExporter.export_json(data)
+        else:
+            return ExperimentExporter.export_csv(run_dicts)
 
     def _resolve_lottery(self, lottery_id: int) -> None:
         """Validate lottery exists."""

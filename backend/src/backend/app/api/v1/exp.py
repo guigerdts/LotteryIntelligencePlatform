@@ -1,14 +1,14 @@
-"""Experiment API router (EXP-001/003/004).
+"""Experiment API router (EXP-001/003/004/005/006).
 
-Provides endpoints for experiment CRUD, run association, and listing.
-Compare and export endpoints are PR3 scope — not implemented yet.
+Provides endpoints for experiment CRUD, run association, listing,
+comparison, and export.
 """
 
 from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Response
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.orm import Session
 
@@ -221,20 +221,70 @@ def add_run(
     )
 
 
-# --- PR3 scope (NOT implemented yet) ---
-# @router.post(
-#     "/{experiment_id}/compare",
-#     response_model=SuccessEnvelope[ComparisonResponse],
-#     summary="Compare runs within an experiment",
-# )
-# def compare_runs(...):
-#     pass
+# --- Comparison (EXP-005) ---
 
 
-# @router.get(
-#     "/{experiment_id}/export",
-#     response_model=SuccessEnvelope[dict],
-#     summary="Export experiment results",
-# )
-# def export_experiment(...):
-#     pass
+class ComparisonRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    run_ids: list[int] = Field(min_length=2)
+
+
+class ComparisonRunEntry(BaseModel):
+    run_id: int
+    run_label: str
+    engine_type: str
+    engine_snapshot_id: int
+    metrics: dict[str, float]
+
+
+class ComparisonResponse(BaseModel):
+    comparison_id: int
+    experiment_id: int
+    runs: list[ComparisonRunEntry]
+    metric_names: list[str]
+    created_at: str
+
+
+@router.post(
+    "/{experiment_id}/compare",
+    response_model=SuccessEnvelope[ComparisonResponse],
+    summary="Compare runs within an experiment",
+)
+def compare_runs(
+    experiment_id: int,
+    body: ComparisonRequest,
+    db: DbSession,
+) -> SuccessEnvelope[ComparisonResponse]:
+    import json
+
+    service = ExpService(db)
+    outcome = service.compare(experiment_id, run_ids=body.run_ids)
+    data = json.loads(outcome.comparison_json)
+    return SuccessEnvelope(
+        data=ComparisonResponse(
+            comparison_id=outcome.comparison_id,
+            experiment_id=data["experiment_id"],
+            runs=[ComparisonRunEntry(**r) for r in data["runs"]],
+            metric_names=data["metric_names"],
+            created_at=data["created_at"],
+        )
+    )
+
+
+# --- Export (EXP-006) ---
+
+
+@router.get(
+    "/{experiment_id}/export",
+    summary="Export experiment results as JSON or CSV",
+)
+def export_experiment(
+    experiment_id: int,
+    format: str = Query(default="json", pattern="^(json|csv)$"),
+    db: DbSession = None,
+) -> Response:
+    service = ExpService(db)
+    content = service.export(experiment_id, format=format)
+    if format == "csv":
+        return Response(content=content, media_type="text/csv")
+    return Response(content=content, media_type="application/json")
