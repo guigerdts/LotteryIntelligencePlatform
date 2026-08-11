@@ -21,6 +21,10 @@ from backend.app.models.graph_value import GraphValue
 from backend.app.models.import_error import ImportError
 from backend.app.models.import_job import ImportJob
 from backend.app.models.lottery import Lottery
+from backend.app.models.meta_ranking import MetaRanking
+from backend.app.models.meta_ranking_entry import MetaRankingEntry
+from backend.app.models.meta_selection import MetaSelection
+from backend.app.models.meta_selection_entry import MetaSelectionEntry
 from backend.app.models.ml_metric import MlMetric
 from backend.app.models.ml_snapshot import MlSnapshot
 from backend.app.models.opt_result import OptResult
@@ -55,6 +59,10 @@ __all__ = [
     "ImportError",
     "ImportJob",
     "Lottery",
+    "MetaRanking",
+    "MetaRankingEntry",
+    "MetaSelection",
+    "MetaSelectionEntry",
     "MlMetric",
     "MlSnapshot",
     "OptResult",

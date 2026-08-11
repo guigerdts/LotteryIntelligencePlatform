@@ -173,3 +173,25 @@ class ComparisonInsufficientRunsError(ComparisonError):
     """Insufficient runs for comparison."""
 
     code = "COMPARISON_INSUFFICIENT_RUNS"
+
+
+class MetaServiceError(ServiceError):
+    """Base class for meta-learning service errors (META-016)."""
+
+    code = "META_ERROR"
+
+    # HTTP 404 — resource not found
+    META_RANKING_NOT_FOUND = "META_RANKING_NOT_FOUND"
+    META_SELECTION_NOT_FOUND = "META_SELECTION_NOT_FOUND"
+    META_NO_ENGINE_DATA = "META_NO_ENGINE_DATA"
+
+    # HTTP 422 — validation failure
+    META_WEIGHTS_INVALID = "META_WEIGHTS_INVALID"
+    META_TOP_K_INVALID = "META_TOP_K_INVALID"
+
+    # HTTP 409 — conflict
+    META_DUPLICATE_RANKING = "META_DUPLICATE_RANKING"
+
+    def __init__(self, code: str, message: str) -> None:
+        self.code = code
+        super().__init__(message)

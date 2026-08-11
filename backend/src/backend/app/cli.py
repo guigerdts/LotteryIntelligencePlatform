@@ -282,6 +282,8 @@ def main(argv: list[str] | None = None) -> int:
     )
     bt_results.set_defaults(func=_cmd_bt_results)
 
+    _add_meta_subparser(subparsers)
+
     args = parser.parse_args(argv)
     try:
         args.func(args)
@@ -917,6 +919,142 @@ def _cmd_bt_results(args: argparse.Namespace) -> None:
         service = BtService(session)
         raw = service.results(args.lottery_id, snapshot_id=args.snapshot_id)
     print(json.dumps(raw, indent=2))
+
+
+# --- Meta Learning commands (Fase 12, META-014) ---
+
+
+def _add_meta_subparser(subparsers) -> None:
+    """Add ``lip meta`` subparser with 4 subcommands (META-014)."""
+    meta_parser = subparsers.add_parser(
+        "meta",
+        help="Meta Learning: rank, select, and retrieve model rankings (Fase 12)",
+    )
+    meta_sub = meta_parser.add_subparsers(dest="meta_command", required=True)
+
+    # meta rank
+    meta_rank = meta_sub.add_parser("rank", help="compute a ranking for a lottery")
+    meta_rank.add_argument("--lottery-id", required=True, type=int, help="lottery ID")
+    meta_rank.add_argument(
+        "--engine-types", nargs="*", default=None, help="engine types to include"
+    )
+    meta_rank.add_argument(
+        "--weights", default=None, help='JSON weights, e.g. \'{"hit_rate": 0.5}\''
+    )
+    meta_rank.set_defaults(func=_cmd_meta_rank)
+
+    # meta ranking
+    meta_ranking = meta_sub.add_parser("ranking", help="retrieve ranking snapshot")
+    meta_ranking.add_argument("--lottery-id", required=True, type=int, help="lottery ID")
+    meta_ranking.add_argument("--context-hash", default=None, help="context hash filter")
+    meta_ranking.set_defaults(func=_cmd_meta_ranking)
+
+    # meta select
+    meta_select = meta_sub.add_parser("select", help="compute a selection from the active ranking")
+    meta_select.add_argument("--lottery-id", required=True, type=int, help="lottery ID")
+    meta_select.add_argument("--top-k", type=int, default=None, help="top-K (1-20, default 5)")
+    meta_select.add_argument("--min-score", type=float, default=None, help="minimum score threshold")
+    meta_select.set_defaults(func=_cmd_meta_select)
+
+    # meta selection
+    meta_selection = meta_sub.add_parser("selection", help="retrieve selection snapshot")
+    meta_selection.add_argument("--lottery-id", required=True, type=int, help="lottery ID")
+    meta_selection.add_argument("--context-hash", default=None, help="context hash filter")
+    meta_selection.set_defaults(func=_cmd_meta_selection)
+
+
+def _cmd_meta_rank(args: argparse.Namespace) -> None:
+    """Compute a ranking; print the result as JSON."""
+    from backend.app.services.meta_service import MetaService
+
+    weights = json.loads(args.weights) if args.weights else None
+    with SessionLocal() as session:
+        service = MetaService(session)
+        result = service.rank(
+            lottery_id=args.lottery_id,
+            engine_types=args.engine_types,
+            weights=weights,
+        )
+    print(
+        json.dumps(
+            {
+                "ranking_id": result.ranking_id,
+                "lottery_id": result.lottery_id,
+                "context_hash": result.context_hash,
+                "version": result.version,
+                "status": result.status,
+                "fingerprint": result.fingerprint,
+                "entries": result.entries,
+            },
+            indent=2,
+        )
+    )
+
+
+def _cmd_meta_ranking(args: argparse.Namespace) -> None:
+    """Retrieve ranking snapshot; print as JSON."""
+    from backend.app.services.meta_service import MetaService
+
+    with SessionLocal() as session:
+        service = MetaService(session)
+        result = service.get_ranking(args.lottery_id, context_hash=args.context_hash)
+    print(
+        json.dumps(
+            {
+                "lottery_id": result.lottery_id,
+                "context_hash": result.context_hash,
+                "rankings": result.rankings,
+            },
+            indent=2,
+        )
+    )
+
+
+def _cmd_meta_select(args: argparse.Namespace) -> None:
+    """Compute a selection; print the result as JSON."""
+    from backend.app.services.meta_service import MetaService
+
+    with SessionLocal() as session:
+        service = MetaService(session)
+        result = service.select(
+            lottery_id=args.lottery_id,
+            top_k=args.top_k,
+            min_score=args.min_score,
+        )
+    print(
+        json.dumps(
+            {
+                "selection_id": result.selection_id,
+                "lottery_id": result.lottery_id,
+                "ranking_id": result.ranking_id,
+                "context_hash": result.context_hash,
+                "version": result.version,
+                "status": result.status,
+                "fingerprint": result.fingerprint,
+                "entries": result.entries,
+            },
+            indent=2,
+        )
+    )
+
+
+def _cmd_meta_selection(args: argparse.Namespace) -> None:
+    """Retrieve selection snapshot; print as JSON."""
+    from backend.app.services.meta_service import MetaService
+
+    with SessionLocal() as session:
+        service = MetaService(session)
+        result = service.get_selection(args.lottery_id, context_hash=args.context_hash)
+    print(
+        json.dumps(
+            {
+                "lottery_id": result.lottery_id,
+                "context_hash": result.context_hash,
+                "selections": result.selections,
+            },
+            indent=2,
+        )
+    )
 
 
 class _CliDrawAdapter:
