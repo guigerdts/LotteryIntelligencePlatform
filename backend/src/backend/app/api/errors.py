@@ -57,13 +57,21 @@ _CODE_TO_STATUS: dict[str, int] = {
     "SNAPSHOT_TYPE_MISMATCH": 422,
     "COMPARISON_INSUFFICIENT_RUNS": 422,
     "EXPORT_FORMAT_INVALID": 422,
-    # F12 meta-learning channel (META-016): ranking/selection, engine data, weights, top_k, duplicate.
+    # F12 meta-learning channel (META-016):
     "META_RANKING_NOT_FOUND": 404,
     "META_SELECTION_NOT_FOUND": 404,
     "META_NO_ENGINE_DATA": 404,
     "META_WEIGHTS_INVALID": 422,
     "META_TOP_K_INVALID": 422,
     "META_DUPLICATE_RANKING": 409,
+    # F13 generator channel (GEN-013):
+    "GEN_NO_SELECTION": 404,
+    "GEN_NO_DISTRIBUTION": 404,
+    "GEN_LOTTERY_NOT_FOUND": 404,
+    "GEN_COUNT_INVALID": 422,
+    "GEN_SNAPSHOT_NOT_FOUND": 404,
+    "GEN_DUPLICATE_SNAPSHOT": 409,
+    "GEN_SPACE_EXHAUSTED": 422,
 }
 
 _UNKNOWN_STATUS = 500
