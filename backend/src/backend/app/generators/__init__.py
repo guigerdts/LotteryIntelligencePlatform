@@ -1,1 +1,1 @@
-"""Combination generator engine (Fase 13)."""
+"""Intelligent Generator module — deterministic lottery combination generation."""
