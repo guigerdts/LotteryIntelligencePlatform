@@ -195,3 +195,26 @@ class MetaServiceError(ServiceError):
     def __init__(self, code: str, message: str) -> None:
         self.code = code
         super().__init__(message)
+
+
+class GenServiceError(ServiceError):
+    """Base class for generator service errors (GEN-013)."""
+
+    code = "GEN_ERROR"
+
+    # HTTP 404 — resource not found
+    GEN_NO_SELECTION = "GEN_NO_SELECTION"
+    GEN_NO_DISTRIBUTION = "GEN_NO_DISTRIBUTION"
+    GEN_LOTTERY_NOT_FOUND = "GEN_LOTTERY_NOT_FOUND"
+    GEN_SNAPSHOT_NOT_FOUND = "GEN_SNAPSHOT_NOT_FOUND"
+
+    # HTTP 422 — validation failure
+    GEN_COUNT_INVALID = "GEN_COUNT_INVALID"
+    GEN_SPACE_EXHAUSTED = "GEN_SPACE_EXHAUSTED"
+
+    # HTTP 409 — conflict
+    GEN_DUPLICATE_SNAPSHOT = "GEN_DUPLICATE_SNAPSHOT"
+
+    def __init__(self, code: str, message: str) -> None:
+        self.code = code
+        super().__init__(message)
