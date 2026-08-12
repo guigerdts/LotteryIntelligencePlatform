@@ -16,6 +16,8 @@ from backend.app.models.exp_experiment import ExpExperiment
 from backend.app.models.exp_run import ExpRun
 from backend.app.models.feature_snapshot import FeatureSnapshot
 from backend.app.models.feature_value import FeatureValue
+from backend.app.models.gen_combination import GenCombination
+from backend.app.models.gen_snapshot import GenSnapshot
 from backend.app.models.graph_snapshot import GraphSnapshot
 from backend.app.models.graph_value import GraphValue
 from backend.app.models.import_error import ImportError
@@ -54,6 +56,8 @@ __all__ = [
     "ExpRun",
     "FeatureSnapshot",
     "FeatureValue",
+    "GenCombination",
+    "GenSnapshot",
     "GraphSnapshot",
     "GraphValue",
     "ImportError",
