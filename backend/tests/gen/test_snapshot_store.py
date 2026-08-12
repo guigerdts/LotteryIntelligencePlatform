@@ -7,10 +7,12 @@ Design refs: GenSnapshotStore, Migration 0015.
 from __future__ import annotations
 
 import json
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
 from alembic.config import Config
+from sqlalchemy import text
 from sqlalchemy.orm import Session, sessionmaker
 
 from alembic import command
@@ -51,12 +53,15 @@ def store(session: Session) -> GenSnapshotStore:
     return GenSnapshotStore(session)
 
 
+@pytest.fixture
+def seeded(session: Session) -> None:
+    """Seed the default lottery and selection rows for FK constraints."""
+    _seed_lottery(session)
+    _seed_selection(session)
+
+
 def _seed_lottery(session: Session, lottery_id: int = 1) -> None:
     """Insert a minimal lottery row for FK constraints."""
-    from datetime import UTC, datetime
-
-    from sqlalchemy import text
-
     session.execute(
         text(
             "INSERT INTO lottery "
@@ -83,10 +88,6 @@ def _seed_lottery(session: Session, lottery_id: int = 1) -> None:
 
 def _seed_selection(session: Session, lottery_id: int = 1, selection_id: int = 1) -> None:
     """Insert a minimal meta_selections row for FK constraints."""
-    from datetime import UTC, datetime
-
-    from sqlalchemy import text
-
     session.execute(
         text(
             "INSERT INTO meta_selections "
@@ -106,27 +107,39 @@ def _seed_selection(session: Session, lottery_id: int = 1, selection_id: int = 1
     session.flush()
 
 
+def _create_snapshot(
+    store: GenSnapshotStore,
+    *,
+    lottery_id: int = 1,
+    selection_id: int = 1,
+    version: str = "1",
+    fingerprint: str,
+    config_json: dict | None = None,
+    combinations: list[dict] | None = None,
+) -> int:
+    """Create an active snapshot with minimal per-scope defaults."""
+    return store.create_active_snapshot(
+        lottery_id=lottery_id,
+        selection_id=selection_id,
+        version=version,
+        fingerprint=fingerprint,
+        config_json=config_json,
+        combinations=combinations or [],
+    )
+
+
 class TestNextVersion:
     """next_version() — monotonic versioning per (lottery_id, selection_id)."""
 
-    def test_first_version_is_one(self, store: GenSnapshotStore, session: Session) -> None:
+    def test_first_version_is_one(self, store: GenSnapshotStore, seeded: None) -> None:
         """No existing versions → '1'."""
-        _seed_lottery(session)
-        _seed_selection(session)
         assert store.next_version(1, 1) == "1"
 
-    def test_monotonic_increment(self, store: GenSnapshotStore, session: Session) -> None:
+    def test_monotonic_increment(
+        self, store: GenSnapshotStore, session: Session, seeded: None
+    ) -> None:
         """After creating v1, next is v2."""
-        _seed_lottery(session)
-        _seed_selection(session)
-        store.create_active_snapshot(
-            lottery_id=1,
-            selection_id=1,
-            version="1",
-            fingerprint="fp1",
-            config_json=None,
-            combinations=[],
-        )
+        _create_snapshot(store, fingerprint="fp1")
         session.commit()
         assert store.next_version(1, 1) == "2"
 
@@ -136,14 +149,7 @@ class TestNextVersion:
         _seed_lottery(session, 2)
         _seed_selection(session, 1, 1)
         _seed_selection(session, 2, 2)
-        store.create_active_snapshot(
-            lottery_id=1,
-            selection_id=1,
-            version="1",
-            fingerprint="fp1",
-            config_json=None,
-            combinations=[],
-        )
+        _create_snapshot(store, fingerprint="fp1")
         session.commit()
         # lottery 2 has no versions yet
         assert store.next_version(2, 2) == "1"
@@ -153,48 +159,26 @@ class TestFingerprintIdempotency:
     """find_by_fingerprint() — GEN-008 idempotency."""
 
     def test_existing_fingerprint_returns_snapshot(
-        self, store: GenSnapshotStore, session: Session
+        self, store: GenSnapshotStore, session: Session, seeded: None
     ) -> None:
         """Same fingerprint → return existing active snapshot, no new rows."""
-        _seed_lottery(session)
-        _seed_selection(session)
-        store.create_active_snapshot(
-            lottery_id=1,
-            selection_id=1,
-            version="1",
-            fingerprint="abc123",
-            config_json=None,
-            combinations=[],
-        )
+        _create_snapshot(store, fingerprint="abc123")
         session.commit()
         found = store.find_by_fingerprint("abc123")
         assert found is not None
         assert found.fingerprint == "abc123"
 
-    def test_unknown_fingerprint_returns_none(
-        self, store: GenSnapshotStore, session: Session
-    ) -> None:
+    def test_unknown_fingerprint_returns_none(self, store: GenSnapshotStore, seeded: None) -> None:
         """Unknown fingerprint → None."""
-        _seed_lottery(session)
-        _seed_selection(session)
         assert store.find_by_fingerprint("unknown") is None
 
 
 class TestLifecycle:
     """Lifecycle transitions: active → retired (GEN-007)."""
 
-    def test_retire_active(self, store: GenSnapshotStore, session: Session) -> None:
+    def test_retire_active(self, store: GenSnapshotStore, session: Session, seeded: None) -> None:
         """retire_active changes status to 'retired'."""
-        _seed_lottery(session)
-        _seed_selection(session)
-        snap_id = store.create_active_snapshot(
-            lottery_id=1,
-            selection_id=1,
-            version="1",
-            fingerprint="fp1",
-            config_json=None,
-            combinations=[],
-        )
+        snap_id = _create_snapshot(store, fingerprint="fp1")
         session.commit()
         store.retire_active(1, 1)
         session.commit()
@@ -202,27 +186,13 @@ class TestLifecycle:
         assert snap is not None
         assert snap.status == "retired"
 
-    def test_active_to_retired_atomic(self, store: GenSnapshotStore, session: Session) -> None:
+    def test_active_to_retired_atomic(
+        self, store: GenSnapshotStore, session: Session, seeded: None
+    ) -> None:
         """Create new active retires old active atomically."""
-        _seed_lottery(session)
-        _seed_selection(session)
-        old_id = store.create_active_snapshot(
-            lottery_id=1,
-            selection_id=1,
-            version="1",
-            fingerprint="fp_old",
-            config_json=None,
-            combinations=[],
-        )
+        old_id = _create_snapshot(store, version="1", fingerprint="fp_old")
         session.commit()
-        new_id = store.create_active_snapshot(
-            lottery_id=1,
-            selection_id=1,
-            version="2",
-            fingerprint="fp_new",
-            config_json=None,
-            combinations=[],
-        )
+        new_id = _create_snapshot(store, version="2", fingerprint="fp_new")
         session.commit()
         old = session.get(GenSnapshot, old_id)
         new = session.get(GenSnapshot, new_id)
@@ -243,14 +213,7 @@ class TestAtomicWrite:
         s.commit()
         try:
             store = GenSnapshotStore(s)
-            store.create_active_snapshot(
-                lottery_id=1,
-                selection_id=1,
-                version="1",
-                fingerprint="fp_rollback",
-                config_json=None,
-                combinations=[],
-            )
+            _create_snapshot(store, fingerprint="fp_rollback")
             # Force a rollback
             s.rollback()
         except Exception:
@@ -265,19 +228,15 @@ class TestAtomicWrite:
             s2.close()
 
     def test_combinations_persisted_with_snapshot(
-        self, store: GenSnapshotStore, session: Session
+        self, store: GenSnapshotStore, session: Session, seeded: None
     ) -> None:
         """Snapshot + combinations created atomically."""
-        _seed_lottery(session)
-        _seed_selection(session)
         combos = [
             {"position": 0, "numbers": "[1,2,3,4,5,6]", "super_number": 7, "score": None},
             {"position": 1, "numbers": "[7,8,9,10,11,12]", "super_number": None, "score": 0.85},
         ]
-        snap_id = store.create_active_snapshot(
-            lottery_id=1,
-            selection_id=1,
-            version="1",
+        snap_id = _create_snapshot(
+            store,
             fingerprint="fp_atomic",
             config_json={"key": "value"},
             combinations=combos,
@@ -294,27 +253,11 @@ class TestGetSnapshots:
     """get_snapshots() — list all snapshots for a lottery."""
 
     def test_returns_snapshots_ordered_by_version(
-        self, store: GenSnapshotStore, session: Session
+        self, store: GenSnapshotStore, session: Session, seeded: None
     ) -> None:
         """Snapshots ordered by version DESC."""
-        _seed_lottery(session)
-        _seed_selection(session)
-        store.create_active_snapshot(
-            lottery_id=1,
-            selection_id=1,
-            version="1",
-            fingerprint="fp1",
-            config_json=None,
-            combinations=[],
-        )
-        store.create_active_snapshot(
-            lottery_id=1,
-            selection_id=1,
-            version="2",
-            fingerprint="fp2",
-            config_json=None,
-            combinations=[],
-        )
+        _create_snapshot(store, version="1", fingerprint="fp1")
+        _create_snapshot(store, version="2", fingerprint="fp2")
         session.commit()
         snapshots = store.get_snapshots(1)
         assert len(snapshots) == 2
@@ -327,22 +270,8 @@ class TestGetSnapshots:
         _seed_lottery(session, 2)
         _seed_selection(session, 1, 1)
         _seed_selection(session, 2, 2)
-        store.create_active_snapshot(
-            lottery_id=1,
-            selection_id=1,
-            version="1",
-            fingerprint="fp1",
-            config_json=None,
-            combinations=[],
-        )
-        store.create_active_snapshot(
-            lottery_id=2,
-            selection_id=2,
-            version="1",
-            fingerprint="fp2",
-            config_json=None,
-            combinations=[],
-        )
+        _create_snapshot(store, fingerprint="fp1")
+        _create_snapshot(store, lottery_id=2, selection_id=2, fingerprint="fp2")
         session.commit()
         assert len(store.get_snapshots(1)) == 1
         assert len(store.get_snapshots(2)) == 1
