@@ -284,6 +284,8 @@ def main(argv: list[str] | None = None) -> int:
 
     _add_meta_subparser(subparsers)
 
+    _add_gen_subparser(subparsers)
+
     args = parser.parse_args(argv)
     try:
         args.func(args)
@@ -1051,6 +1053,149 @@ def _cmd_meta_selection(args: argparse.Namespace) -> None:
                 "lottery_id": result.lottery_id,
                 "context_hash": result.context_hash,
                 "selections": result.selections,
+            },
+            indent=2,
+        )
+    )
+
+
+# --- Generator commands (Fase 13, GEN-011) ---
+
+
+def _add_gen_subparser(subparsers) -> None:
+    """Add ``lip gen`` subparser with 4 subcommands (GEN-011)."""
+    gen_parser = subparsers.add_parser(
+        "gen",
+        help="Generator: generate lottery combinations from F12 selections + F5 (Fase 13)",
+    )
+    gen_sub = gen_parser.add_subparsers(dest="gen_command", required=True)
+
+    gen_generate = gen_sub.add_parser("generate", help="generate a combination snapshot")
+    gen_generate.add_argument("--lottery-id", required=True, type=int, help="lottery ID")
+    gen_generate.add_argument("--count", type=int, default=None, help="combinations (1-100)")
+    gen_generate.add_argument("--seed", type=int, default=None, help="seed override (GEN-009)")
+    gen_generate.add_argument("--selection-id", type=int, default=None, help="selection override")
+    gen_generate.set_defaults(func=_cmd_gen_generate)
+
+    gen_combinations = gen_sub.add_parser("combinations", help="read stored combinations")
+    gen_combinations.add_argument("--lottery-id", required=True, type=int, help="lottery ID")
+    gen_combinations.add_argument("--snapshot-id", type=int, default=None, help="snapshot filter")
+    gen_combinations.set_defaults(func=_cmd_gen_combinations)
+
+    gen_snapshot = gen_sub.add_parser("snapshot", help="transition a snapshot lifecycle status")
+    gen_snapshot.add_argument("--lottery-id", required=True, type=int, help="lottery ID")
+    gen_snapshot.add_argument("--snapshot-id", required=True, type=int, help="snapshot ID")
+    gen_snapshot.add_argument(
+        "--status",
+        required=True,
+        choices=["active", "retired", "failed"],
+        help="target lifecycle status",
+    )
+    gen_snapshot.set_defaults(func=_cmd_gen_snapshot)
+
+    gen_snapshots = gen_sub.add_parser("snapshots", help="list snapshots for a lottery")
+    gen_snapshots.add_argument("--lottery-id", required=True, type=int, help="lottery ID")
+    gen_snapshots.set_defaults(func=_cmd_gen_snapshots)
+
+
+def _gen_combination_dict(combo) -> dict:
+    """Serialize one combination row for CLI JSON output (GEN-011)."""
+    return {
+        "position": combo.position,
+        "numbers": combo.numbers,
+        "super_number": combo.super_number,
+        "score": combo.score,
+    }
+
+
+def _gen_snapshot_dict(snapshot) -> dict:
+    """Serialize one snapshot header for CLI JSON output (GEN-011)."""
+    return {
+        "snapshot_id": snapshot.snapshot_id,
+        "lottery_id": snapshot.lottery_id,
+        "selection_id": snapshot.selection_id,
+        "version": snapshot.version,
+        "status": snapshot.status,
+        "fingerprint": snapshot.fingerprint,
+        "created_at": snapshot.created_at,
+    }
+
+
+def _cmd_gen_generate(args: argparse.Namespace) -> None:
+    """Generate a combination snapshot; print the result as JSON (GEN-011)."""
+    from backend.app.services.gen_service import GenService
+
+    with SessionLocal() as session:
+        service = GenService(session)
+        result = service.generate(
+            lottery_id=args.lottery_id,
+            count=args.count,
+            seed=args.seed,
+            selection_id=args.selection_id,
+        )
+    print(
+        json.dumps(
+            {
+                "snapshot_id": result.snapshot_id,
+                "lottery_id": result.lottery_id,
+                "selection_id": result.selection_id,
+                "version": result.version,
+                "status": result.status,
+                "fingerprint": result.fingerprint,
+                "seed": result.seed,
+                "count": result.count,
+                "combinations": [_gen_combination_dict(c) for c in result.combinations],
+            },
+            indent=2,
+        )
+    )
+
+
+def _cmd_gen_combinations(args: argparse.Namespace) -> None:
+    """Read stored combinations; print as JSON (GEN-011)."""
+    from backend.app.services.gen_service import GenService
+
+    with SessionLocal() as session:
+        service = GenService(session)
+        result = service.get_combinations(args.lottery_id, snapshot_id=args.snapshot_id)
+    print(
+        json.dumps(
+            {
+                "snapshot_id": result.snapshot_id,
+                "lottery_id": result.lottery_id,
+                "combinations": [_gen_combination_dict(c) for c in result.combinations],
+            },
+            indent=2,
+        )
+    )
+
+
+def _cmd_gen_snapshot(args: argparse.Namespace) -> None:
+    """Transition a snapshot lifecycle status; print the result as JSON (GEN-011)."""
+    from backend.app.services.gen_service import GenService
+
+    with SessionLocal() as session:
+        service = GenService(session)
+        result = service.update_snapshot(
+            lottery_id=args.lottery_id,
+            snapshot_id=args.snapshot_id,
+            status=args.status,
+        )
+    print(json.dumps(_gen_snapshot_dict(result), indent=2))
+
+
+def _cmd_gen_snapshots(args: argparse.Namespace) -> None:
+    """List snapshots for a lottery; print as JSON (GEN-011)."""
+    from backend.app.services.gen_service import GenService
+
+    with SessionLocal() as session:
+        service = GenService(session)
+        result = service.get_snapshots(args.lottery_id)
+    print(
+        json.dumps(
+            {
+                "lottery_id": result.lottery_id,
+                "snapshots": [_gen_snapshot_dict(s) for s in result.snapshots],
             },
             indent=2,
         )
