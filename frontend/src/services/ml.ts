@@ -1,4 +1,4 @@
-import type { MLTrainResult, MLMetrics } from "../types/ml";
+import type { MLTrainResult, MLMetrics, MLSnapshot } from "../types/ml";
 import { apiClient } from "./api";
 
 /** Trigger ML training for a lottery. */
@@ -13,13 +13,9 @@ export async function trainModels(
   );
 }
 
-/** Get active ML models for a lottery. */
-export async function getModels(
-  lotteryId: number,
-): Promise<Record<string, unknown>> {
-  return apiClient<Record<string, unknown>>(
-    `/ml/models?lottery_id=${lotteryId}`,
-  );
+/** Get the active ML snapshot for a lottery. */
+export async function getModels(lotteryId: number): Promise<MLSnapshot> {
+  return apiClient<MLSnapshot>(`/ml/models?lottery_id=${lotteryId}`);
 }
 
 /** Get ML metrics for a lottery. */
