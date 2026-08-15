@@ -21,7 +21,7 @@ function lazyPage(title: string) {
 
 const Heatmaps = lazyPage("Heatmaps");
 const Trends = lazyPage("Tendencias");
-const MonteCarlo = lazyPage("Monte Carlo");
+const MonteCarlo = lazy(() => import("./pages/MonteCarlo"));
 const Networks = lazyPage("Redes");
 const AI = lazyPage("IA");
 const Models = lazyPage("Modelos");
