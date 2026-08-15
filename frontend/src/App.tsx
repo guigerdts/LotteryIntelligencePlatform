@@ -25,7 +25,7 @@ const MonteCarlo = lazy(() => import("./pages/MonteCarlo"));
 const Networks = lazyPage("Redes");
 const AI = lazyPage("IA");
 const Models = lazy(() => import("./pages/Models"));
-const Experiments = lazyPage("Experimentos");
+const Experiments = lazy(() => import("./pages/Experiments"));
 const Backtesting = lazyPage("Backtesting");
 
 /** Suspense fallback shown while a lazy page chunk loads. */
