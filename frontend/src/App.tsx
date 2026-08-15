@@ -26,7 +26,7 @@ const Networks = lazyPage("Redes");
 const AI = lazyPage("IA");
 const Models = lazy(() => import("./pages/Models"));
 const Experiments = lazy(() => import("./pages/Experiments"));
-const Backtesting = lazyPage("Backtesting");
+const Backtesting = lazy(() => import("./pages/Backtesting"));
 
 /** Suspense fallback shown while a lazy page chunk loads. */
 function PageFallback() {
