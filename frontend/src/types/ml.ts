@@ -14,9 +14,23 @@ export interface MLTrainResult {
   results: MLModel[];
 }
 
-/** ML metrics entry. */
+/** Active ML snapshot metadata (GET /ml/models). */
+export interface MLSnapshot {
+  id: number;
+  lottery_id: number;
+  model_set: string;
+  version: string;
+  status: string;
+  checksum: string;
+  input_fingerprint: string;
+  cut: number;
+}
+
+/** One persisted ML metric row (GET /ml/metrics). */
 export interface MLMetrics {
   model_id: string;
-  family: string;
-  metrics: Record<string, number>;
+  number: number;
+  metric_name: string;
+  value: number;
+  params_json: string;
 }

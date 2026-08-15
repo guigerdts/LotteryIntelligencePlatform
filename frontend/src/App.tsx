@@ -24,7 +24,7 @@ const Trends = lazyPage("Tendencias");
 const MonteCarlo = lazy(() => import("./pages/MonteCarlo"));
 const Networks = lazyPage("Redes");
 const AI = lazyPage("IA");
-const Models = lazyPage("Modelos");
+const Models = lazy(() => import("./pages/Models"));
 const Experiments = lazyPage("Experimentos");
 const Backtesting = lazyPage("Backtesting");
 
