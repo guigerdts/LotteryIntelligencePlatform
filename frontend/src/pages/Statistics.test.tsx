@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll, afterEach } from "vitest";
-import { render, screen, waitFor, within, fireEvent } from "@testing-library/react";
+import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import { http, HttpResponse, delay } from "msw";
 import { setupServer } from "msw/node";
 import Statistics from "./Statistics";
@@ -80,29 +80,29 @@ afterEach(() => {
 afterAll(() => server.close());
 
 describe("Statistics", () => {
-  it("renders the frequency table with percentages and snapshot summary", async () => {
+  it("renders the frequency chart with snapshot summary", async () => {
     selectLottery();
     render(<Statistics />);
     expect(await screen.findByRole("heading", { name: /statistics/i })).toBeInTheDocument();
-    const table = await screen.findByRole("table");
-    expect(within(table).getByText("5")).toBeInTheDocument();
-    expect(within(table).getByText("14")).toBeInTheDocument();
-    expect(within(table).getByText("28.6%")).toBeInTheDocument();
+    expect(
+      await screen.findByRole("img", { name: /frequency distribution per number/i }),
+    ).toBeInTheDocument();
     expect(screen.getByText("100")).toBeInTheDocument();
     expect(screen.getByText("1–100")).toBeInTheDocument();
   });
 
-  it("switches tabs to gaps and averages", async () => {
+  it("switches tabs to gap and average charts", async () => {
     selectLottery();
     render(<Statistics />);
-    fireEvent.click(await screen.findByRole("tab", { name: /gaps/i }));
-    const gapsTable = await screen.findByRole("table");
-    expect(within(gapsTable).getByText("4.5")).toBeInTheDocument();
-    expect(within(gapsTable).getByText("12")).toBeInTheDocument();
+    await screen.findByRole("img", { name: /frequency distribution per number/i });
+    fireEvent.click(screen.getByRole("tab", { name: /gaps/i }));
+    expect(
+      await screen.findByRole("img", { name: /gap analysis per number/i }),
+    ).toBeInTheDocument();
     fireEvent.click(screen.getByRole("tab", { name: /averages/i }));
-    const averagesTable = await screen.findByRole("table");
-    expect(within(averagesTable).getByText("42.50")).toBeInTheDocument();
-    expect(within(averagesTable).getByText("90")).toBeInTheDocument();
+    expect(
+      await screen.findByRole("img", { name: /average gap per series/i }),
+    ).toBeInTheDocument();
   });
 
   it("shows skeleton placeholders while data is loading", async () => {
@@ -124,11 +124,15 @@ describe("Statistics", () => {
     expect(screen.getByRole("button", { name: /retry/i })).toBeInTheDocument();
     server.use(http.get("*/api/v1/statistics/L1/frequencies", () => env(frequencyList)));
     fireEvent.click(screen.getByRole("button", { name: /retry/i }));
-    await waitFor(() => expect(screen.getByRole("table")).toHaveTextContent("5"));
+    await waitFor(() =>
+      expect(
+        screen.getByRole("img", { name: /frequency distribution per number/i }),
+      ).toBeInTheDocument(),
+    );
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
-  it("shows an empty state when no frequencies exist", async () => {
+  it("shows an empty state instead of crashing when frequencies are empty", async () => {
     selectLottery();
     server.use(
       http.get("*/api/v1/statistics/L1/frequencies", () => env(header({ frequencies: [] }))),
@@ -137,7 +141,7 @@ describe("Statistics", () => {
     expect(
       await screen.findByText(/no statistics available for this lottery/i),
     ).toBeInTheDocument();
-    expect(screen.queryByRole("table")).not.toBeInTheDocument();
+    expect(screen.queryByRole("img")).not.toBeInTheDocument();
   });
 
   it("prompts to select a lottery and does not call the API", async () => {
@@ -146,7 +150,7 @@ describe("Statistics", () => {
       await screen.findByText(/select a lottery to see its statistics/i),
     ).toBeInTheDocument();
     expect(fetchCalls).toBe(0);
-    expect(screen.queryByRole("table")).not.toBeInTheDocument();
+    expect(screen.queryByRole("img")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: /generate snapshot/i })).toBeDisabled();
   });
 

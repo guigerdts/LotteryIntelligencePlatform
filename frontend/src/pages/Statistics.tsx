@@ -1,12 +1,14 @@
-import { useEffect, useMemo, useState } from "react";
-import DataTable, { type DataColumn } from "../components/DataTable";
+import { useEffect, useState, type ReactNode } from "react";
+import AverageChart from "../charts/AverageChart";
+import FrequencyChart from "../charts/FrequencyChart";
+import GapChart from "../charts/GapChart";
 import EmptyState from "../components/EmptyState";
 import ErrorState from "../components/ErrorState";
 import Skeleton from "../components/Skeleton";
 import { useApi } from "../hooks/useApi";
 import { generateStatistics, getAverages, getFrequencies, getGaps } from "../services/statistics";
 import { useLotteryStore } from "../store/useLotteryStore";
-import type { AverageList, AverageRow, FrequencyList, FrequencyRow, GapList, GapRow } from "../types/statistics";
+import type { AverageList, FrequencyList, GapList } from "../types/statistics";
 
 type StatTab = "frequencies" | "gaps" | "averages";
 type StatList = FrequencyList | GapList | AverageList;
@@ -19,28 +21,7 @@ const TABS: { id: StatTab; label: string }[] = [
   { id: "averages", label: "Averages" },
 ];
 
-const gapColumns: DataColumn<GapRow>[] = [
-  { key: "number", label: "Number", sortable: true },
-  { key: "count", label: "Count", sortable: true },
-  { key: "min_gap", label: "Min gap", render: (r) => r.min_gap ?? "—" },
-  { key: "max_gap", label: "Max gap", render: (r) => r.max_gap ?? "—" },
-  { key: "avg_gap", label: "Avg gap", render: (r) => r.avg_gap?.toFixed(1) ?? "—" },
-];
-
-const averageColumns: DataColumn<AverageRow & { series: string }>[] = [
-  { key: "series", label: "Series", sortable: true },
-  { key: "mean", label: "Mean", render: (r) => r.mean?.toFixed(2) ?? "—" },
-  { key: "non_null_count", label: "Non-null count", sortable: true },
-];
-
-const frequencyColumns: DataColumn<FrequencyRow & { pct: string }>[] = [
-  { key: "number", label: "Number", sortable: true },
-  { key: "count", label: "Count", sortable: true },
-  { key: "pct", label: "%", render: (r) => r.pct },
-];
-
-function SnapshotHeader({ list }: { list: StatList | null }) {
-  if (!list) return null;
+function SnapshotHeader({ list }: { list: StatList }) {
   return (
     <p className="flex flex-wrap gap-x-6 gap-y-1 text-sm text-gray-500">
       <span>Draws <span className="font-medium text-gray-900">{list.draw_count}</span></span>
@@ -50,33 +31,30 @@ function SnapshotHeader({ list }: { list: StatList | null }) {
   );
 }
 
-interface TablePanelProps<T> {
+interface ChartPanelProps {
   list: StatList | null;
   loading: boolean;
   error: string | null;
   onRetry: () => void;
-  columns: DataColumn<T>[];
-  rows: T[];
-  rowKey: (row: T) => string;
-  caption: string;
+  empty: boolean;
+  children: ReactNode;
 }
 
-function TablePanel<T>({ list, loading, error, onRetry, columns, rows, rowKey, caption }: TablePanelProps<T>) {
+function ChartPanel({ list, loading, error, onRetry, empty, children }: ChartPanelProps) {
   if (error) return <ErrorState message={error} onRetry={onRetry} />;
   if (loading) return <Skeleton variant="card" />;
-  if (rows.length === 0) return <EmptyState message={NO_DATA_MESSAGE} />;
+  if (!list || empty) return <EmptyState message={NO_DATA_MESSAGE} />;
   return (
     <>
       <SnapshotHeader list={list} />
-      <DataTable columns={columns} rows={rows} rowKey={rowKey} caption={caption} loading={loading} loadingRows={5} />
+      {children}
     </>
   );
 }
 
 /**
- * Statistics page (Estadísticas). Tabbed frequency / gap / average tables for
- * the globally selected lottery with a generate-snapshot action. Chart views
- * are covered by Tier 2/3; this slice renders tabular representations.
+ * Statistics page (Estadísticas). Tabbed frequency / gap / average chart views
+ * for the globally selected lottery with a generate-snapshot action.
  */
 export default function Statistics() {
   const selectedLotteryCode = useLotteryStore((s) => s.selectedLotteryCode);
@@ -101,53 +79,49 @@ export default function Statistics() {
     void fetchAverages(selectedLotteryCode);
   };
 
-  const freqRows = useMemo(() => {
-    const rows = freq?.frequencies ?? [];
-    const total = rows.reduce((s, r) => s + r.count, 0);
-    return rows.map((r) => ({ ...r, pct: total > 0 ? `${((r.count / total) * 100).toFixed(1)}%` : "0%" }));
-  }, [freq]);
+  const averageSeries = Object.entries(averages?.averages ?? {}).map(([seriesKey, row]) => ({
+    series_key: seriesKey,
+    ...row,
+  }));
 
   const renderContent = () => {
     if (!selectedLotteryCode) return <EmptyState message={NO_LOTTERY_MESSAGE} />;
     if (activeTab === "frequencies") {
       return (
-        <TablePanel
+        <ChartPanel
           list={freq}
           loading={freqLoading}
           error={freqError}
+          empty={!freq?.frequencies.length}
           onRetry={() => void fetchFrequencies(selectedLotteryCode)}
-          columns={frequencyColumns}
-          rows={freqRows}
-          rowKey={(row) => String(row.number)}
-          caption="Frequency distribution"
-        />
+        >
+          {freq && <FrequencyChart rows={freq.frequencies} />}
+        </ChartPanel>
       );
     }
     if (activeTab === "gaps") {
       return (
-        <TablePanel
+        <ChartPanel
           list={gaps}
           loading={gapsLoading}
           error={gapsError}
+          empty={!gaps?.gaps.length}
           onRetry={() => void fetchGaps(selectedLotteryCode)}
-          columns={gapColumns}
-          rows={gaps?.gaps ?? []}
-          rowKey={(row) => String(row.number)}
-          caption="Gap analysis"
-        />
+        >
+          {gaps && <GapChart rows={gaps.gaps} />}
+        </ChartPanel>
       );
     }
     return (
-      <TablePanel
+      <ChartPanel
         list={averages}
         loading={avgLoading}
         error={avgError}
+        empty={averageSeries.length === 0}
         onRetry={() => void fetchAverages(selectedLotteryCode)}
-        columns={averageColumns}
-        rows={Object.entries(averages?.averages ?? {}).map(([series, row]) => ({ series, ...row }))}
-        rowKey={(row) => row.series}
-        caption="Average series"
-      />
+      >
+        {averages && <AverageChart series={averageSeries} />}
+      </ChartPanel>
     );
   };
 
