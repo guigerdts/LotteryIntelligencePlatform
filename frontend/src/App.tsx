@@ -10,20 +10,11 @@ const History = lazy(() => import("./pages/History"));
 const Statistics = lazy(() => import("./pages/Statistics"));
 const Generator = lazy(() => import("./pages/Generator"));
 
-/** Lazy route element that renders the shared ComingSoon placeholder. */
-function lazyPage(title: string) {
-  return lazy(() =>
-    import("./components/ComingSoon").then((module) => ({
-      default: () => <module.default title={title} />,
-    })),
-  );
-}
-
 const Heatmaps = lazy(() => import("./pages/Heatmaps"));
 const Trends = lazy(() => import("./pages/Trends"));
 const MonteCarlo = lazy(() => import("./pages/MonteCarlo"));
 const Networks = lazy(() => import("./pages/Networks"));
-const AI = lazyPage("IA");
+const AI = lazy(() => import("./pages/IA"));
 const Models = lazy(() => import("./pages/Models"));
 const Experiments = lazy(() => import("./pages/Experiments"));
 const Backtesting = lazy(() => import("./pages/Backtesting"));
