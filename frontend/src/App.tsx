@@ -19,7 +19,7 @@ function lazyPage(title: string) {
   );
 }
 
-const Heatmaps = lazyPage("Heatmaps");
+const Heatmaps = lazy(() => import("./pages/Heatmaps"));
 const Trends = lazyPage("Tendencias");
 const MonteCarlo = lazy(() => import("./pages/MonteCarlo"));
 const Networks = lazyPage("Redes");
