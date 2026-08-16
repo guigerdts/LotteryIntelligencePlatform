@@ -91,10 +91,12 @@ describe("Networks", () => {
     render(<Networks />);
     expect(await screen.findByRole("heading", { name: /networks/i })).toBeInTheDocument();
     expect(await screen.findByTestId("network-graph")).toBeInTheDocument();
-    await waitFor(() => expect(valuesRequests).toContain(2));
-    expect(forceGraphProps.links.length).toBe(3);
-    expect(forceGraphProps.nodes.length).toBe(3);
-    expect((forceGraphProps.nodes[0] as { color?: string }).color).toBeTruthy();
+    await waitFor(() => {
+      expect(valuesRequests).toContain(2);
+      expect(forceGraphProps.links.length).toBe(3);
+      expect(forceGraphProps.nodes.length).toBe(3);
+      expect((forceGraphProps.nodes[0] as { color?: string }).color).toBeTruthy();
+    });
     expect(screen.getByText("150")).toBeInTheDocument();
     expect(screen.getAllByText("3", { selector: "span.font-medium" })).toHaveLength(2);
   });
@@ -106,8 +108,10 @@ describe("Networks", () => {
     fireEvent.click(screen.getByRole("button", { name: /#1/i }));
     await waitFor(() => expect(valuesRequests[valuesRequests.length - 1]).toBe(1));
     expect(screen.getByRole("button", { name: /#1/i })).toHaveAttribute("aria-pressed", "true");
-    await waitFor(() => expect(forceGraphProps.links.length).toBe(2));
-    expect(forceGraphProps.nodes.length).toBe(3);
+    await waitFor(() => {
+      expect(forceGraphProps.links.length).toBe(2);
+      expect(forceGraphProps.nodes.length).toBe(3);
+    });
   });
 
   it("shows skeleton placeholders while data is loading", async () => {

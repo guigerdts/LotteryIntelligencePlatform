@@ -102,7 +102,7 @@ describe("App router", () => {
   });
 
   it("renders a ComingSoon stub for a placeholder route", async () => {
-    renderAt("/tendencias");
+    renderAt("/ia");
 
     expect(
       await screen.findByText(/disponible en una futura fase/i, {}, ASYNC_TIMEOUT),

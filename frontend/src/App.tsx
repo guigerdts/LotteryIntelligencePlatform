@@ -20,7 +20,7 @@ function lazyPage(title: string) {
 }
 
 const Heatmaps = lazy(() => import("./pages/Heatmaps"));
-const Trends = lazyPage("Tendencias");
+const Trends = lazy(() => import("./pages/Trends"));
 const MonteCarlo = lazy(() => import("./pages/MonteCarlo"));
 const Networks = lazy(() => import("./pages/Networks"));
 const AI = lazyPage("IA");
