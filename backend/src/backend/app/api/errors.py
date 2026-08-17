@@ -72,6 +72,8 @@ _CODE_TO_STATUS: dict[str, int] = {
     "GEN_SNAPSHOT_NOT_FOUND": 404,
     "GEN_DUPLICATE_SNAPSHOT": 409,
     "GEN_SPACE_EXHAUSTED": 422,
+    # F15 AI assistant channel (A-12): a true generation failure is 500.
+    "assistant_error": 500,
 }
 
 _UNKNOWN_STATUS = 500

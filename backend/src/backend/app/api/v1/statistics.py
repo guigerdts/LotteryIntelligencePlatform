@@ -29,6 +29,8 @@ from backend.app.schemas.statistics import (
     GapRow,
     GenerateRequest,
     GenerateSnapshot,
+    ScalarList,
+    ScalarRow,
 )
 from backend.app.services.errors import NotFoundError
 from backend.app.services.statistics_service import StatisticsService
@@ -173,6 +175,33 @@ def read_averages(lottery_code: str, db: DbSession) -> SuccessEnvelope[AverageLi
                 )
                 for r in rows
             },
+        )
+    )
+
+
+@router.get(
+    "/{lottery_code}/scalars",
+    response_model=SuccessEnvelope[ScalarList],
+    summary="Read dataset-level scalars from the active snapshot (no precompute, A-11)",
+)
+def read_scalars(lottery_code: str, db: DbSession) -> SuccessEnvelope[ScalarList]:
+    """Return the active snapshot's scalars (e.g. entropy) as Decimal strings.
+
+    Missing/unknown -> ``SNAPSHOT_NOT_FOUND``/``RESOURCE_NOT_FOUND`` (404);
+    read-only, never precomputes (STE-10).
+    """
+    snapshot, rows = StatisticsService(db).read_scalars(lottery_code=lottery_code)
+    return SuccessEnvelope(
+        data=ScalarList(
+            snapshot_id=snapshot.id,
+            lottery_code=lottery_code,
+            version=snapshot.version,
+            generator_version=snapshot.generator_version,
+            draws_from=snapshot.draws_from,
+            draws_to=snapshot.draws_to,
+            draw_count=snapshot.draw_count,
+            checksum=snapshot.checksum,
+            scalars=[ScalarRow(name=r.name, value=f"{r.value.normalize():f}") for r in rows],
         )
     )
 

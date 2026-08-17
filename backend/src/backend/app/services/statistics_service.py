@@ -28,6 +28,7 @@ from backend.app.config.settings import get_settings
 from backend.app.models.stat_average import StatAverage
 from backend.app.models.stat_frequency import StatFrequency
 from backend.app.models.stat_gap import StatGap
+from backend.app.models.stat_scalar import StatScalar
 from backend.app.models.stat_snapshot import StatSnapshot
 from backend.app.repositories.lottery_repository import LotteryRepository
 from backend.app.repositories.stat_payload_repository import StatPayloadRepository
@@ -166,6 +167,25 @@ class StatisticsService:
                 select(StatAverage)
                 .where(StatAverage.snapshot_id == snapshot.id)
                 .order_by(StatAverage.series_key)
+            )
+            .scalars()
+            .all()
+        )
+        return snapshot, list(rows)
+
+    def read_scalars(
+        self, *, lottery_code: str | None = None, lottery_id: int | None = None
+    ) -> tuple[StatSnapshot, list]:
+        """Return the active dataset-level scalars ordered by name (A-11/D7).
+
+        Missing snapshot -> ``SnapshotNotFoundError`` (404); never precomputes.
+        """
+        snapshot = self.get_active(lottery_code=lottery_code, lottery_id=lottery_id)
+        rows = (
+            self._session.execute(
+                select(StatScalar)
+                .where(StatScalar.snapshot_id == snapshot.id)
+                .order_by(StatScalar.name)
             )
             .scalars()
             .all()

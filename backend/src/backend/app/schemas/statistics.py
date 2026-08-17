@@ -118,3 +118,24 @@ class AverageList(BaseModel):
     draw_count: int
     checksum: str
     averages: dict[str, AverageRow]  # series_key -> {mean, non_null_count}
+
+
+class ScalarRow(BaseModel):
+    """One dataset-level scalar; ``value`` is a Decimal string (A-11)."""
+
+    name: str
+    value: str
+
+
+class ScalarList(BaseModel):
+    """Scalars read: snapshot header + ordered scalar rows (A-11/D7)."""
+
+    snapshot_id: int
+    lottery_code: str
+    version: str
+    generator_version: str
+    draws_from: int
+    draws_to: int
+    draw_count: int
+    checksum: str
+    scalars: list[ScalarRow]
