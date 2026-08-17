@@ -46,6 +46,18 @@ const probabilityList = {
 let modelsCalls = 0;
 let metricsCalls = 0;
 let probCalls = 0;
+let explainCalls = 0;
+let interpretCalls = 0;
+let reportCalls = 0;
+let summarizeCalls = 0;
+let assistCalls = 0;
+let lastAssistBody: { question: string; lottery_code: string } | null = null;
+
+const assistantResponse = {
+  text: "El número 5 muestra una frecuencia alta en los últimos sorteos.",
+  engine_version: "1.0.0",
+  fingerprint: "fp-abc123",
+};
 
 const server = setupServer(
   http.get("*/api/v1/health", () => env({ status: "ok" })),
@@ -62,10 +74,46 @@ const server = setupServer(
     probCalls += 1;
     return env(probabilityList);
   }),
+  http.get("*/api/v1/assistant/explain", () => {
+    explainCalls += 1;
+    return env(assistantResponse);
+  }),
+  http.get("*/api/v1/assistant/interpret", () => {
+    interpretCalls += 1;
+    return env(assistantResponse);
+  }),
+  http.get("*/api/v1/assistant/report", () => {
+    reportCalls += 1;
+    return env({ ...assistantResponse, text: "Informe de la lotería L1." });
+  }),
+  http.post("*/api/v1/assistant/summarize", () => {
+    summarizeCalls += 1;
+    return env({ ...assistantResponse, text: "Resumen del experimento." });
+  }),
+  http.post("*/api/v1/assistant/assist", async ({ request }) => {
+    assistCalls += 1;
+    lastAssistBody = (await request.json()) as {
+      question: string;
+      lottery_code: string;
+    };
+    return env({ ...assistantResponse, text: "Respuesta generada para tu pregunta." });
+  }),
 );
 
 const selectLottery = () =>
   useLotteryStore.setState({ selectedLotteryId: 1, selectedLotteryCode: "L1" });
+
+const ask = (question: string) => {
+  fireEvent.change(screen.getByLabelText(/ask a question about this lottery/i), {
+    target: { value: question },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Ask" }));
+};
+
+const setExperiment = (id: string) =>
+  fireEvent.change(screen.getByLabelText(/experiment id/i), {
+    target: { value: id },
+  });
 
 beforeAll(() => server.listen());
 afterEach(() => {
@@ -73,6 +121,12 @@ afterEach(() => {
   modelsCalls = 0;
   metricsCalls = 0;
   probCalls = 0;
+  explainCalls = 0;
+  interpretCalls = 0;
+  reportCalls = 0;
+  summarizeCalls = 0;
+  assistCalls = 0;
+  lastAssistBody = null;
   localStorage.clear();
   useLotteryStore.setState({
     lotteries: [],
@@ -133,5 +187,99 @@ describe("IA", () => {
     expect(metricsCalls).toBe(0);
     expect(probCalls).toBe(0);
     expect(screen.queryByRole("table")).not.toBeInTheDocument();
+  });
+
+  it("sends the question to /assistant/assist and renders the Spanish text", async () => {
+    selectLottery();
+    render(<IA />);
+    await screen.findByText("ok");
+    ask("¿Por qué cambió la frecuencia?");
+    await waitFor(() => expect(assistCalls).toBe(1));
+    expect(lastAssistBody).toEqual({
+      question: "¿Por qué cambió la frecuencia?",
+      lottery_code: "L1",
+    });
+    expect(
+      await screen.findByText("Respuesta generada para tu pregunta."),
+    ).toBeInTheDocument();
+  });
+
+  it("shows a skeleton while an assistant request is in flight", async () => {
+    selectLottery();
+    server.use(
+      http.post("*/api/v1/assistant/assist", async () => {
+        assistCalls += 1;
+        await delay(50);
+        return env({ ...assistantResponse, text: "Respuesta lenta." });
+      }),
+    );
+    const { container } = render(<IA />);
+    await screen.findByText("ok");
+    ask("¿Qué significa?");
+    expect(container.querySelector(".animate-pulse")).not.toBeNull();
+    await waitFor(() => expect(container.querySelector(".animate-pulse")).toBeNull());
+    expect(await screen.findByText("Respuesta lenta.")).toBeInTheDocument();
+  });
+
+  it("shows an error with retry for the assistant panel and recovers", async () => {
+    selectLottery();
+    server.use(http.post("*/api/v1/assistant/assist", () => err("Assistant error")));
+    render(<IA />);
+    await screen.findByText("ok");
+    ask("¿Qué significa?");
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent(/assistant error/i);
+    server.use(
+      http.post("*/api/v1/assistant/assist", async () => env({ ...assistantResponse, text: "Recuperado." })),
+    );
+    fireEvent.click(screen.getByRole("button", { name: /retry/i }));
+    await waitFor(() => expect(screen.getByText("Recuperado.")).toBeInTheDocument());
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("renders empty-data Spanish text as content, not as an error", async () => {
+    selectLottery();
+    server.use(
+      http.post("*/api/v1/assistant/assist", async () =>
+        env({ ...assistantResponse, text: "No hay datos suficientes." }),
+      ),
+    );
+    render(<IA />);
+    await screen.findByText("ok");
+    ask("Resume");
+    expect(await screen.findByText("No hay datos suficientes.")).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("only calls the five assistant endpoints and existing status endpoints (NFR-2)", async () => {
+    selectLottery();
+    const allowed = new Set([
+      "/api/v1/health", "/api/v1/version", "/api/v1/ml/models", "/api/v1/ml/metrics",
+      "/api/v1/probability/L1/probabilities",
+      "/api/v1/assistant/explain", "/api/v1/assistant/interpret", "/api/v1/assistant/report",
+      "/api/v1/assistant/summarize", "/api/v1/assistant/assist",
+    ]);
+    const unexpected: string[] = [];
+    const onRequest = ({ request }: { request: Request }) => {
+      const path = new URL(request.url).pathname;
+      if (!allowed.has(path)) unexpected.push(path);
+    };
+    server.events.on("request:start", onRequest);
+    try {
+      render(<IA />);
+      await screen.findByText("ok");
+      fireEvent.click(screen.getByRole("button", { name: "Explain" }));
+      fireEvent.click(screen.getByRole("button", { name: "Interpret" }));
+      fireEvent.click(screen.getByRole("button", { name: "Report" }));
+      setExperiment("2");
+      fireEvent.click(screen.getByRole("button", { name: "Summarize" }));
+      ask("Hola");
+      await waitFor(() => {
+        expect([explainCalls, interpretCalls, reportCalls, summarizeCalls, assistCalls]).toEqual([1, 1, 1, 1, 1]);
+      });
+      expect(unexpected).toEqual([]);
+    } finally {
+      server.events.removeListener("request:start", onRequest);
+    }
   });
 });
