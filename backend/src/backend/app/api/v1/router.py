@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
+from backend.app.api.v1.assistant import router as assistant_router
 from backend.app.api.v1.bt import router as bt_router
 from backend.app.api.v1.draws import router as draws_router
 from backend.app.api.v1.exp import router as exp_router
@@ -36,6 +37,7 @@ api_v1_router.include_router(bt_router)
 api_v1_router.include_router(exp_router)
 api_v1_router.include_router(meta_router)
 api_v1_router.include_router(gen_router)
+api_v1_router.include_router(assistant_router)
 
 
 @api_v1_router.get("/health", response_model=SuccessEnvelope[dict[str, str]], tags=["system"])
