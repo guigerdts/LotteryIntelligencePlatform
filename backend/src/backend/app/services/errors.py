@@ -197,6 +197,18 @@ class MetaServiceError(ServiceError):
         super().__init__(message)
 
 
+class AssistantError(ServiceError):
+    """An AI assistant generation failed for a non-data reason (F15, A-12).
+
+    True generation failures (unexpected engine/provider faults) surface this as
+    ``assistant_error`` (500). Missing/empty data is NOT an error — it maps to
+    the empty-data Spanish text in a success envelope. Registered in the API by
+    S2.
+    """
+
+    code = "assistant_error"
+
+
 class GenServiceError(ServiceError):
     """Base class for generator service errors (GEN-013)."""
 
