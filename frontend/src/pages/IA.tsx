@@ -1,4 +1,5 @@
 import { useEffect, useMemo, type ReactNode } from "react";
+import AssistantPanel from "../components/AssistantPanel";
 import DataTable, { type DataColumn } from "../components/DataTable";
 import EmptyState from "../components/EmptyState";
 import ErrorState from "../components/ErrorState";
@@ -223,6 +224,7 @@ export default function IA() {
       <Section id="ia-probability-title" title="Recent probabilities">
         {renderProbabilities()}
       </Section>
+      <AssistantPanel lotteryCode={selectedLotteryCode} />
     </div>
   );
 }
