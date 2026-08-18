@@ -14,9 +14,10 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Query, Response, status
+from fastapi import APIRouter, Depends, Query, Request, Response, status
 from sqlalchemy.orm import Session
 
+from backend.app.api.v1.etag import etag_for, should_not_modify
 from backend.app.repositories.base import get_db
 from backend.app.repositories.lottery_repository import LotteryRepository
 from backend.app.schemas.envelope import SuccessEnvelope
@@ -90,15 +91,22 @@ def generate_snapshot(
 def read_frequencies(
     lottery_code: str,
     db: DbSession,
+    request: Request,
+    response: Response,
     last: Annotated[int, Query(ge=0)] = 0,
 ) -> SuccessEnvelope[FrequencyList]:
     """Return the frequency distribution from the active snapshot, bounded by ``last``.
 
     ``last=0`` returns every number; ``last>0`` caps the list. Missing snapshot →
     ``SNAPSHOT_NOT_FOUND`` (404); unknown lottery → ``RESOURCE_NOT_FOUND`` (404).
-    No generation is ever triggered (STE-10).
+    Matching ``If-None-Match`` → ``304`` empty body (REQ-13). No generation is ever
+    triggered (STE-10).
     """
     snapshot, rows = StatisticsService(db).read_frequencies(lottery_code=lottery_code, last=last)
+    etag = etag_for(snapshot)
+    if should_not_modify(request.headers, etag):
+        return Response(status_code=status.HTTP_304_NOT_MODIFIED)
+    response.headers["ETag"] = etag
     return SuccessEnvelope(
         data=FrequencyList(
             snapshot_id=snapshot.id,
@@ -122,10 +130,20 @@ def read_frequencies(
 def read_gaps(
     lottery_code: str,
     db: DbSession,
+    request: Request,
+    response: Response,
     last: Annotated[int, Query(ge=0)] = 0,
 ) -> SuccessEnvelope[GapList]:
-    """Return per-number gap summaries from the active snapshot, bounded by ``last``."""
+    """Return per-number gap summaries from the active snapshot, bounded by ``last``.
+
+    Matching ``If-None-Match`` → ``304`` empty body (REQ-13); envelope untouched on
+    200 (GF-1).
+    """
     snapshot, rows = StatisticsService(db).read_gaps(lottery_code=lottery_code, last=last)
+    etag = etag_for(snapshot)
+    if should_not_modify(request.headers, etag):
+        return Response(status_code=status.HTTP_304_NOT_MODIFIED)
+    response.headers["ETag"] = etag
     return SuccessEnvelope(
         data=GapList(
             snapshot_id=snapshot.id,
@@ -155,9 +173,18 @@ def read_gaps(
     response_model=SuccessEnvelope[AverageList],
     summary="Read NULL-aware series averages from the active snapshot (no precompute)",
 )
-def read_averages(lottery_code: str, db: DbSession) -> SuccessEnvelope[AverageList]:
-    """Return the jackpot/winners NULL-aware means (D4), from the active snapshot."""
+def read_averages(
+    lottery_code: str, db: DbSession, request: Request, response: Response
+) -> SuccessEnvelope[AverageList]:
+    """Return the jackpot/winners NULL-aware means (D4), from the active snapshot.
+
+    Matching ``If-None-Match`` → ``304`` empty body (REQ-13).
+    """
     snapshot, rows = StatisticsService(db).read_averages(lottery_code=lottery_code)
+    etag = etag_for(snapshot)
+    if should_not_modify(request.headers, etag):
+        return Response(status_code=status.HTTP_304_NOT_MODIFIED)
+    response.headers["ETag"] = etag
     return SuccessEnvelope(
         data=AverageList(
             snapshot_id=snapshot.id,
@@ -184,13 +211,20 @@ def read_averages(lottery_code: str, db: DbSession) -> SuccessEnvelope[AverageLi
     response_model=SuccessEnvelope[ScalarList],
     summary="Read dataset-level scalars from the active snapshot (no precompute, A-11)",
 )
-def read_scalars(lottery_code: str, db: DbSession) -> SuccessEnvelope[ScalarList]:
+def read_scalars(
+    lottery_code: str, db: DbSession, request: Request, response: Response
+) -> SuccessEnvelope[ScalarList]:
     """Return the active snapshot's scalars (e.g. entropy) as Decimal strings.
 
     Missing/unknown -> ``SNAPSHOT_NOT_FOUND``/``RESOURCE_NOT_FOUND`` (404);
-    read-only, never precomputes (STE-10).
+    read-only, never precomputes (STE-10). Matching ``If-None-Match`` → ``304``
+    empty body (REQ-13).
     """
     snapshot, rows = StatisticsService(db).read_scalars(lottery_code=lottery_code)
+    etag = etag_for(snapshot)
+    if should_not_modify(request.headers, etag):
+        return Response(status_code=status.HTTP_304_NOT_MODIFIED)
+    response.headers["ETag"] = etag
     return SuccessEnvelope(
         data=ScalarList(
             snapshot_id=snapshot.id,

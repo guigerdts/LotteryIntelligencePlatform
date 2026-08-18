@@ -9,10 +9,11 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Request, Response, status
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.orm import Session
 
+from backend.app.api.v1.etag import etag_for, should_not_modify
 from backend.app.repositories.base import get_db
 from backend.app.schemas.envelope import SuccessEnvelope
 from backend.app.services.bt_service import BtService
@@ -130,9 +131,19 @@ def get_history(lottery_id: int, db: DbSession) -> SuccessEnvelope[list[BtHistor
 def get_results(
     lottery_id: int,
     db: DbSession,
+    request: Request,
+    response: Response,
     snapshot_id: int | None = Query(default=None, description="Snapshot ID (omit for active)"),
 ) -> SuccessEnvelope[BtResultResponse]:
+    """Get detailed backtest results (read-only).
+
+    Matching ``If-None-Match`` → ``304`` empty body (REQ-13).
+    """
     raw = BtService(db).results(lottery_id, snapshot_id=snapshot_id)
+    etag = etag_for(raw)
+    if should_not_modify(request.headers, etag):
+        return Response(status_code=status.HTTP_304_NOT_MODIFIED)
+    response.headers["ETag"] = etag
     agg = BtMetricsResponse(**raw["aggregate_metrics"])
     windows = [
         BtWindowResponse(

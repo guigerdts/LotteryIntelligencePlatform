@@ -10,9 +10,10 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Query, Response, status
+from fastapi import APIRouter, Depends, Query, Request, Response, status
 from sqlalchemy.orm import Session
 
+from backend.app.api.v1.etag import etag_for, should_not_modify
 from backend.app.repositories.base import get_db
 from backend.app.repositories.lottery_repository import LotteryRepository
 from backend.app.schemas.envelope import SuccessEnvelope
@@ -118,8 +119,13 @@ def read_snapshot_values(
     lottery_code: str,
     snapshot_id: int,
     db: DbSession,
+    request: Request,
+    response: Response,
 ) -> SuccessEnvelope[GraphValuesResponse]:
-    """Read all values for a specific snapshot (REQ-08, no precompute)."""
+    """Read all values for a specific snapshot (REQ-08, no precompute).
+
+    Matching ``If-None-Match`` → ``304`` empty body (REQ-13).
+    """
     lottery = _resolve_lottery(db, lottery_code)
 
     from sqlalchemy import select
@@ -137,7 +143,12 @@ def read_snapshot_values(
         )
 
     from backend.app.graph.snapshot_store import load_snapshot_values
+
     db_values = load_snapshot_values(db, snapshot_id)
+    etag = etag_for(snapshot)
+    if should_not_modify(request.headers, etag):
+        return Response(status_code=status.HTTP_304_NOT_MODIFIED)
+    response.headers["ETag"] = etag
     rows = [
         GraphValuesResponse.Row(
             metric_type=v.metric_type,

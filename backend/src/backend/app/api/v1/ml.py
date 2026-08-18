@@ -9,9 +9,10 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request, Response, status
 from sqlalchemy.orm import Session
 
+from backend.app.api.v1.etag import etag_for, should_not_modify
 from backend.app.repositories.base import get_db
 from backend.app.repositories.lottery_repository import LotteryRepository
 from backend.app.schemas.envelope import SuccessEnvelope
@@ -97,15 +98,26 @@ def get_models(
 def get_metrics(
     lottery_id: int,
     db: DbSession,
+    request: Request,
+    response: Response,
     model_id: str | None = None,
 ) -> SuccessEnvelope[list[dict]]:
-    """Return persisted ML metrics for the active snapshot."""
+    """Return persisted ML metrics for the active snapshot.
+
+    Matching ``If-None-Match`` → ``304`` empty body (REQ-13).
+    """
     _resolve_lottery(db, lottery_id)
 
     draw_reader = _DrawAdapter(db)
     feature_provider = _FeatureAdapter(db)
 
     service = MlService(db, draw_reader, feature_provider)
+    snapshot = service.get_active_snapshot(lottery_id)
+    if snapshot is not None:
+        etag = etag_for(snapshot)
+        if should_not_modify(request.headers, etag):
+            return Response(status_code=status.HTTP_304_NOT_MODIFIED)
+        response.headers["ETag"] = etag
     metrics = service.get_metrics(lottery_id, model_id=model_id)
 
     return SuccessEnvelope(data=metrics)

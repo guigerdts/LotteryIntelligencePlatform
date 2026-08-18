@@ -13,9 +13,10 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Query, Response, status
+from fastapi import APIRouter, Depends, Query, Request, Response, status
 from sqlalchemy.orm import Session
 
+from backend.app.api.v1.etag import etag_for, should_not_modify
 from backend.app.repositories.base import get_db
 from backend.app.repositories.lottery_repository import LotteryRepository
 from backend.app.schemas.envelope import SuccessEnvelope
@@ -80,6 +81,8 @@ def generate_snapshot(
 def read_probabilities(
     lottery_code: str,
     db: DbSession,
+    request: Request,
+    response: Response,
     model: Annotated[str | None, Query(description="model_id filter")] = None,
     subject: Annotated[str | None, Query(description="subject filter")] = None,
     last: Annotated[int, Query(ge=0)] = 0,
@@ -89,11 +92,16 @@ def read_probabilities(
     ``model`` filters to one ``model_id``; ``subject`` filters to one subject;
     ``last=0`` returns everything and ``last>0`` caps the list. Missing snapshot ->
     ``SNAPSHOT_NOT_FOUND`` (404); unknown lottery -> ``RESOURCE_NOT_FOUND`` (404).
-    No generation is ever triggered (PES-08).
+    Matching ``If-None-Match`` → ``304`` empty body (REQ-13). No generation is
+    ever triggered (PES-08).
     """
     snapshot, rows = ProbabilityService(db).read_values(
         lottery_code=lottery_code, model=model, subject=subject, last=last
     )
+    etag = etag_for(snapshot)
+    if should_not_modify(request.headers, etag):
+        return Response(status_code=status.HTTP_304_NOT_MODIFIED)
+    response.headers["ETag"] = etag
     return SuccessEnvelope(
         data=ProbabilityList(
             snapshot_id=snapshot.id,
