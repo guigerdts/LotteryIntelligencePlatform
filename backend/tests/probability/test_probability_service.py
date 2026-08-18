@@ -12,12 +12,15 @@ import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
+from backend.app.models.lottery import Lottery
 from backend.app.models.prob_snapshot import ProbSnapshot
+from backend.app.models.stat_frequency import StatFrequency
+from backend.app.models.stat_snapshot import StatSnapshot
 from backend.app.probability.providers import DrawRow, LotteryRules
 from backend.app.probability.registry import build_prob_registry
 from backend.app.probability.snapshot_store import SnapshotStore
 from backend.app.repositories.base import Base
-from backend.app.services.probability_service import ProbabilityService
+from backend.app.services.probability_service import ProbabilityService, _StatsReaderAdapter
 
 
 # --- Mock providers ---
@@ -128,6 +131,49 @@ def service(session, sample_draws):
     )
 
 
+# --- Real-adapter seeding helpers (PM-04 regression, S1a) ---
+
+
+def _seed_real_lottery(session, code: str = "PBA") -> Lottery:
+    """Seed one real lottery row; returns it."""
+    lottery = Lottery(
+        code=code,
+        name="Primitiva BA",
+        country="AR",
+        min_number=1,
+        max_number=49,
+        numbers_to_select=6,
+    )
+    session.add(lottery)
+    session.commit()
+    return lottery
+
+
+def _seed_active_stat_snapshot(
+    session, lottery_id: int, frequencies: dict[int, int], draw_count: int = 60
+) -> int:
+    """Seed an active stats snapshot with ``stat_frequency`` rows; returns its id."""
+    snapshot = StatSnapshot(
+        lottery_id=lottery_id,
+        metric_set="core",
+        version="1.0.0",
+        generator_version="1.0.0",
+        engine_version="1.0.0",
+        checksum="test-checksum",
+        status="active",
+        is_locked=True,
+        draw_count=draw_count,
+        draws_from=1,
+        draws_to=draw_count,
+    )
+    session.add(snapshot)
+    session.flush()
+    for number, count in frequencies.items():
+        session.add(StatFrequency(snapshot_id=snapshot.id, number=number, count=count))
+    session.commit()
+    return snapshot.id
+
+
 # --- Tests (T-12) ---
 
 
@@ -196,3 +242,34 @@ class TestProbabilityServiceRead:
         service._resolve_lottery = lambda **kw: FakeLottery()
         with pytest.raises(Exception, match="no prob snapshot"):
             service.read_values(lottery_id=1)
+
+
+class TestStatsReaderAdapterReal:
+    """Real _StatsReaderAdapter over seeded stat_frequency rows (PM-04, S1a).
+
+    Regression: the reader used to import the nonexistent ``models.stat_value``,
+    so any active stats snapshot crashed ``generate`` with ModuleNotFoundError.
+    """
+
+    def test_frequencies_maps_stat_frequency_rows(self, session):
+        lottery = _seed_real_lottery(session)
+        snapshot_id = _seed_active_stat_snapshot(session, lottery.id, {7: 12, 3: 5})
+        reader = _StatsReaderAdapter(session)
+        assert reader.frequencies(snapshot_id) == {7: 12, 3: 5}
+
+    def test_generate_succeeds_with_active_stats_snapshot(self, session):
+        """PM-04: generate with an active stats snapshot returns rows, no crash."""
+        lottery = _seed_real_lottery(session)
+        _seed_active_stat_snapshot(session, lottery.id, {7: 12}, draw_count=60)
+        draws = [DrawRow(draw_number=i, numbers=(1, 2, 3, 4, 5, 6)) for i in range(1, 61)]
+        service = ProbabilityService(
+            session,
+            draw_reader=MockDrawReader(draws),
+            feature_reader=MockFeatureReader(),
+        )
+        snap = service.generate(lottery_id=lottery.id, scope="full")
+        assert snap.status == "active"
+        _, rows = service.read_values(lottery_id=lottery.id)
+        assert len(rows) > 0
+        empirical_rows = {r.subject: r.value for r in rows if r.model_id == "empirical"}
+        assert empirical_rows["7"] == Decimal("0.2")  # 12 occurrences / 60 draws

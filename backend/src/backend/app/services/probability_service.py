@@ -97,9 +97,7 @@ class _StatsReaderAdapter:
         from backend.app.services.statistics_service import StatisticsService
 
         try:
-            snap = StatisticsService(self._session).get_active(
-                lottery_id=lottery_id, metric_set=metric_set
-            )
+            snap = StatisticsService(self._session).get_active(lottery_id=lottery_id)
             return type("StatsRef", (), {"id": snap.id, "snapshot_id": snap.id})()
         except Exception:
             return None
@@ -107,22 +105,13 @@ class _StatsReaderAdapter:
     def frequencies(self, snapshot_id: int):
         from sqlalchemy import select
 
-        from backend.app.models.stat_value import StatValue
+        from backend.app.models.stat_frequency import StatFrequency
 
-        stmt = select(StatValue).where(
-            StatValue.snapshot_id == snapshot_id,
-            StatValue.metric_id == "frequency_distribution",
+        stmt = select(StatFrequency.number, StatFrequency.count).where(
+            StatFrequency.snapshot_id == snapshot_id
         )
-        rows = self._session.execute(stmt).scalars().all()
-        result = {}
-        for row in rows:
-            try:
-                num = int(row.subject)
-                val = int(row.value)
-                result[num] = val
-            except (ValueError, TypeError):
-                continue
-        return result
+        rows = self._session.execute(stmt).all()
+        return {int(number): int(count) for number, count in rows}
 
 
 class _FeatureReaderAdapter:
