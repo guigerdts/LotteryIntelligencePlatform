@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session, selectinload
 
 from backend.app.backtesting.engine import BacktestEngine
 from backend.app.backtesting.snapshot_store import BtSnapshotStore
+from backend.app.backtesting.strategy import StaticStrategy
 from backend.app.backtesting.types import BacktestConfig, Draw
 from backend.app.models.bt_result import BtResult
 from backend.app.models.bt_snapshot import BtSnapshot
@@ -84,6 +85,7 @@ class BtService:
                 draws=draws,
                 config=config,
                 lottery_id=lottery_id,
+                parallel=True,
             )
         except InsufficientDataError:
             raise
@@ -212,19 +214,12 @@ class BtService:
 
 
 def _make_strategy(strategy_id: str) -> Any:
-    """Create a strategy from strategy_id (PR5 dummy, real ML/DL later)."""
+    """Create a strategy from strategy_id (module-level builder, T-S3-01).
 
-    class _Dummy:
-        def __init__(self, sid: str) -> None:
-            self._sid = sid
-
-        @property
-        def strategy_id(self) -> str:
-            return self._sid
-
-        def predict(self, ctx: Any) -> list[int]:
-            return [1, 2, 3, 4, 5]
+    Uses the module-level ``StaticStrategy`` (picklable across process
+    pools); real ML/DL adapters arrive in later phases.
+    """
 
     if strategy_id.startswith(("ml-", "dl-")):
-        return _Dummy(strategy_id)
+        return StaticStrategy(strategy_id)
     raise BtRunError(f"unknown strategy prefix: {strategy_id!r}")
