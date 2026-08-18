@@ -132,30 +132,26 @@ class StatisticsService:
         (design §9). Never recomputes history (STE-10).
         """
         snapshot = self.get_active(lottery_code=lottery_code, lottery_id=lottery_id)
-        rows = (
-            self._session.execute(
-                select(StatFrequency)
-                .where(StatFrequency.snapshot_id == snapshot.id)
-                .order_by(StatFrequency.number)
-            )
-            .scalars()
-            .all()
+        stmt = (
+            select(StatFrequency)
+            .where(StatFrequency.snapshot_id == snapshot.id)
+            .order_by(StatFrequency.number)
         )
-        return snapshot, list(rows)[:last] if last else list(rows)
+        if last > 0:
+            stmt = stmt.limit(last)
+        rows = self._session.execute(stmt).scalars().all()
+        return snapshot, list(rows)
 
     def read_gaps(
         self, *, lottery_code: str | None = None, lottery_id: int | None = None, last: int = 0
     ) -> tuple[StatSnapshot, list]:
         """Return the active gap summaries ordered by ``number``, bounded by ``last``."""
         snapshot = self.get_active(lottery_code=lottery_code, lottery_id=lottery_id)
-        rows = (
-            self._session.execute(
-                select(StatGap).where(StatGap.snapshot_id == snapshot.id).order_by(StatGap.number)
-            )
-            .scalars()
-            .all()
-        )
-        return snapshot, list(rows)[:last] if last else list(rows)
+        stmt = select(StatGap).where(StatGap.snapshot_id == snapshot.id).order_by(StatGap.number)
+        if last > 0:
+            stmt = stmt.limit(last)
+        rows = self._session.execute(stmt).scalars().all()
+        return snapshot, list(rows)
 
     def read_averages(
         self, *, lottery_code: str | None = None, lottery_id: int | None = None
