@@ -22,6 +22,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from alembic import command
 from backend.app.core.db import build_engine
+from backend.app.core.response_cache import clear_all_caches
 from backend.app.main import create_app
 from backend.app.repositories.base import get_db
 
@@ -33,6 +34,16 @@ _ALEMBIC_INI = _BACKEND_DIR / "alembic.ini"
 # LIP_TEST_MIGRATION_TARGET=0001_initial_core_domain proves 0002 is functionally
 # optional (the app works with only 0001 applied; 0002 only adds indexes).
 MIGRATION_TARGET = os.environ.get("LIP_TEST_MIGRATION_TARGET", "head")
+
+
+@pytest.fixture(autouse=True)
+def _reset_response_caches() -> None:
+    """Clear the in-process response caches before every test (PFM-05).
+
+    Each test builds a throwaway DB with fresh snapshot IDs, so a
+    module-level cache would leak rows across tests without this reset.
+    """
+    clear_all_caches()
 
 
 @pytest.fixture

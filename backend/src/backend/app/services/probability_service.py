@@ -20,6 +20,7 @@ from decimal import Decimal
 from sqlalchemy.orm import Session
 
 from backend.app.config.settings import get_settings
+from backend.app.core.response_cache import ThreadSafeLRU, register_cache
 from backend.app.models.prob_snapshot import ProbSnapshot
 from backend.app.models.prob_value import ProbValue
 from backend.app.probability.determinism import derive_seed, isolated_rng
@@ -132,6 +133,10 @@ class _FeatureReaderAdapter:
             return None
 
 
+_PROB_CACHE: ThreadSafeLRU[tuple, object] = ThreadSafeLRU(maxsize=256)
+register_cache(_PROB_CACHE)
+
+
 class ProbabilityService:
     """Probability generation use cases over one DI session transaction."""
 
@@ -147,9 +152,7 @@ class ProbabilityService:
         self._session = session
         self._registry = registry if registry is not None else build_prob_registry()
         # T-13: auto-create adapters when not provided (production wiring).
-        self._draw_reader = (
-            draw_reader if draw_reader is not None else _DrawReaderAdapter(session)
-        )
+        self._draw_reader = draw_reader if draw_reader is not None else _DrawReaderAdapter(session)
         self._stats_reader = (
             stats_reader if stats_reader is not None else _StatsReaderAdapter(session)
         )
@@ -222,8 +225,14 @@ class ProbabilityService:
     ) -> tuple[ProbSnapshot, list[ProbValue]]:
         """Return the active snapshot and its persisted prob_values (PES-08 read)."""
         snapshot = self.get_active(lottery_code=lottery_code, lottery_id=lottery_id)
+        key = ("prob:values", snapshot.id, model, subject, last)
+        cached = _PROB_CACHE.get(key)
+        if cached is not None:
+            return cached  # type: ignore[return-value]
         rows = self._store.values_for_snapshot(snapshot.id, model=model, subject=subject, last=last)
-        return snapshot, rows
+        payload = (snapshot, rows)
+        _PROB_CACHE.set(key, payload)
+        return payload
 
     # --- internal -------------------------------------------------------------
 
@@ -427,9 +436,7 @@ class ProbabilityService:
         except Exception:
             self._session.rollback()
 
-    def _build_rows(
-        self, all_values: dict
-    ) -> tuple[list[ProbValue], str]:
+    def _build_rows(self, all_values: dict) -> tuple[list[ProbValue], str]:
         """Flatten all method values into ProbValue rows and compute checksum."""
         rows: list[ProbValue] = []
         for method_id in sorted(all_values.keys()):
@@ -438,69 +445,81 @@ class ProbabilityService:
             # Flatten distributions into (subject, draw_number, value) rows.
             if "dist" in data:
                 for k, prob in data["dist"]:
-                    rows.append(ProbValue(
-                        model_id=method_id,
-                        model_version="1.0.0",
-                        subject=str(k),
-                        draw_number=None,
-                        value=prob if isinstance(prob, Decimal) else Decimal(str(prob)),
-                        params_json=json.dumps(params, sort_keys=True, separators=(",", ":")),
-                    ))
+                    rows.append(
+                        ProbValue(
+                            model_id=method_id,
+                            model_version="1.0.0",
+                            subject=str(k),
+                            draw_number=None,
+                            value=prob if isinstance(prob, Decimal) else Decimal(str(prob)),
+                            params_json=json.dumps(params, sort_keys=True, separators=(",", ":")),
+                        )
+                    )
             elif "freq" in data:
                 for num, prob in data["freq"].items():
-                    rows.append(ProbValue(
-                        model_id=method_id,
-                        model_version="1.0.0",
-                        subject=str(num),
-                        draw_number=None,
-                        value=prob if isinstance(prob, Decimal) else Decimal(str(prob)),
-                        params_json=json.dumps(params, sort_keys=True, separators=(",", ":")),
-                    ))
+                    rows.append(
+                        ProbValue(
+                            model_id=method_id,
+                            model_version="1.0.0",
+                            subject=str(num),
+                            draw_number=None,
+                            value=prob if isinstance(prob, Decimal) else Decimal(str(prob)),
+                            params_json=json.dumps(params, sort_keys=True, separators=(",", ":")),
+                        )
+                    )
             elif "mc" in data:
                 # C2 fix: MC returns {counts, probabilities, quantiles}.
                 mc = data["mc"]
                 # Persist per-subject probabilities.
                 probs = mc.get("probabilities", {})
                 for num, prob in probs.items():
-                    rows.append(ProbValue(
-                        model_id=method_id,
-                        model_version="1.0.0",
-                        subject=f"prob_{num}",
-                        draw_number=None,
-                        value=prob if isinstance(prob, Decimal) else Decimal(str(prob)),
-                        params_json=json.dumps(params, sort_keys=True, separators=(",", ":")),
-                    ))
+                    rows.append(
+                        ProbValue(
+                            model_id=method_id,
+                            model_version="1.0.0",
+                            subject=f"prob_{num}",
+                            draw_number=None,
+                            value=prob if isinstance(prob, Decimal) else Decimal(str(prob)),
+                            params_json=json.dumps(params, sort_keys=True, separators=(",", ":")),
+                        )
+                    )
                 # Persist quantiles (p50/p90/p99).
                 quantiles = mc.get("quantiles", {})
                 for qkey, qval in quantiles.items():
-                    rows.append(ProbValue(
-                        model_id=method_id,
-                        model_version="1.0.0",
-                        subject=qkey,
-                        draw_number=None,
-                        value=qval if isinstance(qval, Decimal) else Decimal(str(qval)),
-                        params_json=json.dumps(params, sort_keys=True, separators=(",", ":")),
-                    ))
+                    rows.append(
+                        ProbValue(
+                            model_id=method_id,
+                            model_version="1.0.0",
+                            subject=qkey,
+                            draw_number=None,
+                            value=qval if isinstance(qval, Decimal) else Decimal(str(qval)),
+                            params_json=json.dumps(params, sort_keys=True, separators=(",", ":")),
+                        )
+                    )
             elif "posterior" in data:
                 for state, prob in data["posterior"].items():
-                    rows.append(ProbValue(
-                        model_id=method_id,
-                        model_version="1.0.0",
-                        subject=str(state),
-                        draw_number=None,
-                        value=prob if isinstance(prob, Decimal) else Decimal(str(prob)),
-                        params_json=json.dumps(params, sort_keys=True, separators=(",", ":")),
-                    ))
+                    rows.append(
+                        ProbValue(
+                            model_id=method_id,
+                            model_version="1.0.0",
+                            subject=str(state),
+                            draw_number=None,
+                            value=prob if isinstance(prob, Decimal) else Decimal(str(prob)),
+                            params_json=json.dumps(params, sort_keys=True, separators=(",", ":")),
+                        )
+                    )
             elif "cond" in data:
                 for val, prob in data["cond"].items():
-                    rows.append(ProbValue(
-                        model_id=method_id,
-                        model_version="1.0.0",
-                        subject=str(val),
-                        draw_number=None,
-                        value=prob if isinstance(prob, Decimal) else Decimal(str(prob)),
-                        params_json=json.dumps(params, sort_keys=True, separators=(",", ":")),
-                    ))
+                    rows.append(
+                        ProbValue(
+                            model_id=method_id,
+                            model_version="1.0.0",
+                            subject=str(val),
+                            draw_number=None,
+                            value=prob if isinstance(prob, Decimal) else Decimal(str(prob)),
+                            params_json=json.dumps(params, sort_keys=True, separators=(",", ":")),
+                        )
+                    )
 
         checksum = _checksum(rows)
         return rows, checksum
@@ -509,10 +528,7 @@ class ProbabilityService:
 def _checksum(rows: Iterable[ProbValue]) -> str:
     """Canonical SHA-256 of the persisted prob_values content (PES-05)."""
     canonical = json.dumps(
-        [
-            (r.model_id, r.model_version, r.subject, str(r.value))
-            for r in rows
-        ],
+        [(r.model_id, r.model_version, r.subject, str(r.value)) for r in rows],
         separators=(",", ":"),
     ).encode("utf-8")
     return hashlib.sha256(canonical).hexdigest()
