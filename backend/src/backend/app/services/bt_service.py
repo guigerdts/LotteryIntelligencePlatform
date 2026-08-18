@@ -12,7 +12,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from backend.app.backtesting.engine import BacktestEngine
 from backend.app.backtesting.snapshot_store import BtSnapshotStore
@@ -20,7 +20,6 @@ from backend.app.backtesting.types import BacktestConfig, Draw
 from backend.app.models.bt_result import BtResult
 from backend.app.models.bt_snapshot import BtSnapshot
 from backend.app.models.draw import Draw as DrawModel
-from backend.app.models.draw_number import DrawNumber
 from backend.app.services.errors import InsufficientDataError, NotFoundError, ServiceError
 
 
@@ -200,19 +199,11 @@ class BtService:
             select(DrawModel)
             .where(DrawModel.lottery_id == lottery_id, DrawModel.is_deleted.is_(False))
             .order_by(DrawModel.draw_date)
+            .options(selectinload(DrawModel.numbers), selectinload(DrawModel.super_number))
         )
         result: list[Draw] = []
         for d in self._session.execute(stmt).scalars().all():
-            nums = tuple(
-                sorted(
-                    dn.number
-                    for dn in self._session.execute(
-                        select(DrawNumber).where(DrawNumber.draw_id == d.id)
-                    )
-                    .scalars()
-                    .all()
-                )
-            )
+            nums = tuple(sorted(dn.number for dn in d.numbers))
             super_num = d.super_number.value if d.super_number else None
             result.append(
                 Draw(id=d.id, draw_date=d.draw_date, numbers=nums, super_number=super_num)
