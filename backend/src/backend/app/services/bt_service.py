@@ -18,6 +18,7 @@ from backend.app.backtesting.engine import BacktestEngine
 from backend.app.backtesting.snapshot_store import BtSnapshotStore
 from backend.app.backtesting.strategy import StaticStrategy
 from backend.app.backtesting.types import BacktestConfig, Draw
+from backend.app.core.response_cache import ThreadSafeLRU, register_cache
 from backend.app.models.bt_result import BtResult
 from backend.app.models.bt_snapshot import BtSnapshot
 from backend.app.models.draw import Draw as DrawModel
@@ -28,6 +29,10 @@ class BtRunError(ServiceError):
     """Backtest execution failure."""
 
     code = "BT_RUN_ERROR"
+
+
+_BT_CACHE: ThreadSafeLRU[tuple, object] = ThreadSafeLRU(maxsize=256)
+register_cache(_BT_CACHE)
 
 
 @dataclass(frozen=True)
@@ -174,12 +179,16 @@ class BtService:
             snap = self._session.execute(stmt).scalar_one_or_none()
             if snap is None:
                 raise NotFoundError(f"no active backtest for lottery {lottery_id}")
+        key = ("bt:results", snap.id)
+        cached = _BT_CACHE.get(key)
+        if cached is not None:
+            return cached  # type: ignore[return-value]
         res = self._session.execute(
             select(BtResult).where(BtResult.snapshot_id == snap.id)
         ).scalar_one_or_none()
         if res is None:
             raise NotFoundError(f"no result for snapshot {snap.id}")
-        return {
+        payload = {
             "snapshot_id": snap.id,
             "lottery_id": snap.lottery_id,
             "strategy_id": snap.strategy_id,
@@ -189,6 +198,8 @@ class BtService:
             "aggregate_metrics": json.loads(res.aggregate_metrics_json),
             "window_history": json.loads(res.window_history_json),
         }
+        _BT_CACHE.set(key, payload)
+        return payload
 
     def _resolve_lottery(self, lottery_id: int) -> None:
         from backend.app.models.lottery import Lottery

@@ -13,6 +13,7 @@ from dataclasses import dataclass
 
 from sqlalchemy.orm import Session
 
+from backend.app.core.response_cache import ThreadSafeLRU, register_cache
 from backend.app.ml.engine import MlEngine, TrainResult
 from backend.app.ml.feature_reader import FeatureValueRow
 from backend.app.ml.providers import DrawHistoryProvider, FeatureSnapshotProvider
@@ -29,6 +30,10 @@ _CORE_5_FAMILIES: tuple[str, ...] = (
     "svm",
     "knn",
 )
+
+
+_ML_CACHE: ThreadSafeLRU[tuple, object] = ThreadSafeLRU(maxsize=256)
+register_cache(_ML_CACHE)
 
 
 @dataclass(frozen=True)
@@ -204,8 +209,12 @@ class MlService:
         snapshot = store.get_active(lottery_id, MODEL_SET_CORE_5)
         if snapshot is None:
             return []
+        key = ("ml:metrics", snapshot.id, model_id)
+        cached = _ML_CACHE.get(key)
+        if cached is not None:
+            return cached  # type: ignore[return-value]
         rows = store.metrics_for_snapshot(snapshot.id, model_id=model_id)
-        return [
+        payload = [
             {
                 "model_id": r.model_id,
                 "number": r.number,
@@ -215,6 +224,8 @@ class MlService:
             }
             for r in rows
         ]
+        _ML_CACHE.set(key, payload)
+        return payload
 
 
 __all__ = ["MlService", "TrainOutcome"]

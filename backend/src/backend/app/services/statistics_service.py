@@ -25,6 +25,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from backend.app.config.settings import get_settings
+from backend.app.core.response_cache import ThreadSafeLRU, register_cache
 from backend.app.models.stat_average import StatAverage
 from backend.app.models.stat_frequency import StatFrequency
 from backend.app.models.stat_gap import StatGap
@@ -54,6 +55,9 @@ from backend.app.statistics.generator import (
     SCOPES,
     STATS_GENERATOR_VERSION,
 )
+
+_STATS_CACHE: ThreadSafeLRU[tuple, object] = ThreadSafeLRU(maxsize=256)
+register_cache(_STATS_CACHE)
 
 
 class StatisticsService:
@@ -132,6 +136,10 @@ class StatisticsService:
         (design §9). Never recomputes history (STE-10).
         """
         snapshot = self.get_active(lottery_code=lottery_code, lottery_id=lottery_id)
+        key = ("stat:frequencies", snapshot.id, last)
+        cached = _STATS_CACHE.get(key)
+        if cached is not None:
+            return cached  # type: ignore[return-value]
         stmt = (
             select(StatFrequency)
             .where(StatFrequency.snapshot_id == snapshot.id)
@@ -140,24 +148,36 @@ class StatisticsService:
         if last > 0:
             stmt = stmt.limit(last)
         rows = self._session.execute(stmt).scalars().all()
-        return snapshot, list(rows)
+        payload = (snapshot, list(rows))
+        _STATS_CACHE.set(key, payload)
+        return payload
 
     def read_gaps(
         self, *, lottery_code: str | None = None, lottery_id: int | None = None, last: int = 0
     ) -> tuple[StatSnapshot, list]:
         """Return the active gap summaries ordered by ``number``, bounded by ``last``."""
         snapshot = self.get_active(lottery_code=lottery_code, lottery_id=lottery_id)
+        key = ("stat:gaps", snapshot.id, last)
+        cached = _STATS_CACHE.get(key)
+        if cached is not None:
+            return cached  # type: ignore[return-value]
         stmt = select(StatGap).where(StatGap.snapshot_id == snapshot.id).order_by(StatGap.number)
         if last > 0:
             stmt = stmt.limit(last)
         rows = self._session.execute(stmt).scalars().all()
-        return snapshot, list(rows)
+        payload = (snapshot, list(rows))
+        _STATS_CACHE.set(key, payload)
+        return payload
 
     def read_averages(
         self, *, lottery_code: str | None = None, lottery_id: int | None = None
     ) -> tuple[StatSnapshot, list]:
         """Return the active NULL-aware averages (jackpot/winners series, D4)."""
         snapshot = self.get_active(lottery_code=lottery_code, lottery_id=lottery_id)
+        key = ("stat:averages", snapshot.id)
+        cached = _STATS_CACHE.get(key)
+        if cached is not None:
+            return cached  # type: ignore[return-value]
         rows = (
             self._session.execute(
                 select(StatAverage)
@@ -167,7 +187,9 @@ class StatisticsService:
             .scalars()
             .all()
         )
-        return snapshot, list(rows)
+        payload = (snapshot, list(rows))
+        _STATS_CACHE.set(key, payload)
+        return payload
 
     def read_scalars(
         self, *, lottery_code: str | None = None, lottery_id: int | None = None
@@ -177,6 +199,10 @@ class StatisticsService:
         Missing snapshot -> ``SnapshotNotFoundError`` (404); never precomputes.
         """
         snapshot = self.get_active(lottery_code=lottery_code, lottery_id=lottery_id)
+        key = ("stat:scalars", snapshot.id)
+        cached = _STATS_CACHE.get(key)
+        if cached is not None:
+            return cached  # type: ignore[return-value]
         rows = (
             self._session.execute(
                 select(StatScalar)
@@ -186,7 +212,9 @@ class StatisticsService:
             .scalars()
             .all()
         )
-        return snapshot, list(rows)
+        payload = (snapshot, list(rows))
+        _STATS_CACHE.set(key, payload)
+        return payload
 
     # --- resolution / validation ---------------------------------------------
 

@@ -19,6 +19,7 @@ from typing import NamedTuple
 
 from sqlalchemy.orm import Session
 
+from backend.app.core.response_cache import ThreadSafeLRU, register_cache
 from backend.app.graph.centrality import (
     betweenness_centrality,
     closeness_centrality,
@@ -90,6 +91,10 @@ class _DrawReaderAdapter:
         if limit is not None:
             query = query.limit(limit)
         return [row[0] for row in query.all()]
+
+
+_GRAPH_CACHE: ThreadSafeLRU[tuple, object] = ThreadSafeLRU(maxsize=256)
+register_cache(_GRAPH_CACHE)
 
 
 class GraphService:
@@ -207,12 +212,9 @@ class GraphService:
         # Compute version: find existing max and increment
         from sqlalchemy import func, select
 
-        stmt = (
-            select(func.max(GraphSnapshot.version))
-            .where(
-                GraphSnapshot.lottery_id == lottery_id,
-                GraphSnapshot.graph_type == graph_type,
-            )
+        stmt = select(func.max(GraphSnapshot.version)).where(
+            GraphSnapshot.lottery_id == lottery_id,
+            GraphSnapshot.graph_type == graph_type,
         )
         max_version: str | None = self._session.scalar(stmt)
         if max_version is not None:
@@ -287,10 +289,12 @@ class GraphService:
             )
 
         # Load values
+        key = ("graph:read", snapshot.id, graph_type, fingerprint)
+        cached = _GRAPH_CACHE.get(key)
+        if cached is not None:
+            return cached  # type: ignore[return-value]
         db_values = load_snapshot_values(self._session, snapshot.id)
-        values = [
-            (v.metric_type, v.subject, v.draw_number, v.value)
-            for v in db_values
-        ]
-
-        return snapshot, values
+        values = [(v.metric_type, v.subject, v.draw_number, v.value) for v in db_values]
+        payload = (snapshot, values)
+        _GRAPH_CACHE.set(key, payload)
+        return payload
