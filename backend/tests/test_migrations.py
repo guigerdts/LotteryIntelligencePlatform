@@ -223,7 +223,7 @@ def test_upgrade_head_0004_adds_f1_and_import_performance_indexes(tmp_path: Path
     engine = sa.create_engine(f"sqlite:///{db}")
     insp = inspect(engine)
     try:
-        assert _domain_tables(db) == HEAD_TABLES_0010
+        assert _domain_tables(db) == HEAD_TABLES_0015
 
         # Integrity contract survives: every UNIQUE constraint from 0001 is intact.
         for table, expected in EXPECTED_UNIQUE.items():
@@ -318,14 +318,14 @@ def test_downgrade_base_drops_all_then_reupgrade_succeeds(tmp_path: Path) -> Non
     cfg = _config(db)
 
     command.upgrade(cfg, "head")
-    assert _domain_tables(db) == HEAD_TABLES_0010
+    assert _domain_tables(db) == HEAD_TABLES_0015
 
     command.downgrade(cfg, "base")
     # Alembic keeps its version table; every domain table must be dropped.
     assert _domain_tables(db) == set()
 
     command.upgrade(cfg, "head")
-    assert _domain_tables(db) == HEAD_TABLES_0010
+    assert _domain_tables(db) == HEAD_TABLES_0015
 
 
 def test_upgrade_0005_creates_stat_tables_with_integrity_and_indexes(tmp_path: Path) -> None:
@@ -401,7 +401,7 @@ def test_downgrade_0005_drops_only_stat_tables_core_untouched(tmp_path: Path) ->
     db = tmp_path / "down_stat.db"
     cfg = _config(db)
     command.upgrade(cfg, "head")
-    assert _domain_tables(db) == HEAD_TABLES_0010
+    assert _domain_tables(db) == HEAD_TABLES_0015
 
     command.downgrade(cfg, _REV_0004)
 
@@ -498,7 +498,7 @@ def test_downgrade_0006_drops_only_feature_tables_core_stat_untouched(
     db = tmp_path / "down_feature.db"
     cfg = _config(db)
     command.upgrade(cfg, "head")
-    assert _domain_tables(db) == HEAD_TABLES_0010
+    assert _domain_tables(db) == HEAD_TABLES_0015
 
     command.downgrade(cfg, _REV_0005)
 
@@ -603,7 +603,7 @@ def test_downgrade_0007_drops_only_prob_tables_core_stat_feature_untouched(
     db = tmp_path / "down_prob.db"
     cfg = _config(db)
     command.upgrade(cfg, "head")
-    assert _domain_tables(db) == HEAD_TABLES_0010
+    assert _domain_tables(db) == HEAD_TABLES_0015
 
     command.downgrade(cfg, _REV_0006)
 
@@ -664,6 +664,30 @@ DL_TABLES = {"dl_snapshots", "dl_metrics", "dl_weights"}
 
 # The full schema at head (0010) = all prior tables + dl_*.
 HEAD_TABLES_0010 = HEAD_TABLES_0009 | DL_TABLES
+
+# The two opt-engine tables added by 0011 (design Data Model, OPT-01) — opt_* domain.
+OPT_TABLES = {"opt_snapshots", "opt_results"}
+
+# The two bt-engine tables added by 0012 (design Data Model, BTE-01) — bt_* domain.
+BT_TABLES = {"bt_snapshots", "bt_results"}
+
+# The three experiment-engine tables added by 0013 (design Data Model, EXP-01) — exp_* domain.
+EXP_TABLES = {"exp_experiments", "exp_runs", "exp_comparisons"}
+
+# The four meta-learning tables added by 0014 (design Data Model, META-01) — meta_* domain.
+META_TABLES = {
+    "meta_rankings",
+    "meta_ranking_entries",
+    "meta_selections",
+    "meta_selection_entries",
+}
+
+# The two generator tables added by 0015 (design Data Model, GEN-01) — gen_* domain.
+GEN_TABLES = {"gen_snapshots", "gen_combinations"}
+
+# The full schema at the real head (0015) = all prior tables plus the five
+# domains added by 0011-0015 (opt, bt, exp, meta, gen).
+HEAD_TABLES_0015 = HEAD_TABLES_0010 | OPT_TABLES | BT_TABLES | EXP_TABLES | META_TABLES | GEN_TABLES
 
 
 def test_upgrade_0008_creates_graph_tables_with_integrity_and_indexes(
@@ -752,7 +776,7 @@ def test_downgrade_0008_drops_only_graph_tables_all_prior_domains_untouched(
     db = tmp_path / "down_graph.db"
     cfg = _config(db)
     command.upgrade(cfg, "head")
-    assert _domain_tables(db) == HEAD_TABLES_0010
+    assert _domain_tables(db) == HEAD_TABLES_0015
 
     command.downgrade(cfg, _REV_0007)
 
