@@ -65,8 +65,9 @@ class TestMigration0012:
         db = tmp_path / "test.db"
         cfg = _migration_config(db)
 
-        # Upgrade to head
-        command.upgrade(cfg, "head")
+        # Upgrade to 0012 (bt domain) so the downgrade below is a true 0012 -> 0011
+        # step regardless of the current repo head (0015).
+        command.upgrade(cfg, "0012_bt_tables")
 
         # Verify bt_* exist
         tables_before = _domain_tables(db)
@@ -74,7 +75,7 @@ class TestMigration0012:
         assert "bt_results" in tables_before
 
         # Downgrade one step (0012 -> 0011)
-        command.downgrade(cfg, "-1")
+        command.downgrade(cfg, "0011_opt_tables")
 
         tables_after = _domain_tables(db)
         assert "bt_snapshots" not in tables_after
@@ -90,13 +91,13 @@ class TestMigration0012:
         db = tmp_path / "test.db"
         cfg = _migration_config(db)
 
-        # Upgrade to head
-        command.upgrade(cfg, "head")
+        # Upgrade to 0012 only, so the downgrade below is a true 0012 -> 0011 step.
+        command.upgrade(cfg, "0012_bt_tables")
 
         tables_before = _domain_tables(db)
 
         # Downgrade one step
-        command.downgrade(cfg, "-1")
+        command.downgrade(cfg, "0011_opt_tables")
 
         tables_after = _domain_tables(db)
 
