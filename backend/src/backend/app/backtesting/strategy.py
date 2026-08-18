@@ -31,6 +31,27 @@ class StrategyProtocol(Protocol):
         ...
 
 
+class StaticStrategy:
+    """Deterministic placeholder strategy (T-S3-01).
+
+    Module-level so instances stay picklable across process-pool
+    workers (PFM-04).  Returns the fixed prediction ``[1, 2, 3, 4, 5]``
+    and implements ``StrategyProtocol``.
+    """
+
+    def __init__(self, strategy_id: str) -> None:
+        self._sid = strategy_id
+
+    @property
+    def strategy_id(self) -> str:
+        """Unique strategy identifier (e.g. ``ml-core-5``)."""
+        return self._sid
+
+    def predict(self, draw_context: DrawContext) -> list[int]:
+        """Return the fixed static prediction (behavior-identical to PR5)."""
+        return [1, 2, 3, 4, 5]
+
+
 class MLStrategyAdapter:
     """Adapts an ML engine instance to ``StrategyProtocol`` (BTE-03, BTE-11).
 
