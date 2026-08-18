@@ -12,6 +12,7 @@ from __future__ import annotations
 import hashlib
 import json
 from collections.abc import Mapping, Sequence
+from concurrent.futures import ProcessPoolExecutor
 from dataclasses import dataclass
 from decimal import Decimal
 from typing import Final
@@ -29,6 +30,7 @@ from backend.app.ml.version import ML_GENERATOR_VERSION
 from backend.app.services.errors import SnapshotNotFoundError
 
 _METRIC_NAMES: Final[tuple[str, ...]] = ("accuracy", "precision", "recall", "f1", "roc_auc")
+_POOL_MAX_WORKERS: Final[int] = 2
 _Draw = Mapping | object  # duck-typed record: mapping key or attribute
 
 
@@ -67,6 +69,42 @@ def _roc_auc(targets: np.ndarray, model: object, X: np.ndarray) -> Decimal:
     return quantize_metric(float(roc_auc_score(targets, scores)))
 
 
+def _fit_number(
+    X_train: np.ndarray,
+    X_eval: np.ndarray,
+    y_train: np.ndarray,
+    y_eval: np.ndarray,
+    estimator_name: str,
+    params: Mapping[str, object],
+    number: int,
+) -> tuple[int, dict[str, Decimal], object]:
+    """Fit one target number's classifier and return quantized metrics (T-S4-01).
+
+    Pure worker: no DB session/engine, no shared mutable state.  The
+    estimator class is resolved from the canonical registry by name and
+    instantiated with ``random_state=0`` and no shuffle, so every number
+    is an independent deterministic function of its inputs — the same
+    code path the serial loop uses, which keeps serial and parallel
+    outputs byte-identical (GF-1).
+
+    Returns:
+        ``(number, {metric: Decimal}, model)``.
+    """
+    from backend.app.ml.registry import build_ml_registry  # noqa: PLC0415
+
+    classifier, _ = build_ml_registry()[estimator_name]
+    model = classifier(**dict(params)).fit(X_train, y_train)
+    predict = model.predict(X_eval)
+    metrics = {
+        "accuracy": quantize_metric(accuracy_score(y_eval, predict)),
+        "precision": quantize_metric(precision_score(y_eval, predict, zero_division=1)),
+        "recall": quantize_metric(recall_score(y_eval, predict, zero_division=1)),
+        "f1": quantize_metric(f1_score(y_eval, predict, zero_division=1)),
+        "roc_auc": _roc_auc(y_eval, model, X_eval),
+    }
+    return number, metrics, model
+
+
 class MlEngine:
     """Trains one core-5 family per lottery against its F4 features (ME-01..05)."""
 
@@ -85,16 +123,19 @@ class MlEngine:
         *,
         cut: int | None = None,
         feature_rows: Sequence[FeatureValueRow] | None = None,
+        parallel: bool = False,
     ) -> TrainResult:
         """Run one deterministic training for ``family`` over ``lottery_id``.
 
         An absent ``feature_rows`` raises ``SNAPSHOT_NOT_FOUND`` BEFORE any
-        training (MLE-06).
+        training (MLE-06).  ``parallel`` uses a bounded ``ProcessPoolExecutor``
+        over the sorted number list; the serial loop and the pool share the
+        same ``_fit_number`` worker so results are byte-identical (GF-1).
         """
         entry = self.registry.get(family)
         if entry is None:
             raise ValueError(f"unknown family {family!r}; known: {sorted(self.registry)}")
-        classifier, params = entry
+        _, params = entry
 
         if feature_rows is None:
             raise SnapshotNotFoundError(f"no F4 feature snapshot for snapshot_id={snapshot_id}")
@@ -121,18 +162,34 @@ class MlEngine:
 
         models: dict[int, object] = {}
         per_number: dict[int, dict[str, Decimal]] = {}
-        for number in all_numbers:
-            model = classifier(**dict(params)).fit(X_train, y[number][train_idx])
-            predict = model.predict(X_eval)
-            targets = y[number][eval_idx]
-            per_number[number] = {
-                "accuracy": quantize_metric(accuracy_score(targets, predict)),
-                "precision": quantize_metric(precision_score(targets, predict, zero_division=1)),
-                "recall": quantize_metric(recall_score(targets, predict, zero_division=1)),
-                "f1": quantize_metric(f1_score(targets, predict, zero_division=1)),
-                "roc_auc": _roc_auc(targets, model, X_eval),
-            }
-            models[number] = model
+        if parallel and len(all_numbers) >= 2:
+            with ProcessPoolExecutor(max_workers=_POOL_MAX_WORKERS) as executor:
+                fitted = executor.map(
+                    _fit_number,
+                    [X_train] * len(all_numbers),
+                    [X_eval] * len(all_numbers),
+                    [y[n][train_idx] for n in all_numbers],
+                    [y[n][eval_idx] for n in all_numbers],
+                    [family] * len(all_numbers),
+                    [dict(params)] * len(all_numbers),
+                    all_numbers,
+                )
+                for number, metrics, model in fitted:
+                    per_number[number] = metrics
+                    models[number] = model
+        else:
+            for number in all_numbers:
+                fitted = _fit_number(
+                    X_train,
+                    X_eval,
+                    y[number][train_idx],
+                    y[number][eval_idx],
+                    family,
+                    dict(params),
+                    number,
+                )
+                per_number[fitted[0]] = fitted[1]
+                models[fitted[0]] = fitted[2]
 
         metrics = {
             name: quantize_metric(sum(per_number[n][name] for n in all_numbers) / len(all_numbers))

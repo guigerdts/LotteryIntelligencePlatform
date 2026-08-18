@@ -129,6 +129,7 @@ class MlService:
                 snapshot_id=header.id,
                 metadata=metadata,
                 feature_rows=feature_rows,
+                parallel=True,
             )
 
             # Update header with computed values.
