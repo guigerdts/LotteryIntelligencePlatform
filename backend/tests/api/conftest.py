@@ -1,4 +1,9 @@
-"""Shared fixtures for the F15 assistant/scalars API tests (PBA lottery)."""
+"""Shared fixtures for the F15 assistant/scalars API tests (PBA lottery).
+
+``seeded_lottery``/``generated`` reuse the root conftest's savepoint-based
+``db``/``client`` (T-S7-02): seeds commit into the shared outer transaction
+and are rolled back after each test — no leakage between tests.
+"""
 
 from __future__ import annotations
 
