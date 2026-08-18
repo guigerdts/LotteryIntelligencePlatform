@@ -30,6 +30,7 @@ class ExpComparison(Base):
     experiment_id: Mapped[int] = mapped_column(
         ForeignKey("exp_experiments.id", ondelete="RESTRICT"), nullable=False
     )
+    run_ids: Mapped[str | None] = mapped_column(Text, nullable=True)
     comparison_json: Mapped[str] = mapped_column(Text, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=lambda: datetime.now(UTC)

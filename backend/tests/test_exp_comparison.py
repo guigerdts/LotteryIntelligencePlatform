@@ -7,6 +7,7 @@ Run them → they MUST FAIL (ImportError or AttributeError). Then implement comp
 import json
 
 import pytest
+import sqlalchemy as sa
 
 from backend.app.models.lottery import Lottery
 from backend.app.services.errors import ComparisonInsufficientRunsError, ExperimentNotFoundError
@@ -230,6 +231,99 @@ class TestCompareIdempotent:
         )
 
         assert result_a.comparison_json != result_b.comparison_json
+
+
+class TestComparisonRunIdsIndex:
+    """EXP-009: run_ids denormalized key powers the indexed lookup."""
+
+    def _setup_experiment(self, db, service: ExpService):
+        snap_a = _create_bt_snapshot(db, 1, fingerprint="fp_x1")
+        snap_b = _create_bt_snapshot(db, 1, fingerprint="fp_x2")
+        _create_bt_result(db, snap_a, {"hit_rate": 0.10})
+        _create_bt_result(db, snap_b, {"hit_rate": 0.20})
+        outcome, runs = _create_experiment_with_runs(
+            db,
+            service,
+            [
+                {"run_label": "run1", "engine_type": "backtesting", "engine_snapshot_id": snap_a},
+                {"run_label": "run2", "engine_type": "backtesting", "engine_snapshot_id": snap_b},
+            ],
+        )
+        return outcome, runs
+
+    def test_compare_writes_run_ids(self, db, seeded_lottery):
+        """compare() persists the denormalized run_ids key (EXP-009)."""
+        from backend.app.models.exp_comparison import ExpComparison
+
+        service = ExpService(db)
+        outcome, runs = self._setup_experiment(db, service)
+        run_ids = sorted([runs[0].run_id, runs[1].run_id])
+
+        service.compare(outcome.experiment_id, run_ids=run_ids)
+
+        row = db.scalar(
+            sa.select(ExpComparison).where(ExpComparison.experiment_id == outcome.experiment_id)
+        )
+        assert row is not None
+        assert row.run_ids == ",".join(str(i) for i in run_ids)
+
+    def test_cached_hit_uses_indexed_lookup_without_json_parse(
+        self, db, seeded_lottery, monkeypatch
+    ):
+        """Hitting the cache parses NO comparison JSON (indexed path, EXP-009)."""
+        service = ExpService(db)
+        outcome, runs = self._setup_experiment(db, service)
+        run_ids = sorted([runs[0].run_id, runs[1].run_id])
+        service.compare(outcome.experiment_id, run_ids=run_ids)
+
+        # Count json.loads calls on the cache-hit path.
+        real_loads = json.loads
+        loads_calls = []
+
+        def counting_loads(*args, **kwargs):
+            loads_calls.append(args)
+            return real_loads(*args, **kwargs)
+
+        monkeypatch.setattr(json, "loads", counting_loads)
+        result2 = service.compare(outcome.experiment_id, run_ids=run_ids)
+
+        assert result2 is not None
+        assert loads_calls == [], "cache hit should use the indexed run_ids lookup, not a JSON scan"
+
+    def test_legacy_null_run_ids_fallback(self, db, seeded_lottery):
+        """Pre-0016 rows with run_ids NULL are still found via JSON fallback (EXP-009)."""
+        from backend.app.models.exp_comparison import ExpComparison
+
+        service = ExpService(db)
+        outcome, runs = self._setup_experiment(db, service)
+        run_ids = sorted([runs[0].run_id, runs[1].run_id])
+
+        # Simulate a legacy row written before 0016 (no run_ids populated).
+        payload = {
+            "experiment_id": outcome.experiment_id,
+            "runs": [
+                {
+                    "run_id": rid,
+                    "run_label": f"run{rid}",
+                    "engine_type": "backtesting",
+                    "engine_snapshot_id": 1,
+                    "metrics": {"hit_rate": 0.1},
+                }
+                for rid in run_ids
+            ],
+            "metric_names": ["hit_rate"],
+            "created_at": "2026-01-01T00:00:00+00:00",
+        }
+        legacy = ExpComparison(
+            experiment_id=outcome.experiment_id,
+            run_ids=None,
+            comparison_json=json.dumps(payload),
+        )
+        db.add(legacy)
+        db.commit()
+
+        result = service.compare(outcome.experiment_id, run_ids=run_ids)
+        assert result.comparison_id == legacy.id
 
 
 class TestCompareNonexistentExperiment:
