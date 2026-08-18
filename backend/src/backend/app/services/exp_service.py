@@ -89,6 +89,23 @@ class ComparisonOutcome:
     created_at: str
 
 
+def _run_ids_key(sorted_run_ids: list[int]) -> str:
+    """Canonical denormalized run_ids key for the indexed compare lookup.
+
+    Single source of truth shared by the compare insert path and the
+    migration 0016 backfill derivation (EXP-009).
+    """
+    return ",".join(str(i) for i in sorted_run_ids)
+
+
+def _run_ids_from_payload(comparison_json: str) -> str:
+    """Derive the run_ids key from a persisted comparison payload."""
+    import json
+
+    data = json.loads(comparison_json)
+    return _run_ids_key(sorted(r["run_id"] for r in data["runs"]))
+
+
 class ExpService:
     """Experiment service (EXP-001). API and CLI call this layer."""
 
@@ -391,9 +408,10 @@ class ExpService:
 
         comparison_json = json.dumps(comparison_data, default=str)
 
-        # Persist immutable comparison snapshot
+        # Persist immutable comparison snapshot with the denormalized run_ids key.
         comparison = ExpComparison(
             experiment_id=experiment_id,
+            run_ids=_run_ids_key(sorted_ids),
             comparison_json=comparison_json,
         )
         self._session.add(comparison)
@@ -410,15 +428,30 @@ class ExpService:
     def _find_cached_comparison(
         self, experiment_id: int, sorted_run_ids: list[int]
     ) -> ExpComparison | None:
-        """Check for an existing comparison with the same run_ids (idempotent)."""
-        import json
+        """Check for an existing comparison with the same run_ids (idempotent).
 
+        Fast path: single indexed lookup on ``(experiment_id, run_ids)``. When
+        legacy rows exist with ``run_ids IS NULL`` (pre-0016), fall back to a
+        JSON payload scan for those rows only (EXP-009).
+        """
+        key = _run_ids_key(sorted_run_ids)
         stmt = select(ExpComparison).where(
             ExpComparison.experiment_id == experiment_id,
+            ExpComparison.run_ids == key,
         )
-        for comp in self._session.execute(stmt).scalars().all():
-            data = json.loads(comp.comparison_json)
-            existing_ids = sorted(r["run_id"] for r in data["runs"])
+        comp = self._session.execute(stmt).scalars().first()
+        if comp is not None:
+            return comp
+
+        # Legacy fallback: scan rows that have not been backfilled yet.
+        import json
+
+        legacy = select(ExpComparison).where(
+            ExpComparison.experiment_id == experiment_id,
+            ExpComparison.run_ids.is_(None),
+        )
+        for comp in self._session.execute(legacy).scalars().all():
+            existing_ids = sorted(r["run_id"] for r in json.loads(comp.comparison_json)["runs"])
             if existing_ids == sorted_run_ids:
                 return comp
         return None

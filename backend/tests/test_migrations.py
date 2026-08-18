@@ -799,3 +799,74 @@ def test_downgrade_0008_drops_only_graph_tables_all_prior_domains_untouched(
         assert PROB_SNAPSHOT_UNIQUE.issubset(prob_unique)
     finally:
         engine.dispose()
+
+
+# --- 0016 exp_comparisons.run_ids (EXP-009) ---
+
+_REV_0016 = "0016_exp_comparisons_run_ids"
+
+
+def test_upgrade_0016_adds_run_ids_index_and_backfills(tmp_path: Path) -> None:
+    """0016 adds nullable run_ids + composite index and backfills legacy rows."""
+    db = tmp_path / "up_0016.db"
+    cfg = _config(db)
+    command.upgrade(cfg, "0015_gen_tables")
+
+    # Insert a legacy comparison row (no run_ids column yet) and its experiment parent.
+    engine = sa.create_engine(f"sqlite:///{db}")
+    with engine.begin() as conn:
+        conn.exec_driver_sql(
+            "INSERT INTO exp_experiments (id, lottery_id, name, status, fingerprint, version,"
+            " created_at)"
+            " VALUES (1, 1, 'Legacy', 'active',"
+            " 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', '1',"
+            " '2026-08-01T00:00:00Z')"
+        )
+        conn.exec_driver_sql(
+            "INSERT INTO exp_comparisons (id, experiment_id, comparison_json, created_at)"
+            " VALUES (1, 1,"
+            ' \'{"experiment_id": 1, "runs": [{"run_id": 3}, {"run_id": 1}]}\','
+            " '2026-08-01T00:00:00Z')"
+        )
+    engine.dispose()
+
+    command.upgrade(cfg, _REV_0016)
+
+    engine = sa.create_engine(f"sqlite:///{db}")
+    insp = inspect(engine)
+    try:
+        columns = {c["name"] for c in insp.get_columns("exp_comparisons")}
+        assert "run_ids" in columns
+        idx = {i["name"]: i for i in insp.get_indexes("exp_comparisons")}
+        assert "ix_exp_comparisons_run_ids" in idx
+        assert tuple(idx["ix_exp_comparisons_run_ids"]["column_names"]) == (
+            "experiment_id",
+            "run_ids",
+        )
+        with engine.connect() as conn:
+            row = conn.exec_driver_sql("SELECT run_ids FROM exp_comparisons WHERE id = 1").one()
+            assert row[0] == "1,3", f"backfill produced {row[0]!r}, expected '1,3'"
+    finally:
+        engine.dispose()
+
+
+def test_downgrade_0016_drops_run_ids_only(tmp_path: Path) -> None:
+    """Downgrade 0016 drops the index and column; other tables untouched."""
+    db = tmp_path / "down_0016.db"
+    cfg = _config(db)
+    command.upgrade(cfg, _REV_0016)
+    assert _domain_tables(db) == HEAD_TABLES_0015
+
+    command.downgrade(cfg, "0015_gen_tables")
+
+    engine = sa.create_engine(f"sqlite:///{db}")
+    insp = inspect(engine)
+    try:
+        columns = {c["name"] for c in insp.get_columns("exp_comparisons")}
+        assert "run_ids" not in columns
+        assert "ix_exp_comparisons_run_ids" not in {
+            i["name"] for i in insp.get_indexes("exp_comparisons")
+        }
+        assert _domain_tables(db) == HEAD_TABLES_0015
+    finally:
+        engine.dispose()
