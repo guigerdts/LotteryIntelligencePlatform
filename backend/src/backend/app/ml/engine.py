@@ -18,7 +18,6 @@ from decimal import Decimal
 from typing import Final
 
 import numpy as np
-from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score, roc_auc_score
 
 from backend.app.ml.determinism import compute_metrics_checksum, quantize_metric
 from backend.app.ml.feature_reader import FeatureValueRow, build_feature_matrix
@@ -59,6 +58,8 @@ def _get(record: _Draw, key: str) -> object:
 
 def _roc_auc(targets: np.ndarray, model: object, X: np.ndarray) -> Decimal:
     """AUC from decision scores; chance baseline when the eval split has one class."""
+    from sklearn.metrics import roc_auc_score  # noqa: PLC0415  # deferred: DLE-17
+
     if len(set(targets.tolist())) < 2:
         return quantize_metric(0.5)
     scores: np.ndarray = (
@@ -90,6 +91,13 @@ def _fit_number(
     Returns:
         ``(number, {metric: Decimal}, model)``.
     """
+    from sklearn.metrics import (  # noqa: PLC0415  # deferred: DLE-17
+        accuracy_score,
+        f1_score,
+        precision_score,
+        recall_score,
+    )
+
     from backend.app.ml.registry import build_ml_registry  # noqa: PLC0415
 
     classifier, _ = build_ml_registry()[estimator_name]

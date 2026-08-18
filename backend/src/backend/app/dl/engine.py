@@ -13,12 +13,12 @@ from __future__ import annotations
 import hashlib
 from dataclasses import dataclass
 from decimal import Decimal
-from typing import Final, Protocol
+from typing import TYPE_CHECKING, Final, Protocol
 
 import numpy as np
-import torch
-import torch.nn as nn
-from torch.utils.data import DataLoader, TensorDataset
+
+if TYPE_CHECKING:  # pragma: no cover — type-check only, torch stays deferred
+    import torch
 
 from backend.app.dl.determinism import (
     DL_SEED,
@@ -26,11 +26,8 @@ from backend.app.dl.determinism import (
     quantize_metric,
 )
 from backend.app.dl.fingerprint import compute_dl_fingerprint
-from backend.app.dl.lstm import LotteryLSTM
-from backend.app.dl.mlp import LotteryMLP
 from backend.app.dl.sequence_builder import SequenceBatch
 from backend.app.dl.version import DL_GENERATOR_VERSION
-from backend.app.dl.weights import encode_weights
 
 N_NUMBERS: Final[int] = 10
 DEFAULT_EPOCHS: Final[int] = 50
@@ -66,6 +63,8 @@ def _build_model(
 ) -> _Model:
     """Instantiate a model from family name + hyperparameters."""
     if family == "mlp":
+        from backend.app.dl.mlp import LotteryMLP  # noqa: PLC0415  # deferred first use
+
         return LotteryMLP(
             W=W,
             hidden_layers=tuple(hyperparams.get("hidden_layers", [64, 32])),
@@ -73,6 +72,8 @@ def _build_model(
             dropout=float(hyperparams.get("dropout", 0.0)),
         )
     if family == "lstm":
+        from backend.app.dl.lstm import LotteryLSTM  # noqa: PLC0415  # deferred first use
+
         return LotteryLSTM(
             hidden_size=int(hyperparams.get("hidden_size", 64)),
             num_layers=int(hyperparams.get("num_layers", 2)),
@@ -182,6 +183,12 @@ def train(
     TrainResult
         Trained model, quantized metrics, weights BLOB, fingerprint.
     """
+    import torch  # noqa: PLC0415  # deferred: torch must not load at cold start (DLE-17)
+    import torch.nn as nn  # noqa: PLC0415
+    from torch.utils.data import DataLoader, TensorDataset  # noqa: PLC0415
+
+    from backend.app.dl.weights import encode_weights  # noqa: PLC0415
+
     configure_deterministic_torch(seed)
 
     W = train_batch.X.shape[1]

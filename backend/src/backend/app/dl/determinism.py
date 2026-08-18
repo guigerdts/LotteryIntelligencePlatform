@@ -15,8 +15,6 @@ from decimal import Decimal
 from numbers import Real
 from typing import Final
 
-import torch
-
 QUANTIZE_PRECISION: Final[int] = 8
 # Decimal("0.00000001") — the rounding quantum for Numeric(20,8).
 _QUANTUM = Decimal((0, (1,), -QUANTIZE_PRECISION))
@@ -34,6 +32,8 @@ def configure_deterministic_torch(seed: int = DL_SEED) -> None:
 
     Raises ``RuntimeError`` if a required deterministic op is unavailable.
     """
+    import torch  # noqa: PLC0415  # deferred: torch must not load at cold start (DLE-17)
+
     torch.manual_seed(seed)
     if torch.cuda.is_available():
         torch.cuda.manual_seed_all(seed)

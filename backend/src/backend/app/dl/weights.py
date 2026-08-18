@@ -22,10 +22,12 @@ import hashlib
 import json
 import struct
 from collections.abc import Mapping
-from typing import Final
+from typing import TYPE_CHECKING, Final
 
 import numpy as np
-import torch
+
+if TYPE_CHECKING:  # pragma: no cover — type-check only, torch stays deferred
+    import torch
 
 MAGIC: Final[bytes] = b"LIPDLW01"
 FORMAT_VERSION: Final[int] = 1
@@ -230,6 +232,8 @@ def decode_weights(
     dict[str, torch.Tensor]
         State dict ready for ``model.load_state_dict()``.
     """
+    import torch  # noqa: PLC0415  # deferred: torch must not load at cold start (DLE-17)
+
     parsed = _parse_blob(blob, expected_fingerprint=expected_fingerprint)
     manifest = parsed["manifest"]
     weight_shapes: dict[str, list[int]] = manifest["weight_shapes"]
