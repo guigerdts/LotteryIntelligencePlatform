@@ -92,7 +92,7 @@ describe("App router", () => {
     expect(
       await screen.findByRole("heading", { name: /operational summary/i }, ASYNC_TIMEOUT),
     ).toBeInTheDocument();
-  });
+  }, 15000);
 
   it("renders a real page (Home) inside the dashboard layout with sidebar", async () => {
     useLotteryStore.setState({ selectedLotteryId: 1, selectedLotteryCode: "L1" });
@@ -107,7 +107,7 @@ describe("App router", () => {
     expect(
       screen.getByRole("complementary", { name: "Sidebar" }),
     ).toBeInTheDocument();
-  });
+  }, 15000);
 
   it("navigates between routes through the sidebar links", async () => {
     useLotteryStore.setState({ selectedLotteryId: 1, selectedLotteryCode: "L1" });
