@@ -6,6 +6,13 @@
       "backend_pct": 90.05,
       "frontend_pct": 94.59,
       "passed": true
+    },
+    {
+      "run_id": "s3-gap-fill-2026-08-19",
+      "date": "2026-08-19",
+      "backend_pct": 91.55,
+      "frontend_pct": 95.22,
+      "passed": true
     }
   ],
   "hard_gate": false
