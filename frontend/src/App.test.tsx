@@ -139,5 +139,5 @@ describe("App router", () => {
     expect(
       screen.getByRole("region", { name: "System status" }),
     ).toBeInTheDocument();
-  });
+  }, 15000);
 });

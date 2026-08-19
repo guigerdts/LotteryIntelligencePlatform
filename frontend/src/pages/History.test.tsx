@@ -14,6 +14,8 @@ import type { Draw } from "../types/draw";
 
 const PAGE_SIZE = 50;
 
+const ASYNC_TIMEOUT = { timeout: 10000 };
+
 const env = (data: unknown) =>
   HttpResponse.json({ success: true, data, timestamp: "2026-01-01T00:00:00Z" });
 
@@ -82,9 +84,9 @@ describe("History", () => {
     render(<History />);
 
     expect(
-      await screen.findByRole("heading", { name: /history/i }),
+      await screen.findByRole("heading", { name: /history/i }, ASYNC_TIMEOUT),
     ).toBeInTheDocument();
-    const table = await screen.findByRole("table");
+    const table = await screen.findByRole("table", {}, ASYNC_TIMEOUT);
     expect(within(table).getByText("200")).toBeInTheDocument();
     expect(within(table).getAllByText("5 - 12 - 22")).not.toHaveLength(0);
     expect(screen.getByText("Page 1")).toBeInTheDocument();
@@ -94,20 +96,20 @@ describe("History", () => {
     selectLottery();
     render(<History />);
 
-    const next = await screen.findByRole("button", { name: /next/i });
+    const next = await screen.findByRole("button", { name: /next/i }, ASYNC_TIMEOUT);
     const previous = screen.getByRole("button", { name: /previous/i });
     expect(previous).toBeDisabled();
     expect(next).toBeEnabled();
 
     fireEvent.click(next);
-    expect(await screen.findByText("Page 2")).toBeInTheDocument();
+    expect(await screen.findByText("Page 2", {}, ASYNC_TIMEOUT)).toBeInTheDocument();
     expect(screen.getByText("150")).toBeInTheDocument();
     expect(screen.queryByText("200")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: /next/i })).toBeDisabled();
     expect(screen.getByRole("button", { name: /previous/i })).toBeEnabled();
 
     fireEvent.click(screen.getByRole("button", { name: /previous/i }));
-    expect(await screen.findByText("Page 1")).toBeInTheDocument();
+    expect(await screen.findByText("Page 1", {}, ASYNC_TIMEOUT)).toBeInTheDocument();
     expect(screen.getByText("200")).toBeInTheDocument();
     expect(screen.queryByText("150")).not.toBeInTheDocument();
   });

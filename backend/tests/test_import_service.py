@@ -44,7 +44,7 @@ _WINNERS = "3"
 
 
 @pytest.fixture
-def migrated_db(tmp_path: Path) -> Path:
+def import_db(tmp_path: Path) -> Path:
     """A tmp SQLite file with the full schema (head = 0004) applied."""
     db = tmp_path / "import_service.db"
     cfg = Config(str(_ALEMBIC_INI))
@@ -54,9 +54,9 @@ def migrated_db(tmp_path: Path) -> Path:
 
 
 @pytest.fixture
-def db(migrated_db: Path):
+def db(import_db: Path):
     """DI-style session over the tmp migrated DB (SQLite FK PRAGMA wired)."""
-    eng = build_engine(f"sqlite:///{migrated_db}")
+    eng = build_engine(f"sqlite:///{import_db}")
     factory = sessionmaker(bind=eng, autoflush=False, expire_on_commit=False)
     session = factory()
     yield session
