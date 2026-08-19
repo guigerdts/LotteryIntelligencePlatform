@@ -61,11 +61,15 @@ def resolve_context_vector(
             .first()
         )
         if snapshot is None:
-            raise ValueError(f"No active engine snapshot found for lottery {lottery_id}, engine {engine_type}")
+            raise ValueError(
+                f"No active engine snapshot found for lottery {lottery_id}, engine {engine_type}"
+            )
+        # bt_snapshots has no draws_from/draws_to columns (migration 0012);
+        # the header carries no draw range, so the temporal bound is unbounded.
         return ContextVector(
             lottery_id=lottery_id,
-            draws_from=snapshot.draws_from,
-            draws_to=snapshot.draws_to,
+            draws_from=0,
+            draws_to=0,
             cut=None,
             window=None,
             engine_type=engine_type,
@@ -80,7 +84,9 @@ def resolve_context_vector(
             .first()
         )
         if snapshot is None:
-            raise ValueError(f"No active engine snapshot found for lottery {lottery_id}, engine {engine_type}")
+            raise ValueError(
+                f"No active engine snapshot found for lottery {lottery_id}, engine {engine_type}"
+            )
         return ContextVector(
             lottery_id=lottery_id,
             draws_from=snapshot.draws_from,
@@ -99,7 +105,9 @@ def resolve_context_vector(
             .first()
         )
         if snapshot is None:
-            raise ValueError(f"No active engine snapshot found for lottery {lottery_id}, engine {engine_type}")
+            raise ValueError(
+                f"No active engine snapshot found for lottery {lottery_id}, engine {engine_type}"
+            )
         return ContextVector(
             lottery_id=lottery_id,
             draws_from=snapshot.draws_from,
@@ -118,11 +126,15 @@ def resolve_context_vector(
             .first()
         )
         if snapshot is None:
-            raise ValueError(f"No active engine snapshot found for lottery {lottery_id}, engine {engine_type}")
+            raise ValueError(
+                f"No active engine snapshot found for lottery {lottery_id}, engine {engine_type}"
+            )
+        # opt_snapshots has no draws_from/draws_to columns (migration 0011);
+        # the header carries no draw range, so the temporal bound is unbounded.
         return ContextVector(
             lottery_id=lottery_id,
-            draws_from=snapshot.draws_from,
-            draws_to=snapshot.draws_to,
+            draws_from=0,
+            draws_to=0,
             cut=None,
             window=None,
             engine_type=engine_type,

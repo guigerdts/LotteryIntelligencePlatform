@@ -240,11 +240,11 @@ class MetaService:
         # 2. Resolve context and get active ranking
         try:
             vector = resolve_context_vector(lottery_id, "backtesting", self._session)
-        except ValueError:
+        except ValueError as exc:
             raise MetaServiceError(
                 MetaServiceError.META_NO_ENGINE_DATA,
                 f"No engine snapshots found for lottery {lottery_id}",
-            )
+            ) from exc
 
         ctx_hash = context_hash or compute_context_hash(vector)
 
@@ -280,7 +280,9 @@ class MetaService:
             )
 
         # 4. Select top-K
-        selected = select_top_k(ranking_entries, top_k=effective_top_k, min_score=effective_min_score)
+        selected = select_top_k(
+            ranking_entries, top_k=effective_top_k, min_score=effective_min_score
+        )
 
         # 5. Compute selection fingerprint
         import hashlib
@@ -398,6 +400,7 @@ def _read_engine_snapshots(
     Returns a list of dicts with engine-specific metric fields and metadata.
     """
     if engine_type == "backtesting":
+        from backend.app.models.bt_result import BtResult
         from backend.app.models.bt_snapshot import BtSnapshot
 
         snaps = (
@@ -407,7 +410,13 @@ def _read_engine_snapshots(
         )
         result = []
         for s in snaps:
-            metrics = json.loads(s.aggregate_metrics_json) if s.aggregate_metrics_json else {}
+            bt_result = (
+                db.query(BtResult)
+                .filter(BtResult.snapshot_id == s.id)
+                .order_by(BtResult.created_at.desc())
+                .first()
+            )
+            metrics = json.loads(bt_result.aggregate_metrics_json) if bt_result else {}
             result.append(
                 {
                     "model_id": f"bt-{s.strategy_id}-{s.id}",
@@ -418,6 +427,7 @@ def _read_engine_snapshots(
         return result
 
     elif engine_type == "ml":
+        from backend.app.models.ml_metric import MlMetric
         from backend.app.models.ml_snapshot import MlSnapshot
 
         snaps = (
@@ -427,10 +437,17 @@ def _read_engine_snapshots(
         )
         result = []
         for s in snaps:
-            metrics = json.loads(s.metrics_json) if s.metrics_json else {}
+            metrics: dict[str, float] = {}
+            for row in db.query(MlMetric).filter(MlMetric.snapshot_id == s.id).all():
+                key = row.metric_name
+                val = float(row.value)
+                if key in metrics:
+                    metrics[key] = (metrics[key] + val) / 2
+                else:
+                    metrics[key] = val
             result.append(
                 {
-                    "model_id": f"ml-{s.family}-{s.id}",
+                    "model_id": f"ml-{s.model_set}-{s.id}",
                     "engine_type": "ml",
                     **metrics,
                 }
@@ -438,6 +455,7 @@ def _read_engine_snapshots(
         return result
 
     elif engine_type == "dl":
+        from backend.app.models.dl_metric import DlMetric
         from backend.app.models.dl_snapshot import DlSnapshot
 
         snaps = (
@@ -447,10 +465,17 @@ def _read_engine_snapshots(
         )
         result = []
         for s in snaps:
-            metrics = json.loads(s.metrics_json) if s.metrics_json else {}
+            metrics: dict[str, float] = {}
+            for row in db.query(DlMetric).filter(DlMetric.snapshot_id == s.id).all():
+                key = row.metric_name
+                val = float(row.value)
+                if key in metrics:
+                    metrics[key] = (metrics[key] + val) / 2
+                else:
+                    metrics[key] = val
             result.append(
                 {
-                    "model_id": f"dl-{s.family}-{s.id}",
+                    "model_id": f"dl-{s.model_set}-{s.id}",
                     "engine_type": "dl",
                     **metrics,
                 }
@@ -458,6 +483,7 @@ def _read_engine_snapshots(
         return result
 
     elif engine_type == "optimization":
+        from backend.app.models.opt_result import OptResult
         from backend.app.models.opt_snapshot import OptSnapshot
 
         snaps = (
@@ -467,12 +493,14 @@ def _read_engine_snapshots(
         )
         result = []
         for s in snaps:
-            metrics = json.loads(s.metrics_json) if s.metrics_json else {}
+            metrics: dict[str, float] = {}
+            for row in db.query(OptResult).filter(OptResult.snapshot_id == s.id).all():
+                metrics[f"best_fitness_{row.target_model}"] = float(row.best_fitness)
             result.append(
                 {
                     "model_id": f"opt-{s.optimizer}-{s.id}",
                     "engine_type": "optimization",
-                    **{k: v for k, v in metrics.items() if k not in ("total_draws_evaluated",)},
+                    **metrics,
                 }
             )
         return result
