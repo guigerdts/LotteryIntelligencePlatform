@@ -18,6 +18,10 @@ __pycache__/
 .pytest_cache/
 .mypy_cache/
 .coverage
+.coverage.*
+coverage.json
+htmlcov/
+.coverage/
 .codegraph/
 
 # --- Editors / OS ---
