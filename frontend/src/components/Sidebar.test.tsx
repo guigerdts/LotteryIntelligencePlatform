@@ -1,4 +1,4 @@
-import { describe, it, expect, afterEach } from "vitest";
+import { describe, it, expect, afterEach, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { useModuleStore } from "../store/useModuleStore";
@@ -111,5 +111,27 @@ describe("Sidebar", () => {
     for (const { label } of ALL_ITEMS) {
       expect(screen.getByRole("link", { name: label })).toBeInTheDocument();
     }
+  });
+
+  it("collapses on mount when the mobile media query matches", () => {
+    const listeners: Array<() => void> = [];
+    const media = {
+      matches: true,
+      addEventListener: (_type: string, cb: () => void) => {
+        listeners.push(cb);
+      },
+      removeEventListener: () => undefined,
+    };
+    vi.stubGlobal("matchMedia", () => media);
+
+    renderSidebar();
+    expect(useModuleStore.getState().sidebarCollapsed).toBe(true);
+
+    // a later media change re-applies the collapsed state
+    media.matches = false;
+    listeners.forEach((cb) => cb());
+    expect(useModuleStore.getState().sidebarCollapsed).toBe(false);
+
+    vi.unstubAllGlobals();
   });
 });
