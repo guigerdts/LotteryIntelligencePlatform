@@ -1,0 +1,12 @@
+{
+  "runs": [
+    {
+      "run_id": "s2-baseline-2026-08-19",
+      "date": "2026-08-19",
+      "backend_pct": 90.05,
+      "frontend_pct": 94.59,
+      "passed": true
+    }
+  ],
+  "hard_gate": false
+}

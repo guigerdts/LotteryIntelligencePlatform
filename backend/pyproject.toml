@@ -14,6 +14,7 @@ dependencies = [
     "pydantic>=2.13.4",
     "pydantic-settings>=2.14.2",
     "pytest>=9.1.1",
+    "pytest-cov>=7.0.0",
     "python-multipart>=0.0.12",
     "ruff>=0.16.1",
     "sqlalchemy>=2.0.51",
@@ -73,6 +74,18 @@ pythonpath = ["."]
 # (e.g. tests/probability/test_fingerprint.py and tests/feature_engineering/
 # test_fingerprint.py) must import by unique file hash, not bare module.
 addopts = "--import-mode=importlib"
+
+[tool.coverage.run]
+# Instrument only the app package; tests and third-party deps stay out of the
+# measured surface (TEST-002, ADR-3). Measured by `pytest --cov=backend.app`.
+source = ["backend.app"]
+
+[tool.coverage.report]
+# Report-only baseline (D1): show missing lines for gap-filling (S3) but NEVER
+# fail on coverage alone — the CI script evaluates the history artifact, and
+# fail_under stays unset so `coverage report`/pytest-cov always exits 0 on low
+# coverage during establishment.
+show_missing = true
 
 [tool.ruff]
 line-length = 100
