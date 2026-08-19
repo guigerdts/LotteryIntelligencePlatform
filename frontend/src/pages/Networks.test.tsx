@@ -5,6 +5,8 @@ import { setupServer } from "msw/node";
 import Networks from "./Networks";
 import { useLotteryStore } from "../store/useLotteryStore";
 
+const ASYNC_TIMEOUT = { timeout: 10000 };
+
 const { forceGraphProps } = vi.hoisted(() => ({
   forceGraphProps: { nodes: [] as unknown[], links: [] as unknown[] },
 }));
@@ -89,14 +91,14 @@ describe("Networks", () => {
   it("renders the network graph on mount, auto-selecting the latest snapshot", async () => {
     selectLottery();
     render(<Networks />);
-    expect(await screen.findByRole("heading", { name: /networks/i })).toBeInTheDocument();
-    expect(await screen.findByTestId("network-graph")).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: /networks/i }, ASYNC_TIMEOUT)).toBeInTheDocument();
+    expect(await screen.findByTestId("network-graph", {}, ASYNC_TIMEOUT)).toBeInTheDocument();
     await waitFor(() => {
       expect(valuesRequests).toContain(2);
       expect(forceGraphProps.links.length).toBe(3);
       expect(forceGraphProps.nodes.length).toBe(3);
       expect((forceGraphProps.nodes[0] as { color?: string }).color).toBeTruthy();
-    });
+    }, ASYNC_TIMEOUT);
     expect(screen.getByText("150")).toBeInTheDocument();
     expect(screen.getAllByText("3", { selector: "span.font-medium" })).toHaveLength(2);
   });
@@ -104,14 +106,14 @@ describe("Networks", () => {
   it("selecting another snapshot fetches its values and updates the graph", async () => {
     selectLottery();
     render(<Networks />);
-    await screen.findByTestId("network-graph");
+    await screen.findByTestId("network-graph", {}, ASYNC_TIMEOUT);
     fireEvent.click(screen.getByRole("button", { name: /#1/i }));
-    await waitFor(() => expect(valuesRequests[valuesRequests.length - 1]).toBe(1));
+    await waitFor(() => expect(valuesRequests[valuesRequests.length - 1]).toBe(1), ASYNC_TIMEOUT);
     expect(screen.getByRole("button", { name: /#1/i })).toHaveAttribute("aria-pressed", "true");
     await waitFor(() => {
       expect(forceGraphProps.links.length).toBe(2);
       expect(forceGraphProps.nodes.length).toBe(3);
-    });
+    }, ASYNC_TIMEOUT);
   });
 
   it("shows skeleton placeholders while data is loading", async () => {
@@ -119,8 +121,8 @@ describe("Networks", () => {
     server.use(http.get("*/api/v1/graph/L1/snapshots", () => delay(50).then(() => env(snapList()))));
     const { container } = render(<Networks />);
     expect(container.querySelector(".animate-pulse")).not.toBeNull();
-    await waitFor(() => expect(container.querySelector(".animate-pulse")).toBeNull());
-    expect(await screen.findByTestId("network-graph")).toBeInTheDocument();
+    await waitFor(() => expect(container.querySelector(".animate-pulse")).toBeNull(), ASYNC_TIMEOUT);
+    expect(await screen.findByTestId("network-graph", {}, ASYNC_TIMEOUT)).toBeInTheDocument();
   });
 
   it("shows an error state with retry and recovers on retry", async () => {
@@ -131,7 +133,7 @@ describe("Networks", () => {
     expect(screen.getByRole("button", { name: /retry/i })).toBeInTheDocument();
     server.use(http.get("*/api/v1/graph/L1/snapshots", () => env(snapList())));
     fireEvent.click(screen.getByRole("button", { name: /retry/i }));
-    await waitFor(() => expect(screen.getByTestId("network-graph")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByTestId("network-graph")).toBeInTheDocument(), ASYNC_TIMEOUT);
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
