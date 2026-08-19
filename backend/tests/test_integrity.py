@@ -40,7 +40,7 @@ MIGRATION_TARGET = os.environ.get("LIP_TEST_MIGRATION_TARGET", "head")
 
 
 @pytest.fixture
-def migrated_db(tmp_path: Path) -> Path:
+def repo_db(tmp_path: Path) -> Path:
     """A tmp SQLite file with the schema applied (alembic owns the schema)."""
     db = tmp_path / "repo_test.db"
     cfg = Config(str(_ALEMBIC_INI))
@@ -50,9 +50,9 @@ def migrated_db(tmp_path: Path) -> Path:
 
 
 @pytest.fixture
-def engine(migrated_db: Path):
+def engine(repo_db: Path):
     """App-style engine on the migrated tmp DB (SQLite FK PRAGMA wired)."""
-    eng = build_engine(f"sqlite:///{migrated_db}")
+    eng = build_engine(f"sqlite:///{repo_db}")
     yield eng
     eng.dispose()
 
