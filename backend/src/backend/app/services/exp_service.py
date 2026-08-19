@@ -211,6 +211,21 @@ class ExpService:
         if status is not None and status not in ("active", "retired", "failed"):
             raise ValidationError(f"invalid status: {status}")
 
+        # Explicit duplicate-name check BEFORE fingerprint computation (EXP-001).
+        # The fingerprint embeds the name, so renaming to an existing name
+        # would produce the sibling's fingerprint and be misread as idempotent,
+        # surfacing the UNIQUE constraint as a raw IntegrityError instead of
+        # the domain error.
+        if name is not None and name != experiment.name:
+            stmt = select(ExpExperiment).where(
+                ExpExperiment.lottery_id == experiment.lottery_id,
+                ExpExperiment.name == name,
+                ExpExperiment.status == "active",
+                ExpExperiment.id != experiment_id,
+            )
+            if self._session.execute(stmt).scalar_one_or_none() is not None:
+                raise DuplicateExperimentError(f"experiment with name '{name}' already exists")
+
         # Compute new fingerprint for idempotency check
         new_fingerprint = compute_exp_fingerprint(
             name=name if name is not None else experiment.name,
@@ -230,10 +245,6 @@ class ExpService:
                 version=experiment.version,
                 status=experiment.status,
             )
-
-        # Check for duplicate name within lottery (different fingerprint)
-        if name is not None and name != experiment.name:
-            self._check_duplicate_name(experiment.lottery_id, name, new_fingerprint)
 
         # Increment version
         new_version = str(int(experiment.version) + 1)
@@ -635,5 +646,9 @@ class ExpService:
         if snapshot is None:
             raise ExpSnapshotNotFoundError(f"snapshot {snapshot_id} not found")
 
-        # Return the fingerprint from the snapshot
+        # Return the fingerprint from the snapshot (EXP-003). ml/dl snapshots
+        # carry input_fingerprint (no `fingerprint` column — see ml/dl
+        # migrations); bt/opt snapshots carry `fingerprint`.
+        if engine_type in ("ml", "dl"):
+            return snapshot.input_fingerprint
         return snapshot.fingerprint
