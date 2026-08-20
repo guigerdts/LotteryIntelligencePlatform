@@ -105,6 +105,9 @@ jobs:
           name: coverage-shard-${{ matrix.shard }}
           path: backend/.coverage.${{ matrix.shard }}
           if-no-files-found: error
+          # .coverage.<s> is a dotfile; upload-artifact@v4 ignores hidden
+          # files unless explicitly included.
+          include-hidden-files: true
 
   coverage-finalize:
     name: Coverage finalize (backend %)
@@ -131,13 +134,17 @@ jobs:
           pattern: coverage-shard-*
           path: covdata
           merge-multiple: true
+          # The uploaded files are dotfiles (.coverage.<s>); download them too.
+          include-hidden-files: true
 
       # pytest-cov >= 7 renamed the json-summary alias to `json`; the
       # combined JSON summary is produced here via `coverage json`.
       - name: Combine shards and report
         working-directory: covdata
         run: |
-          coverage combine
+          # Artifacts preserve their internal path (backend/.coverage.<s>),
+          # so combine the backend/ subdirectory where the data files land.
+          coverage combine backend/
           coverage report
           coverage json -o backend-coverage.json
 
