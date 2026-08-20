@@ -10,7 +10,6 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 
@@ -55,15 +54,29 @@ class MetaSnapshotStore:
     def find_by_fingerprint(self, fingerprint: str) -> Any | None:
         """Find an active ranking or selection by fingerprint (META-007).
 
+        Consults ``meta_rankings`` first, then ``meta_selections``, so both
+        rank() and select() idempotency checks resolve their own record type.
         Returns the existing active record if found, None otherwise.
         """
         from backend.app.models.meta_ranking import MetaRanking
+        from backend.app.models.meta_selection import MetaSelection
 
-        return (
+        ranking = (
             self._session.query(MetaRanking)
             .filter(
                 MetaRanking.fingerprint == fingerprint,
                 MetaRanking.status == "active",
+            )
+            .first()
+        )
+        if ranking is not None:
+            return ranking
+
+        return (
+            self._session.query(MetaSelection)
+            .filter(
+                MetaSelection.fingerprint == fingerprint,
+                MetaSelection.status == "active",
             )
             .first()
         )
