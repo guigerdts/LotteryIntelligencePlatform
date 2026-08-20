@@ -82,6 +82,67 @@ describe("DataTable", () => {
     const nameCell = screen.getByText("Bravo");
     expect(nameCell.tagName).toBe("STRONG");
   });
+
+  it("toggles sort direction to descending on second click", () => {
+    renderTable();
+
+    fireEvent.click(screen.getByRole("button", { name: /name/i }));
+    fireEvent.click(screen.getByRole("button", { name: /name/i }));
+
+    const header = screen.getByRole("columnheader", { name: /name/i });
+    expect(header).toHaveAttribute("aria-sort", "descending");
+
+    const firstDataRow = screen.getAllByRole("row")[1];
+    expect(firstDataRow).toHaveTextContent("Bravo");
+  });
+
+  it("resets to ascending when a different sortable column is clicked", () => {
+    renderTable();
+
+    fireEvent.click(screen.getByRole("button", { name: /name/i }));
+    fireEvent.click(screen.getByRole("button", { name: /id/i }));
+
+    const idHeader = screen.getByRole("columnheader", { name: /id/i });
+    expect(idHeader).toHaveAttribute("aria-sort", "ascending");
+    expect(screen.getByText("↑")).toBeInTheDocument();
+  });
+
+  it("renders non-sortable columns as plain text without a button", () => {
+    renderTable({
+      columns: [{ key: "id", label: "ID" }, { key: "name", label: "Name" }],
+    });
+
+    expect(screen.queryByRole("button")).not.toBeInTheDocument();
+    expect(screen.getByText("Alpha")).toBeInTheDocument();
+  });
+
+  it("renders a dash for null and undefined cell values", () => {
+    renderTable({
+      columns: [
+        { key: "id", label: "ID" },
+        { key: "name", label: "Name" },
+      ],
+      rows: [
+        { id: 1, name: "Alpha" },
+        { id: 2, name: null as unknown as string },
+      ],
+    });
+
+    const dashCells = screen.getAllByText("—");
+    expect(dashCells).toHaveLength(1);
+  });
+
+  it("stringifies object cell values", () => {
+    renderTable({
+      columns: [
+        { key: "id", label: "ID" },
+        { key: "meta", label: "Meta" },
+      ],
+      rows: [{ id: 1, meta: { nested: true } }],
+    });
+
+    expect(screen.getByText('{"nested":true}')).toBeInTheDocument();
+  });
 });
 
 describe("ErrorState", () => {
