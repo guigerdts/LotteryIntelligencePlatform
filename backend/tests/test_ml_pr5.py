@@ -183,9 +183,25 @@ class TestMlApi:
             assert len(data["results"]) == 1
             assert data["results"][0]["family"] == "random_forest"
 
-    def test_models_404(self, migrated_db) -> None:
-        """GET /ml/models for unknown lottery returns 404."""
+    def test_models_404(self, migrated_db, session_factory: sessionmaker) -> None:
+        """GET /ml/models for unknown lottery returns 404.
+
+        Uses the migrated DB override (never the dev lottery.db, absent in CI).
+        """
         app = create_app()
+
+        def override():
+            s = session_factory()
+            try:
+                yield s
+            except Exception:
+                s.rollback()
+                raise
+            finally:
+                s.close()
+
+        app.dependency_overrides[get_db] = override
+
         with TestClient(app) as client:
             resp = client.get("/api/v1/ml/models", params={"lottery_id": 999})
             assert resp.status_code == 404
