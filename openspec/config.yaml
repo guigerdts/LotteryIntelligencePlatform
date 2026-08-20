@@ -49,8 +49,8 @@ testing:
   layers:
     unit: true
     integration: true
-    e2e: false
-  coverage: false
+    e2e: true
+  coverage: true
   quality:
     linter: true         # ruff
     typechecker: false
