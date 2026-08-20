@@ -134,17 +134,15 @@ jobs:
           pattern: coverage-shard-*
           path: covdata
           merge-multiple: true
-          # The uploaded files are dotfiles (.coverage.<s>); download them too.
-          include-hidden-files: true
 
       # pytest-cov >= 7 renamed the json-summary alias to `json`; the
       # combined JSON summary is produced here via `coverage json`.
       - name: Combine shards and report
         working-directory: covdata
         run: |
-          # Artifacts preserve their internal path (backend/.coverage.<s>),
-          # so combine the backend/ subdirectory where the data files land.
-          coverage combine backend/
+          # merge-multiple flattens artifacts into covdata/, so the dotfiles
+          # (.coverage.<s>) land directly here — combine them in place.
+          coverage combine
           coverage report
           coverage json -o backend-coverage.json
 
