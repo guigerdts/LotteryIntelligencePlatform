@@ -27,7 +27,6 @@ class TestUpdateErrors:
             ExpService(db).update(999, name="Nope")
 
     def test_update_duplicate_name_raises_domain_error(self, db, seeded_lottery) -> None:
-        """T-S3-05: rename-to-existing raises the domain error, not IntegrityError."""
         svc = ExpService(db)
         a = svc.create(lottery_id=1, name="Original")
         b = svc.create(lottery_id=1, name="Other")
@@ -35,7 +34,6 @@ class TestUpdateErrors:
             svc.update(b.experiment_id, name=a.name)
 
     def test_update_same_name_allowed(self, db, seeded_lottery) -> None:
-        """T-S3-05: updating an experiment to its own name stays valid."""
         svc = ExpService(db)
         a = svc.create(lottery_id=1, name="Original")
         outcome = svc.update(a.experiment_id, name="Original", description="touched")
@@ -71,7 +69,6 @@ class TestAddRunErrors:
 
 class TestValidateSnapshotBranches:
     def test_add_run_optimization_snapshot_valid(self, db, seeded_lottery) -> None:
-        """Optimization snapshots carry `fingerprint` — copied as-is."""
         snap_id = create_opt_snapshot(db)
         db.commit()
         svc = ExpService(db)
@@ -91,11 +88,7 @@ class TestValidateSnapshotBranches:
     def test_add_run_ml_dl_valid_uses_input_fingerprint(
         self, db, seeded_lottery, engine_type, model
     ) -> None:
-        """T-S3-05: ml/dl add_run succeeds; engine_fingerprint = input_fingerprint.
-
-        Regression: _validate_snapshot read the nonexistent `fingerprint`
-        attribute and crashed with AttributeError.
-        """
+        """T-S3-05: ml/dl add_run succeeds; engine_fingerprint = input_fingerprint."""
         snap_id = (
             seed_metric_snapshot(db, model, window=20)
             if engine_type == "dl"
