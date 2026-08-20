@@ -186,8 +186,7 @@ class TestMlApi:
     def test_models_404(self, migrated_db, session_factory: sessionmaker) -> None:
         """GET /ml/models for unknown lottery returns 404.
 
-        Uses the migrated session DB via dependency override, like the other
-        tests in this class — never the dev ``lottery.db`` (absent in CI).
+        Uses the migrated DB override (never the dev lottery.db, absent in CI).
         """
         app = create_app()
 
