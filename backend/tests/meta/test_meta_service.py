@@ -19,7 +19,6 @@ from backend.app.services.meta_service import MetaService
 
 @pytest.fixture
 def seeded_lottery(db) -> Lottery:
-    """Seed a lottery row for FK compliance."""
     lottery = Lottery(
         id=1,
         code="META",
@@ -36,12 +35,10 @@ def seeded_lottery(db) -> Lottery:
 
 @pytest.fixture
 def service(db) -> MetaService:
-    """A service over the real session (error paths do not touch the DB)."""
     return MetaService(db)
 
 
 def _seed_bt(db, strategy_id: str, metrics: dict) -> BtSnapshot:
-    """Seed an active BtSnapshot + BtResult; return the snapshot."""
     snap = BtSnapshot(
         lottery_id=1,
         strategy_id=strategy_id,
@@ -64,7 +61,6 @@ def _seed_bt(db, strategy_id: str, metrics: dict) -> BtSnapshot:
 
 
 def _seed_ml(db, model_set: str, metrics: dict) -> None:
-    """Seed an active MlSnapshot + MlMetric rows."""
     from backend.app.models.ml_metric import MlMetric
     from backend.app.models.ml_snapshot import MlSnapshot
 
@@ -100,10 +96,10 @@ def _seed_ml(db, model_set: str, metrics: dict) -> None:
 
 
 class TestRankErrors:
-    """rank() error paths (META-004, META-001, META-020)."""
+    """Test rank error paths."""
 
     def test_rank_raises_no_engine_data(self, service: MetaService) -> None:
-        """META_NO_ENGINE_DATA when no engine snapshots exist."""
+        """META-004: META_NO_ENGINE_DATA when no engine snapshots exist."""
         with patch(
             "backend.app.services.meta_service.resolve_context_vector",
             side_effect=ValueError("No active engine snapshot found"),
@@ -113,14 +109,14 @@ class TestRankErrors:
             assert exc_info.value.code == "META_NO_ENGINE_DATA"
 
     def test_rank_raises_weights_invalid(self, service: MetaService) -> None:
-        """META_WEIGHTS_INVALID when weights sum to zero."""
+        """META-001: META_WEIGHTS_INVALID when weights sum to zero."""
         with pytest.raises(MetaServiceError) as exc_info:
             service.rank(lottery_id=1, weights={"hit_rate": 0.0, "average_matches": 0.0})
         assert exc_info.value.code == "META_WEIGHTS_INVALID"
 
 
 class TestSelectErrors:
-    """select() error paths (META-006, META-020)."""
+    """Test select error paths."""
 
     def test_select_raises_no_engine_data(self, service: MetaService) -> None:
         """META_NO_ENGINE_DATA when no engine snapshots exist."""
@@ -133,7 +129,6 @@ class TestSelectErrors:
             assert exc_info.value.code == "META_NO_ENGINE_DATA"
 
     def test_select_raises_ranking_not_found(self, db, seeded_lottery) -> None:
-        """META_RANKING_NOT_FOUND when no ranking exists for the context."""
         from backend.app.meta.context import compute_context_hash, resolve_context_vector
 
         _seed_bt(db, "strat-a", {"hit_rate": 0.85})
@@ -145,7 +140,7 @@ class TestSelectErrors:
         assert exc_info.value.code == "META_RANKING_NOT_FOUND"
 
     def test_select_raises_top_k_invalid(self, service: MetaService) -> None:
-        """META_TOP_K_INVALID when top_k is out of range."""
+        """META_TOP_K_INVALID when top_k < 1."""
         with pytest.raises(MetaServiceError) as exc_info:
             service.select(lottery_id=1, top_k=0)
         assert exc_info.value.code == "META_TOP_K_INVALID"
@@ -158,14 +153,9 @@ class TestSelectErrors:
 
 
 class TestRankHappyPath:
-    """rank() happy path against the real migrated DB (T-S3-05 regression).
-
-    No seam patching: real BtSnapshot/BtResult rows drive
-    resolve_context_vector + _read_engine_snapshots end to end.
-    """
+    """rank() happy path against the real migrated DB (T-S3-05 regression)."""
 
     def test_rank_persists_active_ranking(self, db, seeded_lottery) -> None:
-        """META-005: rank() persists an active ranking with scored entries."""
         _seed_bt(
             db, "strat-a", {"hit_rate": 0.85, "average_matches": 4.2, "consistency_score": 0.7}
         )
@@ -189,7 +179,6 @@ class TestRankHappyPath:
         assert stored[0].fingerprint == result.fingerprint
 
     def test_rank_is_idempotent_by_fingerprint(self, db, seeded_lottery) -> None:
-        """META-007: re-ranking identical input returns the existing ranking."""
         _seed_bt(db, "strat-a", {"hit_rate": 0.85})
         db.commit()
 
@@ -201,7 +190,6 @@ class TestRankHappyPath:
         assert second.entries == []
 
     def test_rank_reads_ml_metrics(self, db, seeded_lottery) -> None:
-        """META-005: ml snapshots contribute metrics from ml_metrics rows."""
         _seed_ml(db, "rf", {"precision": 0.8, "recall": 0.7})
         db.commit()
 
@@ -213,10 +201,7 @@ class TestRankHappyPath:
 
 
 class TestSelectHappyPath:
-    """select() happy path against the real migrated DB (T-S3-05 regression)."""
-
     def _seed_ranking(self, db) -> None:
-        """Create a ranking via the real service, then select from it."""
         _seed_bt(db, "strat-a", {"hit_rate": 0.85})
         _seed_bt(db, "strat-b", {"hit_rate": 0.75})
         db.commit()
@@ -224,7 +209,6 @@ class TestSelectHappyPath:
         svc.rank(lottery_id=1)
 
     def test_select_persists_active_selection(self, db, seeded_lottery) -> None:
-        """META-006: select() persists an active selection from the active ranking."""
         self._seed_ranking(db)
         svc = MetaService(db)
         result = svc.select(lottery_id=1, top_k=1)
@@ -237,14 +221,12 @@ class TestSelectHappyPath:
         assert stored[0].status == "active"
 
     def test_select_min_score_filters(self, db, seeded_lottery) -> None:
-        """META-006: min_score filters entries below the threshold."""
         self._seed_ranking(db)
         svc = MetaService(db)
         result = svc.select(lottery_id=1, min_score=0.9)
         assert len(result.entries) < 2
 
     def test_select_is_idempotent_by_fingerprint(self, db, seeded_lottery) -> None:
-        """META-007: re-selecting identical input returns the existing selection."""
         self._seed_ranking(db)
         svc = MetaService(db)
         first = svc.select(lottery_id=1, top_k=1)
@@ -255,10 +237,7 @@ class TestSelectHappyPath:
 
 
 class TestGetHappyPath:
-    """get_ranking/get_selection snapshots with real persisted data (T-S3-02)."""
-
     def test_get_ranking_returns_snapshot(self, db, seeded_lottery) -> None:
-        """META-010: get_ranking returns a RankingSnapshot with the stored entry."""
         svc = MetaService(db)
         from backend.app.meta.snapshot_store import MetaSnapshotStore
 
@@ -282,7 +261,6 @@ class TestGetHappyPath:
         assert snapshot.rankings[0]["status"] == "active"
 
     def test_get_ranking_infers_context_hash_from_first(self, db, seeded_lottery) -> None:
-        """META-010: get_ranking without context_hash uses the first stored hash."""
         svc = MetaService(db)
         from backend.app.meta.snapshot_store import MetaSnapshotStore
 
@@ -301,7 +279,6 @@ class TestGetHappyPath:
         assert snapshot.context_hash == "ctx-hash"
 
     def test_get_selection_returns_snapshot(self, db, seeded_lottery) -> None:
-        """META-010: get_selection returns a SelectionSnapshot with the stored entry."""
         svc = MetaService(db)
         from backend.app.meta.snapshot_store import MetaSnapshotStore
 
@@ -334,7 +311,6 @@ class TestGetHappyPath:
         assert snapshot.selections[0]["status"] == "active"
 
     def test_get_selection_infers_context_hash_from_first(self, db, seeded_lottery) -> None:
-        """META-010: get_selection without context_hash uses the first stored hash."""
         svc = MetaService(db)
         from backend.app.meta.snapshot_store import MetaSnapshotStore
 
