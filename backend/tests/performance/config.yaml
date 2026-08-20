@@ -1,0 +1,25 @@
+# F17 TEST-006 / ADR-6: custom performance harness configuration.
+#
+# Custom harness only — pytest-benchmark is banned (TEST-006 scenario 2);
+# functional timing tests (pytest --durations) are NOT benchmarks. Runs on
+# demand / schedule via .github/workflows/performance.yml; NOT a PR gate
+# (T-S4-03). Baselines are documented estimates: the harness records actuals
+# and marks pass/fail against baseline +/- tolerance. First calibration run
+# (2026-08-20): cold_start measured ~13-17 s vs the design's 5.6 s estimate
+# (flagged FAIL — real signal to review); stats GET ~0.03-0.06 s and parallel
+# bt ~0.37-0.6 s swing with box noise — baselines set to mid-range estimates.
+
+runs: 5
+warmup: 1
+tolerance: 0.20
+
+ops:
+  cold_start:
+    unit: s
+    baseline: 5.6
+  cached_statistics_get:
+    unit: s
+    baseline: 0.045
+  parallel_bt_train:
+    unit: s
+    baseline: 0.52
