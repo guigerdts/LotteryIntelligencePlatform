@@ -1,3 +1,6 @@
+# Local-only lint helper (complementary, F17 TEST-004). No gate logic here:
+# the CI main gate lives in .github/workflows/ci.yml, so bypassing these hooks
+# (--no-verify / --no-commit) is still caught by CI on push.
 repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.16.1

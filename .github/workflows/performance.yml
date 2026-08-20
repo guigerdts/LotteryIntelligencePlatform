@@ -1,0 +1,61 @@
+# F17 TEST-004 / ADR-6: performance workflow.
+#
+# Runs the S5 custom performance harness (backend/tests/performance/harness.py,
+# NOT pytest-benchmark — banned by TEST-006 s2) on demand or weekly. This
+# workflow is NOT a PR gate: it never runs on push/pull_request and never
+# blocks merges. The harness lands in slice S5; until then this job fails
+# with a clear message instead of a cryptic traceback.
+#
+# See openspec/changes/fase-17-testing/design.md (ADR-6) and
+# specs/testing/spec.md (TEST-006).
+name: Performance
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Weekly, Monday 02:00 UTC — adjust per project cadence.
+    - cron: "0 2 * * 1"
+
+permissions:
+  contents: read
+  actions: write
+
+jobs:
+  performance:
+    name: Performance harness (S5)
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install backend (editable, from pyproject)
+        run: >-
+          uv pip install --system -e "backend"
+          --index-strategy unsafe-best-match
+          --extra-index-url https://download.pytorch.org/whl/cpu
+
+      # S5 harness does not exist yet (scheduled for slice S5). Fail clearly
+      # and gracefully instead of crashing on a missing module.
+      - name: Run performance harness
+        working-directory: backend
+        run: |
+          if [ ! -f tests/performance/harness.py ] || [ ! -f tests/performance/config.yaml ]; then
+            echo "::error::Performance harness (backend/tests/performance/harness.py --config tests/performance/config.yaml) is not present yet — it lands in slice S5 (TEST-006). Nothing to run."
+            exit 1
+          fi
+          python tests/performance/harness.py --config tests/performance/config.yaml
+
+      - name: Upload performance report
+        uses: actions/upload-artifact@v4
+        with:
+          name: performance-reports
+          path: backend/tests/performance/report-*.json
+          if-no-files-found: warn
