@@ -411,3 +411,61 @@ El motor genera combinaciones de números basadas en reglas de asignación y val
 - `ai.fingerprint`: fingerprint de la función + inputs
 - `ai.version`: versión del motor
 - Output: `GenerationResult` (text + engine_version + fingerprint)
+
+---
+
+## 11. Motor de Deep Learning (sin router montado)
+
+**Módulo**: `backend.app.dl`
+**API**: Ninguna (no hay router montado en `api/v1/`)
+**Estado**: Implementación completa, sin exposición HTTP
+
+### 11.1 Modelos disponibles
+
+| Modelo | Módulo | Descripción |
+|--------|--------|-------------|
+| LSTM | `dl.lstm` | Red neuronal recurrente para secuencias |
+| MLP | `dl.mlp` | Perceptrón multicapa |
+
+### 11.2 Componentes
+
+| Módulo | Descripción |
+|--------|-------------|
+| `dl.engine` | Orquestador de training |
+| `dl.splitter` | Walk-forward split |
+| `dl.sequence_builder` | Construcción de secuencias para LSTM |
+| `dl.window` | Ventanas temporales |
+| `dl.weights` | Gestión de pesos del modelo |
+| `dl.determinism` | Cuantización de métricas |
+| `dl.fingerprint` | Fingerprint del input |
+
+### 11.3 Nota importante
+
+Este motor está implementado pero **no tiene router HTTP montado**. Solo puede
+ejecutarse internamente vía código Python. No hay endpoints `/dl/*` en la API.
+
+---
+
+## 12. Motor de Experimentos
+
+**Módulo**: `backend.app.experiments`
+**API**: `POST /experiment/{id}/run`, `GET /experiment/{id}/results`
+**Snapshot store**: `backend.app.experiments.snapshot_store`
+
+### 12.1 Funcionalidad
+
+El motor orquesta experimentos comparativos entre motores (ML vs DL vs BT vs OPT).
+
+| Módulo | Descripción |
+|--------|-------------|
+| `experiments.engine` | Orquestador de experimentos |
+| `experiments.types` | Tipos: `ExperimentConfig`, `ExperimentResult` |
+| `experiments.fingerprint` | Fingerprint del experimento |
+
+### 12.2 Tablas persistidas
+
+| Tabla | Contenido |
+|-------|-----------|
+| `experiment` | Configuración del experimento |
+| `experiment_run` | Resultados por ejecución |
+| `experiment_comparison` | Comparaciones entre motores |
