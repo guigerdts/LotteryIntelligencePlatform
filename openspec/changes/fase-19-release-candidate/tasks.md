@@ -54,9 +54,9 @@
 
 - [x] T-S0-01 install deap/optuna + align uv.lock
 - [x] T-S0-02 backend suite 0 failed
-- [ ] T-S1-01 reproduce flakes
-- [ ] T-S1-02 stabilize 3 flaky test files
-- [ ] T-S1-03 three consecutive green runs
+- [x] T-S1-01 reproduce flakes
+- [x] T-S1-02 stabilize 3 flaky test files
+- [x] T-S1-03 three consecutive green runs
 - [ ] T-S2-01 run existing gates
 - [ ] T-S2-02 mypy/bandit status recorded
 - [ ] T-S2-03 audit-report.md written
