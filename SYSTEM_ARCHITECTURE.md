@@ -153,384 +153,167 @@ Los motores comparten un patrón de integración basado en seams explícitos (la
 
 ---
 
-4. Estructura del Proyecto
+## 4. Ciclo de vida de snapshots
 
-lip/
+Cada motor materializa sus resultados como snapshots versionados e inmutables en SQLite. El ciclo de vida es común a todos los motores y vive en un único dueño de E/S por motor (`snapshot_store.py`, o el repositorio equivalente):
 
-backend/
-    app/
-    api/
-    core/
-    config/
-    models/
-    schemas/
-    repositories/
-    services/
-    analytics/
-    ml/
-    dl/
-    optimization/
-    experiments/
-    generators/
-    backtesting/
-    simulations/
-    feature_engineering/
-    statistics/
-    probability/
-    importers/
-    exporters/
-    utils/
+1. **Fingerprint** — las entradas relevantes se resumen en un hash SHA-256 (`fingerprint` / `input_fingerprint`), clave canónica de invalidación.
+2. **Idempotencia** — si ya existe un snapshot `active` con el mismo fingerprint, se devuelve tal cual sin recomputar (`find_by_fingerprint`).
+3. **Versión monótona** — `next_version()` calcula el siguiente número humano dentro del ámbito `(lottery_id, …)` propio del motor.
+4. **Escritura atómica** — la nueva cabecera (`status='active'`) y su payload se insertan en la misma transacción que retira el activo previo (`status='retired'`).
+5. **Fallo terminal** — ante un error, `mark_failed()` marca el snapshot como `failed` (terminal); nunca existen snapshots `active` parciales.
 
-frontend/
-    src/
-    pages/
-    layouts/
-    components/
-    charts/
-    hooks/
-    services/
-    store/
+El dominio del ciclo lo posee la base de datos mediante restricciones `CHECK` (`status IN ('active', 'retired', 'failed')`); la inmutabilidad la aplica el servicio mediante el flip de `status`, nunca triggers del dialecto.
 
-database/
+| Motor | Dueño de E/S | Ámbito del snapshot | Cabecera | Payload |
+|-------|--------------|---------------------|----------|---------|
+| meta | `MetaSnapshotStore` | `(lottery_id, context_hash)` | `MetaRanking` / `MetaSelection` | `MetaRankingEntry` / `MetaSelectionEntry` |
+| probability | `SnapshotStore` (`probability/snapshot_store.py`) | `(lottery_id, model_set)` | `ProbSnapshot` | `ProbValue` |
+| graph | funciones de módulo (`graph/snapshot_store.py`) | loto + tipo de grafo | `GraphSnapshot` | `GraphValue` |
+| ml | `MlSnapshotStore` | `(lottery_id, model_set)` | `MlSnapshot` | `MlMetric` |
+| bt | `BtSnapshotStore` | `(lottery_id, strategy_id)` | `BtSnapshot` | `BtResult` |
+| opt | `OptSnapshotStore` | `(lottery_id, optimizer)` | `OptSnapshot` | `OptResult` |
+| feature_engineering | `FeatureEngineService` + repositorios | `(lottery_id, feature_set)` | `FeatureSnapshot` | `FeatureValue` |
 
-docs/
+Notas sobre la tabla:
 
-datasets/
-
-experiments/
-
-tests/
-
-scripts/
-
-logs/
+- `statistics` pertenece a la misma familia: `StatisticsService` persiste vía `StatSnapshotRepository` y `StatPayloadRepository` (payload repartido en las tablas `stat_*`).
+- Variante `bt`: `create_active()` elimina primero las filas del mismo fingerprint — la unicidad `(lottery_id, strategy_id, fingerprint)` lo exige — y crea la nueva versión en una sola transacción.
+- `dl`: las entidades `DlSnapshot` / `DlMetric` / `DlWeight` y sus tablas existen (migración `0010_dl_tables`), pero hoy ningún store ni servicio escribe snapshots DL; `meta_service` y `exp_service` únicamente leen filas `active` como candidatos.
+- `generators`: `GenSnapshot` comparte el mismo trío de estados (`CHECK` idéntico) y `lip gen snapshot` transiciona su estado de ciclo de vida.
 
 ---
 
-5. Base de Datos
+## 5. Base de datos y migraciones
 
-Inicialmente:
+SQLite en un único archivo (ruta resuelta por `Settings`), accedido mediante SQLAlchemy. La frontera de acceso a datos es `repositories/base.py`: declara `Base` (`DeclarativeBase`), construye el `engine` desde la configuración y expone la fábrica de sesiones `SessionLocal` junto a `get_db()`, la dependencia FastAPI que hace rollback ante errores y siempre cierra la sesión.
 
-SQLite
+El esquema es propiedad exclusiva de las migraciones Alembic: `Base.metadata.create_all` no se usa en ninguna parte; el `lifespan` de la aplicación solo garantiza la existencia del archivo SQLite (`init_db`). `alembic/env.py` fija `target_metadata = Base.metadata` (importar el paquete `models` registra todas las tablas), habilita `render_as_batch=True` para DDL portátil en SQLite y resuelve la URL de la base desde el override `sqlalchemy.url` de `alembic.ini` (usado por tests) o, en su defecto, desde los settings de la aplicación. Los comandos se ejecutan desde `backend/`, donde vive `alembic.ini`:
 
-Preparada para migrar a PostgreSQL en el futuro sin modificar la lógica de negocio.
+```bash
+alembic upgrade head   # aplica todas las migraciones hasta 0016
+alembic heads          # 0016_exp_comparisons_run_ids (head)
+```
 
----
+Migraciones reales (`backend/alembic/versions/`, 16 en total):
 
-6. Motores
+| Migración | Contenido |
+|-----------|-----------|
+| `0001_initial_core_domain` | Esquema núcleo del dominio (loterías, sorteos, datasets, importaciones) |
+| `0002_performance_indexes` | Índices de rendimiento |
+| `0003_imports_audit` | Auditoría de importaciones |
+| `0004_import_performance_indexes` | Índices de rendimiento de importación |
+| `0005_stat_tables` | Tablas `stat_*` del motor estadístico |
+| `0006_feature_tables` | Tablas de features |
+| `0007_probability_tables` | Tablas de probabilidad |
+| `0008_graph_tables` | Tablas de grafos |
+| `0009_ml_tables` | Tablas de ML |
+| `0010_dl_tables` | Tablas de DL |
+| `0011_opt_tables` | Tablas de optimización |
+| `0012_bt_tables` | Tablas de backtesting |
+| `0013_exp_tables` | Tablas de experimentos |
+| `0014_meta_tables` | Tablas de Meta Learning |
+| `0015_gen_tables` | Tablas del generador |
+| `0016_exp_comparisons_run_ids` | **(head)** comparaciones de experimentos por IDs de run |
 
-Data Engine
-
-Responsabilidades:
-
-- Importar datos.
-- Validar.
-- Limpiar.
-- Normalizar.
-- Versionar.
-
----
-
-Statistics Engine
-
-Responsable del cálculo de:
-
-- Frecuencias.
-- Distribuciones.
-- Tendencias.
-- Correlaciones.
-- Entropía.
-- Indicadores.
-
----
-
-Probability Engine
-
-Responsable de:
-
-- Monte Carlo.
-- Bayes.
-- Distribuciones.
-- Simulación.
-- Probabilidades condicionales.
+Las 38 entidades ORM de `models/` se agrupan por familias: dominio núcleo (`Lottery`, `Draw`, `DrawNumber`, `SuperNumber`, `Dataset`, `DatasetDraw`, `ImportJob`, `ImportError`), una familia por motor (`Stat*`, `Feature*`, `Prob*`, `Graph*`, `Ml*`, `Dl*`, `Opt*`, `Bt*`, `Exp*`, `Meta*`, `Gen*`). En `repositories/` conviven `base.py`, el CRUD genérico `base_repository.py`, `errors.py` y 12 repositorios de dominio (draws, datasets, lotteries, imports, features, stats, super_numbers, …).
 
 ---
 
-Feature Engine
+## 6. CLI `lip`
 
-Generará todas las variables derivadas utilizadas por los modelos.
+El entry point está declarado en `backend/pyproject.toml` (`[project.scripts]`: `lip = "backend.app.cli:main"`). La CLI es argparse puro: resuelve el código de lotería vía repositorio y delega todo el trabajo en los servicios; nunca hace shell-out ni toca la capa HTTP. No existe scheduler: todas las operaciones son explícitas y bajo demanda (IE-08). `lip import` registra la corrida con `import_type="cli"` y `started_by` tomado del usuario invocante; ante un `ServiceError` imprime `[código] mensaje` por stderr y sale con código 1.
 
-Cada Feature será un componente independiente.
+Los 12 grupos (`lip --help`):
 
----
+| Grupo | Subcomandos | Propósito |
+|-------|-------------|-----------|
+| `import` | — | Importa un CSV de historial (`--resume` reanuda corridas parciales coincidentes) |
+| `dataset-generate` | — | Genera un dataset inmutable y bloqueado |
+| `statistics` | `generate`, `rebuild` | Snapshot estadístico bajo demanda |
+| `feature-engine` | `generate`, `rebuild` | Snapshot de features bajo demanda |
+| `probability` | `generate`, `rebuild` | Snapshot de probabilidad bajo demanda |
+| `graph` | `compute`, `list`, `show` | Computa y consulta snapshots de grafos |
+| `ml` | `train`, `models`, `metrics` | Entrena las familias core-5 y consulta snapshots/métricas |
+| `opt` | `train`, `models`, `metrics`, `params` | Pasadas de optimización y resultados |
+| `exp` | `create`, `list`, `compare`, `export` | Experimentos: creación, comparación y exportación JSON/CSV |
+| `bt` | `run`, `history`, `results` | Backtests walk-forward e histórico |
+| `meta` | `rank`, `ranking`, `select`, `selection` | Rankings y selecciones de Meta Learning |
+| `gen` | `generate`, `combinations`, `snapshot`, `snapshots` | Generación y consulta de combinaciones |
 
-Machine Learning Engine
+Ejemplos de uso:
 
-Responsable de:
-
-- Entrenamiento.
-- Predicción.
-- Persistencia.
-- Comparación.
-- Optimización.
-
----
-
-Deep Learning Engine
-
-Responsable de modelos neuronales.
-
-Ejemplos:
-
-- LSTM
-- Transformers
-- Redes densas
-
----
-
-Optimization Engine
-
-Implementará:
-
-- Algoritmos Genéticos.
-- PSO.
-- Simulated Annealing.
-- Bayesian Optimization.
+```bash
+lip --help                                      # descubrimiento de grupos
+lip import --lottery <codigo> --file <ruta.csv> # importación con auditoría JSON
+lip import --lottery <codigo> --file <ruta.csv> --resume   # reanudar parcial
+lip <grupo> --help                              # ayuda detallada por grupo
+```
 
 ---
 
-Generator Engine
+## 7. Frontend
 
-Construirá millones de combinaciones candidatas.
+SPA en React 19 + TypeScript construida con Vite. Dependencias declaradas en `package.json`: `react-router-dom` 7 (enrutamiento con `createBrowserRouter`), `zustand` 5 (estado), `recharts` 3 (gráficos) y `react-force-graph-2d` (grafos). Las 13 entradas de `App.tsx` renderizan dentro de `DashboardLayout`; cada página se carga lazy con un fallback `Suspense` compartido (`PageFallback` sobre `Skeleton`).
 
-Posteriormente:
+Tabla de rutas real (`App.tsx`):
 
-- filtrará,
-- puntuará,
-- clasificará,
-- devolverá las mejores.
+| Ruta | Componente (`frontend/src/pages/`) |
+|------|------------------------------------|
+| `/` (index) | `Home.tsx` |
+| `/historial` | `History.tsx` |
+| `/estadisticas` | `Statistics.tsx` |
+| `/heatmaps` | `Heatmaps.tsx` |
+| `/tendencias` | `Trends.tsx` |
+| `/redes` | `Networks.tsx` |
+| `/monte-carlo` | `MonteCarlo.tsx` |
+| `/ia` | `IA.tsx` |
+| `/modelos` | `Models.tsx` |
+| `/experimentos` | `Experiments.tsx` |
+| `/backtesting` | `Backtesting.tsx` |
+| `/generador` | `Generator.tsx` |
+| `*` | `NotFound` (404 inline en `App.tsx`) |
 
----
+Estructura de `frontend/src/`:
 
-Backtesting Engine
+```text
+frontend/src/
+├── App.tsx        # Tabla de rutas + fallback 404
+├── main.tsx       # Bootstrap React + router
+├── charts/        # 5 gráficos: frecuencia, gaps, medias, heatmap, distribución
+├── components/    # 11 compartidos: Sidebar, DataTable, LotterySelector, estados, …
+├── hooks/         # useApi, useLotteries
+├── layouts/       # DashboardLayout (shell común del dashboard)
+├── pages/         # 12 páginas, cada una con su .test.tsx
+├── services/      # api.ts + 11 módulos de dominio
+├── store/         # useLotteryStore, useModuleStore (zustand)
+└── types/         # contratos TS: envelope y dominios
+```
 
-Responsable de:
-
-- Walk-Forward.
-- Validación.
-- Comparación.
-- Benchmark.
-
----
-
-Experiment Engine
-
-Gestionará:
-
-- Experimentos.
-- Versiones.
-- Parámetros.
-- Resultados.
-- Historial.
-
----
-
-AI Assistant
-
-Integración con LLM.
-
-Funciones:
-
-- Explicar análisis.
-- Generar resúmenes.
-- Interpretar gráficos.
-- Asistir al usuario mediante lenguaje natural.
-
-No participará directamente en el cálculo de combinaciones.
+`services/api.ts` centraliza el acceso HTTP: `apiClient()` resuelve la base como `VITE_API_BASE_URL` o `/api/v1` por defecto, desenvuelve el `SuccessEnvelope` y traduce el `ErrorEnvelope` y los códigos HTTP a errores tipados (`NotFoundError` 404, `ConflictError` 409, `ValidationError` 422, `ServerError` 5xx). Sobre él se apoyan los 11 módulos de dominio (`assistant`, `backtesting`, `draws`, `experiments`, `gen`, `graph`, `lotteries`, `ml`, `probability`, `statistics`, `system`), uno por área de la API.
 
 ---
 
-7. Dashboard
+## 8. Despliegue
 
-Módulos principales.
+No hay demonios ni schedulers: toda operación pesada es bajo demanda, vía API REST o CLI. Dos procesos de desarrollo y un archivo SQLite componen todo el despliegue.
 
-Inicio
+Backend (uvicorn contra la fábrica, layout `src`):
 
-Resumen general.
+```bash
+scripts/run_backend.sh
+# ≡ uv run --directory backend uvicorn backend.app.main:create_app \
+#     --app-dir backend/src --reload
+```
 
----
+Base de datos: `scripts/init_db.sh` ejecuta `init_db()` para crear el archivo SQLite vacío; el esquema se aplica después con `alembic upgrade head` desde `backend/` (deja la base en `0016`). CORS se configura desde `Settings.allowed_origins`.
 
-Historial
+Frontend (Vite, puerto 5173 en desarrollo):
 
-Resultados completos.
+```bash
+npm run dev       # servidor de desarrollo Vite
+npm run build     # tsc -b && vite build
+npm run lint      # eslint .
+npm run test      # vitest run
+```
 
----
-
-Estadísticas
-
-Indicadores globales.
-
----
-
-Heatmaps
-
-Frecuencias visuales.
-
----
-
-Tendencias
-
-Series temporales.
-
----
-
-Redes
-
-Coocurrencias.
-
----
-
-Monte Carlo
-
-Resultados de simulaciones.
-
----
-
-Machine Learning
-
-Estado y rendimiento de modelos.
-
----
-
-Backtesting
-
-Comparación histórica.
-
----
-
-Experimentos
-
-Historial de ejecuciones.
-
----
-
-Generador
-
-Selección de estrategias y generación de combinaciones.
-
----
-
-Configuración
-
-Parámetros globales del sistema.
-
----
-
-8. Flujo General
-
-Importar Datos
-
-↓
-
-Validar
-
-↓
-
-Limpiar
-
-↓
-
-Guardar
-
-↓
-
-Generar Features
-
-↓
-
-Entrenar Modelos
-
-↓
-
-Evaluar
-
-↓
-
-Backtesting
-
-↓
-
-Ranking
-
-↓
-
-Generar Combinaciones
-
-↓
-
-Dashboard
-
----
-
-9. Configuración
-
-Toda configuración deberá almacenarse fuera del código.
-
-Ejemplos:
-
-- Loterías.
-- Rangos de números.
-- Parámetros de modelos.
-- Número de simulaciones.
-- Semillas aleatorias.
-- Umbrales.
-- Estrategias.
-
----
-
-10. Observabilidad
-
-El sistema registrará:
-
-- Logs.
-- Errores.
-- Tiempos.
-- Consumo de recursos.
-- Versiones de modelos.
-- Resultados de experimentos.
-
----
-
-11. Escalabilidad
-
-La arquitectura permitirá incorporar nuevas loterías únicamente agregando su configuración y reglas, sin modificar el núcleo del sistema.
-
----
-
-12. Seguridad
-
-- Validación de entradas.
-- Control de errores.
-- Protección de la base de datos.
-- Gestión de configuraciones sensibles mediante variables de entorno.
-
----
-
-13. Futuras Extensiones
-
-- PostgreSQL.
-- Motor distribuido.
-- Entrenamiento en GPU.
-- API pública.
-- Aplicación móvil.
-- Notificaciones.
-- Integración con nuevas fuentes de datos.
-- Módulo de investigación colaborativa.
-
----
-
-14. Principio Fundamental
-
-Cada componente del sistema deberá poder evolucionar, reemplazarse o ampliarse sin afectar al resto de la plataforma.
-
-La arquitectura prioriza mantenibilidad, reproducibilidad y extensibilidad sobre la complejidad de cualquier algoritmo individual.
