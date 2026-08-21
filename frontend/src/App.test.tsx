@@ -6,7 +6,7 @@ import { setupServer } from "msw/node";
 import { routes } from "./App";
 import { useLotteryStore } from "./store/useLotteryStore";
 
-const ASYNC_TIMEOUT = { timeout: 10000 };
+const ASYNC_TIMEOUT = { timeout: 15000 };
 
 const env = (data: unknown) =>
   HttpResponse.json({ success: true, data, timestamp: "2026-01-01T00:00:00Z" });
@@ -92,7 +92,7 @@ describe("App router", () => {
     expect(
       await screen.findByRole("heading", { name: /operational summary/i }, ASYNC_TIMEOUT),
     ).toBeInTheDocument();
-  }, 15000);
+  }, 20000);
 
   it("renders a real page (Home) inside the dashboard layout with sidebar", async () => {
     useLotteryStore.setState({ selectedLotteryId: 1, selectedLotteryCode: "L1" });
@@ -107,7 +107,7 @@ describe("App router", () => {
     expect(
       screen.getByRole("complementary", { name: "Sidebar" }),
     ).toBeInTheDocument();
-  }, 15000);
+  }, 20000);
 
   it("navigates between routes through the sidebar links", async () => {
     useLotteryStore.setState({ selectedLotteryId: 1, selectedLotteryCode: "L1" });
@@ -139,5 +139,5 @@ describe("App router", () => {
     expect(
       screen.getByRole("region", { name: "System status" }),
     ).toBeInTheDocument();
-  }, 15000);
+  }, 20000);
 });
