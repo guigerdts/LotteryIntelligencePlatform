@@ -65,7 +65,7 @@
 - [x] T-S4-02 perf verdict + recalibration/report
 - [x] T-S5-01 clean validation session
 - [x] T-S5-02 RELEASE_VALIDATION.md written
-- [ ] T-S6-01 version bumps + PROJECT_STATUS freeze
+- [x] T-S6-01 version bumps + PROJECT_STATUS freeze
 - [ ] T-S6-02 tag v1.0.0-rc.1 pushed
 - [ ] T-S7-01 CHANGELOG.md generated
 - [ ] T-S7-02 RELEASE_NOTES.md drafted
