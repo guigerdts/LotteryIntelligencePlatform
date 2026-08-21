@@ -69,4 +69,4 @@
 - [ ] T-S6-02 tag v1.0.0-rc.1 pushed
 - [x] T-S7-01 CHANGELOG.md generated
 - [x] T-S7-02 RELEASE_NOTES.md drafted
-- [ ] T-S7-03 LICENSE owner decision asked/applied
+- [x] T-S7-03 LICENSE owner decision asked/applied (MIT)
