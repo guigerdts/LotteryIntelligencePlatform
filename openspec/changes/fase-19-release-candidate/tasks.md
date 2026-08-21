@@ -67,6 +67,6 @@
 - [x] T-S5-02 RELEASE_VALIDATION.md written
 - [x] T-S6-01 version bumps + PROJECT_STATUS freeze
 - [ ] T-S6-02 tag v1.0.0-rc.1 pushed
-- [ ] T-S7-01 CHANGELOG.md generated
-- [ ] T-S7-02 RELEASE_NOTES.md drafted
+- [x] T-S7-01 CHANGELOG.md generated
+- [x] T-S7-02 RELEASE_NOTES.md drafted
 - [ ] T-S7-03 LICENSE owner decision asked/applied
