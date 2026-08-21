@@ -61,8 +61,8 @@
 - [x] T-S2-02 mypy/bandit status recorded
 - [x] T-S2-03 audit-report.md written
 - [x] T-S3-01 critical fixes applied/deferred (none required — audit F-1..F-4 fixed in S0/S1)
-- [ ] T-S4-01 cold_start investigation evidence
-- [ ] T-S4-02 perf verdict + recalibration/report
+- [x] T-S4-01 cold_start investigation evidence
+- [x] T-S4-02 perf verdict + recalibration/report
 - [ ] T-S5-01 clean validation session
 - [ ] T-S5-02 RELEASE_VALIDATION.md written
 - [ ] T-S6-01 version bumps + PROJECT_STATUS freeze
