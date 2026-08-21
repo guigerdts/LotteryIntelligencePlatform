@@ -164,3 +164,240 @@ Visualización de grafos de co-ocurrencia entre números.
 - **Tipo de grafo**: co-ocurrencia, correlación
 - **Umbral mínimo**: filtro de aristas por peso
 - **Layout**: disposición visual del grafo
+
+---
+
+## 8. Monte Carlo (`/monte-carlo`)
+
+**Componente**: `MonteCarlo`
+
+Simulación estocástica para estimar probabilidades de combinaciones.
+
+### 8.1 ¿Qué es Monte Carlo?
+
+Monte Carlo es un método de simulación que usa números aleatorios para estimar
+resultados cuando el cálculo exacto es prohibitivamente caro.
+
+### 8.2 Parámetros
+
+| Parámetro | Descripción |
+|-----------|-------------|
+| Número de simulaciones | Cantidad de iteraciones (default: 10,000) |
+| Semilla | Seed para reproducibilidad |
+| Lotería | Lotería a simular |
+
+### 8.3 Resultados
+
+- **Distribución estimada**: probabilidad de cada número
+- **Intervalo de confianza**: rango de incertidumbre
+- **Convergencia**: gráfico de estabilización
+
+---
+
+## 9. Asistente IA (`/ia`)
+
+**Componente**: `IA`
+
+Asistente basado en reglas (no LLM) para responder preguntas sobre datos.
+
+### 9.1 Capacidades
+
+| Función | Descripción |
+|---------|-------------|
+| Resumen | Resumir estadísticas de una lotería |
+| Reporte | Generar reporte detallado |
+| Contexto | Proporcionar contexto de datos |
+
+### 9.2 Limitaciones
+
+- **No es un chatbot**: responde solo preguntas sobre datos de lotería
+- **Determinista**: misma pregunta → misma respuesta
+- **Sin memoria**: no recuerda conversaciones previas
+
+### 9.3 Ejemplos de uso
+
+```
+¿Cuáles son los números más frecuentes en Lotería Nacional?
+¿Qué tendencia muestra el número 42 en los últimos 30 sorteos?
+Genera un reporte de probabilidad para Lotería Federal.
+```
+
+---
+
+## 10. Modelos (`/modelos`)
+
+**Componente**: `Models`
+
+Gestión y visualización de modelos de machine learning entrenados.
+
+### 10.1 Modelos disponibles
+
+| Modelo | Tipo | Descripción |
+|--------|------|-------------|
+| XGBoost | Gradient Boosting | Modelo principal de predicción |
+| LightGBM | Gradient Boosting | Alternativa más rápida |
+| RandomForest | Ensemble | Bosque aleatorio |
+
+### 10.2 Métricas por modelo
+
+| Métrica | Descripción |
+|---------|-------------|
+| Accuracy | Precisión global |
+| Precision | Precisión por clase positiva |
+| Recall | Exhaustividad |
+| F1 | Media armónica precision/recall |
+| ROC AUC | Área bajo curva ROC |
+
+### 10.3 Acciones
+
+- **Entrenar**: iniciar entrenamiento de un modelo
+- **Comparar**: comparar métricas entre modelos
+- **Exportar**: descargar modelo entrenado
+
+---
+
+## 11. Experimentos (`/experimentos`)
+
+**Componente**: `Experiments`
+
+Gestión de experimentos comparativos entre motores.
+
+### 11.1 Tipos de experimento
+
+| Tipo | Descripción |
+|------|-------------|
+| ML vs DL | Comparar machine learning con deep learning |
+| Estrategias | Comparar estrategias de predicción |
+| Optimización | Comparar algoritmos de optimización |
+
+### 11.2 Métricas de experimento
+
+- **Hit rate**: aciertos por ventana
+- **ROI**: retorno de inversión simulado
+- **Drawdown**: caída máxima acumulada
+- **Sharpe ratio**: rentabilidad ajustada a riesgo
+
+---
+
+## 12. Backtesting (`/backtesting`)
+
+**Componente**: `Backtesting`
+
+Prueba de estrategias sobre datos históricos.
+
+### 12.1 Conceptos
+
+- **Walk-forward**: división temporal train/test
+- **Estrategia**: regla de selección de números
+- **Benchmark**: comparación con referencia (hipergeométrica, aleatorio)
+
+### 12.2 Configuración
+
+| Parámetro | Descripción |
+|-----------|-------------|
+| Ventana de entrenamiento | Período para entrenar |
+| Ventana de prueba | Período para evaluar |
+| Número de ventanas | Cantidad de splits |
+
+### 12.3 Resultados
+
+- **Métricas por ventana**: rendimiento en cada período
+- **Métricas agregadas**: resumen global
+- **Gráficos**: evolución del rendimiento
+
+---
+
+## 13. Generador (`/generador`)
+
+**Componente**: `Generator`
+
+Generador de combinaciones de números basado en reglas.
+
+### 13.1 Métodos de generación
+
+| Método | Descripción |
+|--------|-------------|
+| Frecuencia | Basado en frecuencias históricas |
+| Balance | Balance entre pares/impares, altos/bajos |
+| Patrones | Seguimiento de patrones detectados |
+| Aleatorio | Generación aleatoria pesada |
+
+### 13.2 Parámetros
+
+| Parámetro | Descripción |
+|-----------|-------------|
+| Cantidad | Número de combinaciones a generar |
+| Tamaño | Cantidad de números por combinación |
+| Método | Algoritmo de generación |
+| Filtros | Restricciones adicionales |
+
+---
+
+## 14. Página no encontrada (`*`)
+
+Cuando se accede a una ruta que no existe, la plataforma muestra una página 404
+con un mensaje "Page not found" y un estado vacío.
+
+### 14.1 Solución
+
+- Verificar la URL en la barra de direcciones
+- Usar la navegación del sidebar
+- Volver a la página de inicio (`/`)
+
+---
+
+## 15. CLI `lip` (Avanzado)
+
+La CLI `lip` proporciona acceso de línea de comandos a todas las funcionalidades.
+
+### 15.1 Instalación
+
+```bash
+cd backend
+uv sync
+source .venv/bin/activate
+```
+
+### 15.2 Grupos de comandos
+
+| Grupo | Comando | Descripción |
+|-------|---------|-------------|
+| Loterías | `lip lottery list` | Listar loterías |
+| Sorteos | `lip draw list --lottery-id 1` | Listar sorteos |
+| Estadísticas | `lip statistics generate --lottery-id 1` | Generar estadísticas |
+| Probabilidad | `lip probability generate --lottery-id 1` | Generar probabilidades |
+| Features | `lip feature-engine generate --lottery-id 1` | Generar features |
+| Grafo | `lip graph generate --lottery-id 1` | Generar grafo |
+| ML | `lip ml generate --lottery-id 1` | Generar modelo ML |
+| DL | `lip dl generate --lottery-id 1` | Generar modelo DL |
+| Backtesting | `lip backtesting run --lottery-id 1` | Ejecutar backtesting |
+| Optimización | `lip opt run --lottery-id 1` | Ejecutar optimización |
+| Generador | `lip generator run --lottery-id 1` | Generar combinaciones |
+| Meta | `lip meta select --lottery-id 1` | Selección meta |
+
+### 15.3 Ejemplos
+
+```bash
+# Listar loterías disponibles
+lip lottery list
+
+# Generar estadísticas para Lotería Nacional
+lip statistics generate --lottery-id 1 --scope full
+
+# Generar probabilidades
+lip probability generate --lottery-id 1 --scope incremental
+
+# Ejecutar backtesting
+lip backtesting run --lottery-id 1 --windows 10
+
+# Generar combinaciones
+lip generator run --lottery-id 1 --count 5 --method frequency
+```
+
+### 15.4 Ayuda
+
+```bash
+lip --help                  # Ayuda general
+lip <grupo> --help          # Ayuda de un grupo
+lip <grupo> <comando> --help # Ayuda de un comando específico
+```
