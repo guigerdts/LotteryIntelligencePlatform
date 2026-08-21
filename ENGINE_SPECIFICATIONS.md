@@ -169,13 +169,17 @@ Funciones
 
 10. Deep Learning Engine
 
+**Estado**: Implementación completa, sin router HTTP montado (no hay endpoints `/dl/*` en la API).
+
 Funciones
 
-- Entrenamiento
-- Inferencia
-- Checkpoints
-- Fine-tuning
-- Exportación
+- Entrenamiento (MLP + LSTM)
+- Modelos: MLP, LSTM
+- Walk-forward split
+- Determinismo (GF1 byte-identical)
+- Pesos en formato BLOB custom
+
+**Nota**: Este motor solo puede ejecutarse internamente vía código Python o CLI `lip dl`. No tiene exposición HTTP.
 
 ---
 

@@ -6,9 +6,11 @@ Database Schema
 
 Versión: 1.0
 
-Estado: Diseño
+Estado: Activo (sincronizado con código)
 
 Motor: SQLite (Compatible con PostgreSQL)
+
+Migraciones: alembic 0001–0016 (head: `0016_exp_comparisons_run_ids`)
 
 ---
 

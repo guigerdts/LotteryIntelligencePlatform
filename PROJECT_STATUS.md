@@ -4,7 +4,7 @@ Lottery Intelligence Platform (LIP)
 
 Estado interno del proyecto — baseline actualizado.
 
-Versión: 1.0 · Fecha de cierre: 2026-08-10
+Versión: 1.1 · Última actualización: 2026-08-20
 
 ---
 
@@ -22,6 +22,13 @@ Versión: 1.0 · Fecha de cierre: 2026-08-10
 | Fase 9 — Optimization Engine | ✅ Archivada y cerrada |
 | Fase 10 — Backtesting Engine | ✅ Archivada y cerrada |
 | Fase 11 — Experiment Engine | ✅ Archivada y cerrada |
+| Fase 12 — Graph Engine | ✅ Archivada y cerrada |
+| Fase 13 — Generator Engine | ✅ Archivada y cerrada |
+| Fase 14 — Dashboard | ✅ Archivada y cerrada |
+| Fase 15 — AI Assistant | ✅ Archivada y cerrada |
+| Fase 16 — Performance | ✅ Archivada y cerrada |
+| Fase 17 — Testing | ✅ Archivada y cerrada (2026-08-20) |
+| Fase 18 — Documentation | 🔄 En progreso |
 
 ## Capacidades disponibles
 
@@ -42,5 +49,5 @@ Versión: 1.0 · Fecha de cierre: 2026-08-10
 - **Idempotencia**: `generate` incremental devuelve el snapshot `active` existente si ya reproduce el resultado; no duplica versiones.
 - **Read-only sobre Core Domain (G10)**: `draw`, `draw_numbers`, `super_number`, `dataset`, `import_job`, `import_error` byte-idénticos antes/después de la generación; solo aparecen filas `stat_*` / `ml_*` / `dl_*` / `opt_*`.
 - **Snapshots inmutables**: nunca se muta un snapshot persistido; `full`/`rebuild` siempre escribe una versión nueva.
-- **Migraciones reversibles**: cadena alembic `0001 → 0013`, con harness de downgrade verificado.
+- **Migraciones reversibles**: cadena alembic `0001 → 0016`, con harness de downgrade verificado.
 - **Cobertura de gates G1–G10**: confirmada en verify-report (ruff, suite 642 passed / 1 skipped, alembic head, downgrade chain, no regression, portabilidad, API contract, sin deuda, determinismo, read-only).
