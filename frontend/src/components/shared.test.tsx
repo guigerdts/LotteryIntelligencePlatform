@@ -133,13 +133,20 @@ describe("DataTable", () => {
   });
 
   it("stringifies object cell values", () => {
-    renderTable({
-      columns: [
-        { key: "id", label: "ID" },
-        { key: "meta", label: "Meta" },
-      ],
-      rows: [{ id: 1, meta: { nested: true } }],
-    });
+    // Object-valued cells need their own row shape; the shared TestRow helper
+    // only covers the primitive columns above (tsc -b caught the mismatch).
+    interface MetaRow {
+      id: number;
+      meta: Record<string, unknown>;
+    }
+    render(
+      <DataTable<MetaRow>
+        columns={[{ key: "meta", label: "Meta" }]}
+        rows={[{ id: 1, meta: { nested: true } }]}
+        rowKey={(row) => String(row.id)}
+        caption="Meta"
+      />,
+    );
 
     expect(screen.getByText('{"nested":true}')).toBeInTheDocument();
   });

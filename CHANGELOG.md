@@ -4,6 +4,15 @@ All notable changes to the Lottery Intelligence Platform (LIP).
 Format based on Keep a Changelog; versions follow SemVer.
 Generated from the real Git history (260 commits, 2026-08-05 → 2026-08-21).
 
+## [Unreleased]
+
+### Fixed
+- `GET /api/v1/version` (and the startup log / snapshot `engine_version`) now report `1.0.0`, matching the release manifests; the value was hardcoded to `0.1.0` in `Settings.app_version`.
+- Dev-mode API wiring: `vite.config.ts` now proxies `/api` to the backend (`http://127.0.0.1:8000`). Previously `npm run dev` served the SPA fallback HTML for `/api/v1/*` with HTTP 200, producing "Invalid response from server" in the dashboard; E2E/tests masked it by using explicit base URLs and mocks.
+- CORS defaults now allow both dev origins (`localhost:5173` and `localhost:5174`) in `Settings.allowed_origins`.
+
+Discovered during the post-release manual walkthrough of rc.1.
+
 ## [1.0.0-rc.1] — 2026-08-21 (Fase 19 — Release Candidate)
 
 Feature freeze for v1.0.0: fixes only until release.

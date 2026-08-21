@@ -5,6 +5,14 @@ export default defineConfig({
   plugins: [react()],
   server: {
     port: 5173,
+    // Dev-mode API wiring (post-rc.1 fix): forward /api to the backend so the
+    // relative BASE_URL ("/api/v1") reaches uvicorn instead of the SPA fallback.
+    proxy: {
+      "/api": {
+        target: "http://127.0.0.1:8000",
+        changeOrigin: true,
+      },
+    },
   },
   test: {
     globals: true,

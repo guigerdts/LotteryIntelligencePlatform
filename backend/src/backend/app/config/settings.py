@@ -29,12 +29,12 @@ class Settings(BaseSettings):
 
     # --- app ---
     app_name: str = "lip-backend"
-    app_version: str = "0.1.0"
+    app_version: str = "1.0.0"
     debug: bool = False
 
     # --- api ---
     api_v1_prefix: str = "/api/v1"
-    allowed_origins: list[str] = ["http://localhost:5173"]
+    allowed_origins: list[str] = ["http://localhost:5173", "http://localhost:5174"]
 
     # --- database ---
     # Dialect is driven entirely by the URL: SQLite now, PostgreSQL later as a
