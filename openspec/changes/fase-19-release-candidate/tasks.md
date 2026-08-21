@@ -63,8 +63,8 @@
 - [x] T-S3-01 critical fixes applied/deferred (none required — audit F-1..F-4 fixed in S0/S1)
 - [x] T-S4-01 cold_start investigation evidence
 - [x] T-S4-02 perf verdict + recalibration/report
-- [ ] T-S5-01 clean validation session
-- [ ] T-S5-02 RELEASE_VALIDATION.md written
+- [x] T-S5-01 clean validation session
+- [x] T-S5-02 RELEASE_VALIDATION.md written
 - [ ] T-S6-01 version bumps + PROJECT_STATUS freeze
 - [ ] T-S6-02 tag v1.0.0-rc.1 pushed
 - [ ] T-S7-01 CHANGELOG.md generated
