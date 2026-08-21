@@ -164,4 +164,4 @@ Para cambios sustanciales, usar el flujo SDD:
 
 ## 8. Licencia
 
-Consultar LICENSE (si existe) para términos de uso.
+El proyecto se distribuye bajo la [MIT License](LICENSE). Copyright (c) 2026 guigerdts.

@@ -33,8 +33,11 @@ This RC marks the end of the 19-phase roadmap (2026-08-05 → 2026-08-21).
 
 - DL inference has no HTTP router mounted by design (`future-dl`).
 - No type checker (mypy) or security linter (bandit) configured yet — post-1.0.
-- LICENSE file pending owner decision.
 - Optuna/deap were installed late (F19); dependency allowlist tests now enforce them.
+
+## License
+
+Distributed under the [MIT License](LICENSE). Copyright (c) 2026 guigerdts.
 
 ## Validation evidence
 

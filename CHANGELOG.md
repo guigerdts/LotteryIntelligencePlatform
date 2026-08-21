@@ -17,6 +17,7 @@ Feature freeze for v1.0.0: fixes only until release.
 ### Added
 - `RELEASE_VALIDATION.md`: full release validation evidence (backend 1434 passed @92% cov, frontend 137×3, E2E 1/1, perf 3/3).
 - Performance baselines recalibrated from controlled measurements (cold_start 4.0 s, stats GET 0.015 s, parallel BT 0.17 s) after proving the earlier FAIL was a cold page-cache artifact.
+- MIT License (applied immediately after tagging; owner decision RC-009).
 
 ### Changed
 - Versions bumped to 1.0.0 in both manifests; PROJECT_STATUS records the RC freeze state.
@@ -98,4 +99,4 @@ Feature freeze for v1.0.0: fixes only until release.
 
 ## [Unreleased]
 
-- LICENSE selection (pending owner decision).
+- (empty — feature freeze; fixes only until v1.0.0)
