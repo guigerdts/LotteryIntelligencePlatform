@@ -97,3 +97,16 @@ select = ["E", "F", "I", "UP", "B"]
 # env.py must patch sys.path before importing the src-layout app package,
 # so its imports legitimately follow statements (E402) and split blocks (I001).
 "alembic/env.py" = ["E402", "I001"]
+
+# --- uv resolution config (F19 RC-001) -------------------------------------
+# torch==2.13.0+cpu carries a local version segment: it does not exist on
+# PyPI and can only resolve from the official PyTorch CPU wheel index.
+# Declaring the index here keeps `uv lock` / `uv sync` reproducible without
+# ad-hoc CLI flags. Runtime dependency SET is unchanged (same pins as above).
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[tool.uv.sources]
+torch = { index = "pytorch-cpu" }
