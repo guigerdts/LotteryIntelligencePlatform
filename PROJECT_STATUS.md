@@ -4,7 +4,7 @@ Lottery Intelligence Platform (LIP)
 
 Estado interno del proyecto — baseline actualizado.
 
-Versión: 1.1 · Última actualización: 2026-08-20
+Versión: 1.1 · Última actualización: 2026-08-21
 
 ---
 
@@ -28,7 +28,15 @@ Versión: 1.1 · Última actualización: 2026-08-20
 | Fase 15 — AI Assistant | ✅ Archivada y cerrada |
 | Fase 16 — Performance | ✅ Archivada y cerrada |
 | Fase 17 — Testing | ✅ Archivada y cerrada (2026-08-20) |
-| Fase 18 — Documentation | 🔄 En progreso |
+| Fase 18 — Documentation | ✅ Archivada y cerrada (2026-08-20) |
+| Fase 19 — Release Candidate | 🧊 RC congelada — tag `v1.0.0-rc.1` |
+
+## Feature freeze (2026-08-21)
+
+El código está **congelado para v1.0.0** a partir del tag `v1.0.0-rc.1`: solo se
+aceptan correcciones de defectos hasta la liberación; no se agregan features.
+Evidencia de validación: `RELEASE_VALIDATION.md`. Pendiente único de release:
+decisión de LICENSE del owner (RC-009, S7).
 
 ## Capacidades disponibles
 

@@ -1,6 +1,6 @@
 [project]
 name = "backend"
-version = "0.1.0"
+version = "1.0.0"
 description = "Lottery Intelligence Platform backend (FastAPI foundation)"
 authors = [
     { name = "guigerdts", email = "guigerdts1@gmail.com" }
