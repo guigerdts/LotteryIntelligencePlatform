@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from decimal import Decimal
-from typing import Protocol
+from typing import Protocol, runtime_checkable
 
 from backend.app.opt.convergence import ConvergenceTracker
 from backend.app.opt.search_space import SearchSpace
@@ -45,8 +45,13 @@ class OptResult:
     n_evaluations: int
 
 
+@runtime_checkable
 class OptimizerProtocol(Protocol):
-    """Protocol that all optimizers must implement."""
+    """Protocol that all optimizers must implement.
+
+    ``runtime_checkable`` enables ``isinstance()`` structural checks used by
+    the opt engine tests (tests/opt/test_engine.py).
+    """
 
     def optimize(
         self,
