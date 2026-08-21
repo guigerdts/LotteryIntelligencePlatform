@@ -1,68 +1,96 @@
-API_SPECIFICATION.md
+# Referencia API — Lottery Intelligence Platform
 
-Lottery Intelligence Platform (LIP)
+Documento de referencia de la API REST del backend (`lip-backend`, construido con FastAPI). Toda respuesta es JSON y comparte un sobre (envelope) común. El detalle operativo completo —49 rutas y 53 operaciones en v1— vive en el bloque generado al final de este documento, producido automáticamente desde el esquema OpenAPI vivo de la aplicación.
 
-REST API Specification
+## Cómo usar este documento
 
-Version: 1.0
+El documento combina dos tipos de contenido:
 
-API Style: REST
+- **Secciones curadas** (este bloque inicial): convenciones generales, sobres de respuesta, códigos de error y grupos de routers. Están escritas a mano y cada afirmación es trazable al código fuente: `backend/src/backend/app/api/v1/router.py`, `backend/src/backend/app/api/errors.py`, `backend/src/backend/app/schemas/envelope.py` y `backend/src/backend/app/config/settings.py`.
+- **Bloque generado**: la referencia completa de endpoints entre los marcadores `<!-- GENERATED-API-REFERENCE:START -->` y `<!-- GENERATED-API-REFERENCE:END -->`. Se genera a partir de `create_app().openapi()` con:
 
-Format: JSON
+      backend/.venv/bin/python docs/api/generate_reference.py
 
-Authentication: None (v1)
+No edites el bloque generado a mano: vuelve a ejecutar el generador. La prueba de contrato `backend/tests/api/test_docs_contract.py` verifica que las rutas documentadas coincidan exactamente con el OpenAPI vivo en ambas direcciones (nada documentado de más, nada faltante); si se agrega o elimina un router, esa prueba falla hasta regenerar el bloque.
 
-Future: JWT + API Keys + OAuth2
+## Principios y convenciones
 
----
+| Convención | Valor |
+|------------|-------|
+| Base URL | `/api/v1` (`settings.api_v1_prefix`) |
+| Formato | JSON |
+| Autenticación | Ninguna en v1: no hay esquemas de seguridad ni dependencias de autenticación registradas |
+| Versionado | Por prefijo de URL (`/api/v1`) |
+| CORS | Orígenes permitidos configurables vía `allowed_origins` (por defecto `http://localhost:5173`) |
 
-1. API Principles
+### Sobre de éxito (`SuccessEnvelope`)
 
-The API shall be:
+Toda operación exitosa responde con `{success, data, timestamp}`:
 
-- Stateless
-- Versioned
-- Self-documented
-- Consistent
-- Predictable
-- Extensible
-
-Base URL
-
-/api/v1
-
----
-
-2. Standard Response
-
-Success
-
+```json
 {
   "success": true,
   "data": {},
-  "meta": {},
-  "timestamp": "2026-08-05T12:00:00Z"
+  "timestamp": "2026-08-21T12:00:00Z"
 }
+```
 
----
+### Sobre de error (`ErrorEnvelope`)
 
-Error
+Todo error responde con `{success, error, timestamp}`, donde `error` contiene un `code` legible por máquina y un `message` descriptivo:
 
+```json
 {
   "success": false,
   "error": {
     "code": "RESOURCE_NOT_FOUND",
     "message": "Draw not found"
   },
-  "timestamp": "2026-08-05T12:00:00Z"
+  "timestamp": "2026-08-21T12:00:00Z"
 }
+```
 
----
+En ambos sobres, `timestamp` es una cadena ISO 8601 en UTC con sufijo `Z`.
 
-3. Endpoint Reference
+## Códigos de error
 
-Auto-generated from the live OpenAPI schema by `docs/api/generate_reference.py`.
-Do not edit between the markers by hand — re-run the generator instead:
+El código del sobre de error determina el estado HTTP mediante el mapa `_CODE_TO_STATUS` de `backend/src/backend/app/api/errors.py`; cualquier código no registrado responde 500.
+
+| HTTP | Códigos de error |
+|------|------------------|
+| 404 | `RESOURCE_NOT_FOUND`, `SNAPSHOT_NOT_FOUND`, `EXPERIMENT_NOT_FOUND`, `META_RANKING_NOT_FOUND`, `META_SELECTION_NOT_FOUND`, `META_NO_ENGINE_DATA`, `GEN_NO_SELECTION`, `GEN_NO_DISTRIBUTION`, `GEN_LOTTERY_NOT_FOUND`, `GEN_SNAPSHOT_NOT_FOUND` |
+| 409 | `DUPLICATE_RESOURCE`, `REFERENTIAL_CONSTRAINT`, `DATASET_LOCKED`, `SNAPSHOT_LOCKED`, `IMPORT_CONFLICT`, `IMPORT_STATE_CONFLICT`, `EXPERIMENT_RETIRED`, `DUPLICATE_EXPERIMENT`, `META_DUPLICATE_RANKING`, `GEN_DUPLICATE_SNAPSHOT` |
+| 410 | `RESOURCE_SOFT_DELETED` |
+| 422 | `validation_error`, `INSUFFICIENT_DATA`, `SNAPSHOT_TYPE_MISMATCH`, `COMPARISON_INSUFFICIENT_RUNS`, `EXPORT_FORMAT_INVALID`, `META_WEIGHTS_INVALID`, `META_TOP_K_INVALID`, `GEN_COUNT_INVALID`, `GEN_SPACE_EXHAUSTED` |
+| 500 | `generation_error`, `definition_error`, `BT_RUN_ERROR`, `assistant_error` (y cualquier código desconocido) |
+
+Adicionalmente, tres códigos base se gestionan directamente en `main.py`: `http_error` (conserva el estado HTTP del `HTTPException` original), `validation_error` (422, errores de validación de request) e `internal_error` (500, excepción no controlada).
+
+## Routers
+
+La API monta 13 routers de dominio más los endpoints de sistema declarados en `api/v1/router.py` —14 grupos en total, cada uno con su tag OpenAPI—:
+
+| Módulo (`api/v1/`) | Prefijo | Tag |
+|--------------------|---------|-----|
+| `lotteries.py` | `/lotteries` | `lotteries` |
+| `draws.py` | `/draws` | `draws` |
+| `statistics.py` | `/statistics` | `statistics` |
+| `feature_engine.py` | `/feature-engine` | `feature-engine` |
+| `probability.py` | `/probability` | `probability` |
+| `graph.py` | `/graph` | `graph` |
+| `ml.py` | `/ml` | `ml` |
+| `opt.py` | `/opt` | `opt` |
+| `bt.py` | `/backtesting` | `backtesting` |
+| `exp.py` | `/experiment` | `experiment` |
+| `meta.py` | `/meta` | `meta` |
+| `gen.py` | `/gen` | `generator` |
+| `assistant.py` | `/assistant` | `assistant` |
+| `router.py` (sistema) | `/health`, `/version` | `system` |
+
+## Referencia de endpoints
+
+Generada automáticamente desde el esquema OpenAPI vivo por `docs/api/generate_reference.py`.
+No edites el contenido entre los marcadores a mano — vuelve a ejecutar el generador:
 
     backend/.venv/bin/python docs/api/generate_reference.py
 
