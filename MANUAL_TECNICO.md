@@ -223,3 +223,191 @@ programada.
 | `graph_edge` | Aristas ponderadas |
 | `graph_community` | Asignación de comunidades |
 | `graph_centrality` | Scores de centralidad por nodo |
+
+---
+
+## 6. Motor de Machine Learning
+
+**Módulo**: `backend.app.ml`
+**API**: `POST /ml/generate`, `GET /ml/{lottery_code}/snapshots`
+**Snapshot store**: `backend.app.ml.snapshot_store`
+
+### 6.1 Familias de modelos
+
+El motor entrena modelos de clasificación para predecir la participación de cada número
+en el próximo sorteo. Usa walk-forward split y métricas cuantizadas a Decimal.
+
+| Componente | Módulo | Descripción |
+|------------|--------|-------------|
+| Engine | `ml.engine` | Orquesta training con ProcessPoolExecutor (2 workers) |
+| Features | `ml.features` | ML_FEATURE_ORDER — orden fijo de features de F4 |
+| Splitter | `ml.splitter` | Walk-forward split (train ≤ cut < eval) |
+| Registry | `ml.registry` | Familias de modelos registradas |
+| Determinism | `ml.determinism` | Cuantización de métricas a Decimal(20,8) |
+
+### 6.2 Métricas
+
+| Métrica | Descripción |
+|---------|-------------|
+| `accuracy` | Precisión global |
+| `precision` | Precisión por clase positiva |
+| `recall` | Exhaustividad |
+| `f1` | Media armónica precision/recall |
+| `roc_auc` | Área bajo la curva ROC |
+
+### 6.3 Datos de entrada
+
+- **X**: vector F4 por sorteo (features de Feature Engineering, orden fijo)
+- **y**: participación de cada número en sorteo n+1 (label binario)
+- Split: walk-forward (train ≤ cut < eval)
+
+### 6.4 Tablas persistidas
+
+| Tabla | Contenido |
+|-------|-----------|
+| `ml_snapshot` | Metadatos de versión |
+| `ml_metric` | Métricas por familia/lotería |
+| `ml_value` | Predicciones por número |
+
+---
+
+## 7. Motor de Backtesting
+
+**Módulo**: `backend.app.backtesting`
+**API**: `POST /backtesting/run`, `GET /backtesting/{lottery_code}/snapshots`
+**Snapshot store**: `backend.app.backtesting.snapshot_store`
+
+### 7.1 Orquestación
+
+El motor ejecuta un ciclo completo de backtesting walk-forward:
+
+```
+validar datos → generar ventanas → evaluar estrategia + benchmark → computar métricas → agregar
+```
+
+### 7.2 Componentes
+
+| Módulo | Descripción |
+|--------|-------------|
+| `backtesting.engine` | Orquestador principal (ProcessPoolExecutor, 2 workers) |
+| `backtesting.strategy` | `StaticStrategy` — estrategia estática basada en predicciones |
+| `backtesting.benchmark` | `HypergeometricBenchmark`, `UniformRandomBenchmark` |
+| `backtesting.splitter` | `WalkForwardSplitter` — generación de ventanas |
+| `backtesting.metrics` | `LotteryMetrics` — métricas específicas de lotería |
+| `backtesting.types` | Tipos: `BacktestConfig`, `BacktestResult`, `Draw`, `Window` |
+
+### 7.3 Métricas de backtesting
+
+| Métrica | Descripción |
+|---------|-------------|
+| Hit rate | Aciertos por ventana |
+| ROI | Retorno de inversión simulado |
+| Drawdown | Caída máxima acumulada |
+| Sharpe ratio | Rentabilidad ajustada a riesgo |
+
+### 7.4 Tablas persistidas
+
+| Tabla | Contenido |
+|-------|-----------|
+| `bt_snapshot` | Metadatos de versión |
+| `bt_result` | Resultados por ventana/estrategia |
+
+---
+
+## 8. Motor de Optimización
+
+**Módulo**: `backend.app.opt`
+**API**: `POST /opt/run`, `GET /opt/{lottery_code}/snapshots`
+**Snapshot store**: `backend.app.opt.snapshot_store`
+
+### 8.1 Optimizadores disponibles
+
+| Optimizador | Módulo | Algoritmo |
+|-------------|--------|-----------|
+| Bayesiano | `opt.bayesian` | Gaussian Process (Optuna) |
+| Algoritmo Genético | `opt.ga` | Evolución diferencial |
+| Enjambre de Partículas | `opt.pso` | PSO |
+| Recocido Simulado | `opt.sa` | Simulated Annealing |
+
+### 8.2 Métricas objetivo
+
+| Métrica | Dirección | Descripción |
+|---------|-----------|-------------|
+| `f1` | maximize | Media armónica precision/recall |
+| `roc_auc` | maximize | Área bajo curva ROC |
+| `accuracy` | maximize | Precisión global |
+| `precision` | maximize | Precisión por clase |
+| `recall` | maximize | Exhaustividad |
+
+### 8.3 Espacio de búsqueda
+
+- `opt.search_space`: define rangos de parámetros por optimizador
+- Cada optimizador tiene defaults registados en `opt.registry`
+
+### 8.4 Determinismo
+
+- `opt.determinism`: cuantización de métricas
+- `opt.fingerprint`: fingerprint del input para idempotencia
+
+### 8.5 Tablas persistidas
+
+| Tabla | Contenido |
+|-------|-----------|
+| `opt_snapshot` | Metadatos de versión |
+| `opt_params` | Mejores parámetros encontrados |
+| `opt_metric` | Métricas de la optimización |
+
+---
+
+## 9. Motor de Generadores
+
+**Módulo**: `backend.app.generators`
+**API**: `POST /generator/run`, `GET /generator/{lottery_code}/snapshots`
+**Snapshot store**: `backend.app.generators.snapshot_store`
+
+### 9.1 Funcionalidad
+
+El motor genera combinaciones de números basadas en reglas de asignación y validación.
+
+| Módulo | Descripción |
+|--------|-------------|
+| `generators.allocation` | Asignación de números por categoría |
+| `generators.sampling` | Muestreo determinista |
+| `generators.validation` | Validación de combinaciones generadas |
+| `generators.identity` | Identidad de la generación |
+
+### 9.2 Tablas persistidas
+
+| Tabla | Contenido |
+|-------|-----------|
+| `gen_snapshot` | Metadatos de versión |
+| `gen_value` | Combinaciones generadas |
+
+---
+
+## 10. Asistente IA (Rule-Based)
+
+**Módulo**: `backend.app.ai`
+**API**: `POST /assistant/chat`
+**Tipo**: Determinista, basado en reglas (NO es LLM)
+
+### 10.1 Funciones
+
+| Función | Descripción |
+|---------|-------------|
+| `build_stats_context` | Contexto de estadísticas para respuesta |
+| `build_report_context` | Contexto de reporte |
+| `build_summarize_context` | Contexto de resumen |
+
+### 10.2 Características
+
+- **Determinista**: misma entrada → misma salida (fingerprint incluido)
+- **Sin LLM**: usa `TextGenerator` (provider de texto) con reglas predefinidas
+- **Clasificador de intención**: `_fold()` normaliza preguntas
+- **Idioma**: español
+
+### 10.3 Determinismo
+
+- `ai.fingerprint`: fingerprint de la función + inputs
+- `ai.version`: versión del motor
+- Output: `GenerationResult` (text + engine_version + fingerprint)
