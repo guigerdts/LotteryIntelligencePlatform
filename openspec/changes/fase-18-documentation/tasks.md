@@ -166,21 +166,21 @@ Chain strategy: stacked-to-main
 - [x] T-S2-03 arch §4–8: snapshots, DB 0001–0016, CLI, frontend, despliegue
 - [x] T-S2-04 S2-2 gate: Draft/fase-refs → 0, alembic head 0016
 - [x] T-S3-01 manual: statistics/probability/feature_engineering/graph
-- [ ] T-S3-02 S3-1 gate: engine claims traced
-- [ ] T-S3-03 manual: ml/dl (no router)/opt/bt/exp
-- [ ] T-S3-04 manual: meta/gen/ai + CLI 12 grupos + LIP_* + DB + obs
-- [ ] T-S3-05 S3 gate: lip --help matches, 12 engines covered
-- [ ] T-S4-01 manual usuario: intro + 6 páginas
-- [ ] T-S4-02 manual usuario: 6 páginas + 404 + CLI avanzado
-- [ ] T-S4-03 S4 gate: 13 rutas parity, CLI examples runnable
-- [ ] T-S5-01 INSTALL.md (commands byte-verbatim)
-- [ ] T-S5-02 backend/README.md + frontend/README.md
-- [ ] T-S5-03 S5 gate: byte-compare vs manifests, npm run build
-- [ ] T-S6-01 CONTRIBUTING.md (SDD, commits, gates, 400 budget, license point)
-- [ ] T-S6-02 S6 gate: conventions match git log + AGENTS.md
-- [ ] T-S7-01 DATABASE_SCHEMA.md sync (0001–0016)
-- [ ] T-S7-02 PROJECT_STATUS.md sync (F12–F17)
-- [ ] T-S7-03 ENGINE_SPECIFICATIONS.md §10 DL/gen corregido
-- [ ] T-S7-04 S7 gate: migrations + F12–F17 referenced
-- [ ] T-DOC-009 cross-doc consistency audit (single baseline)
-- [ ] T-DOC-010 out-of-scope debt register (optuna/uv.lock/perf/CI)
+- [x] T-S3-02 S3-1 gate: engine claims traced
+- [x] T-S3-03 manual: ml/dl (no router)/opt/bt/exp
+- [x] T-S3-04 manual: meta/gen/ai + CLI 12 grupos + LIP_* + DB + obs
+- [x] T-S3-05 S3 gate: lip --help matches, 12 engines covered
+- [x] T-S4-01 manual usuario: intro + 6 páginas
+- [x] T-S4-02 manual usuario: 6 páginas + 404 + CLI avanzado
+- [x] T-S4-03 S4 gate: 13 rutas parity, CLI examples runnable
+- [x] T-S5-01 INSTALL.md (commands byte-verbatim)
+- [x] T-S5-02 backend/README.md + frontend/README.md
+- [x] T-S5-03 S5 gate: byte-compare vs manifests, npm run build
+- [x] T-S6-01 CONTRIBUTING.md (SDD, commits, gates, 400 budget, license point)
+- [x] T-S6-02 S6 gate: conventions match git log + AGENTS.md
+- [x] T-S7-01 DATABASE_SCHEMA.md sync (0001–0016)
+- [x] T-S7-02 PROJECT_STATUS.md sync (F12–F17)
+- [x] T-S7-03 ENGINE_SPECIFICATIONS.md §10 DL/gen corregido
+- [x] T-S7-04 S7 gate: migrations + F12–F17 referenced
+- [x] T-DOC-009 cross-doc consistency audit (single baseline)
+- [x] T-DOC-010 out-of-scope debt register (optuna/uv.lock/perf/CI)
