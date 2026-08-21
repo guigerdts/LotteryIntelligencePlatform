@@ -14,12 +14,12 @@ from sqlalchemy.orm import Session
 from backend.app.repositories.base import get_db
 from backend.app.schemas.envelope import SuccessEnvelope
 from backend.app.schemas.meta import (
-    RankRequest,
     RankingResult,
     RankingSnapshot,
-    SelectRequest,
+    RankRequest,
     SelectionResult,
     SelectionSnapshot,
+    SelectRequest,
 )
 from backend.app.services.meta_service import MetaService
 

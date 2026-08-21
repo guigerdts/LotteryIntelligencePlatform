@@ -5,23 +5,18 @@ Uses in-memory SQLite with real ORM; mock providers for deterministic control.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from decimal import Decimal
 
 import pytest
 from sqlalchemy import create_engine
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import sessionmaker
 
 from backend.app.models.lottery import Lottery
-from backend.app.models.prob_snapshot import ProbSnapshot
 from backend.app.models.stat_frequency import StatFrequency
 from backend.app.models.stat_snapshot import StatSnapshot
 from backend.app.probability.providers import DrawRow, LotteryRules
-from backend.app.probability.registry import build_prob_registry
-from backend.app.probability.snapshot_store import SnapshotStore
 from backend.app.repositories.base import Base
 from backend.app.services.probability_service import ProbabilityService, _StatsReaderAdapter
-
 
 # --- Mock providers ---
 

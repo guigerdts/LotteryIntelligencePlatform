@@ -51,7 +51,7 @@ def normalize_per_engine(snapshots: list[dict[str, Any]]) -> list[dict[str, Any]
     inverted = _inverted_metrics()
     result = [dict(s) for s in snapshots]
 
-    for engine_type, indices in engines.items():
+    for indices in engines.values():
         # Collect values for each common metric within this engine
         for metric in COMMON_METRICS:
             values = [snapshots[i].get(metric) for i in indices]
@@ -65,7 +65,6 @@ def normalize_per_engine(snapshots: list[dict[str, Any]]) -> list[dict[str, Any]
 
             if len(numeric_values) == 1:
                 # Only one snapshot has this metric → 1.0 (best available)
-                single_val = numeric_values[0]
                 for i_pos, idx in enumerate(indices):
                     val = values[i_pos]
                     if val is None:

@@ -45,7 +45,13 @@ class WeightConfig:
 
     def validate(self) -> None:
         """Reject zero-sum weights (META-001)."""
-        total = self.hit_rate + self.average_matches + self.consistency_score + self.precision + self.recall
+        total = (
+            self.hit_rate
+            + self.average_matches
+            + self.consistency_score
+            + self.precision
+            + self.recall
+        )
         if total == 0.0:
             raise ValueError("Weights must not sum to zero")
 

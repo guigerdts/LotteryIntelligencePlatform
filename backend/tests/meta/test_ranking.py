@@ -25,7 +25,12 @@ class TestBuildRankingEntries:
         ]
         entries = build_ranking_entries(scored)
         scores = [e.score for e in entries]
-        assert scores == [pytest.approx(0.9), pytest.approx(0.8), pytest.approx(0.7), pytest.approx(0.6)]
+        assert scores == [
+            pytest.approx(0.9),
+            pytest.approx(0.8),
+            pytest.approx(0.7),
+            pytest.approx(0.6),
+        ]
 
     def test_stable_sort_preserves_order(self) -> None:
         """Equal scores preserve insertion order (NFR-META-10, stable sort)."""

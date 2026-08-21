@@ -10,7 +10,6 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from backend.app.cli import main as cli_main
-from backend.app.models.prob_snapshot import ProbSnapshot
 from backend.app.probability.snapshot_store import SnapshotStore
 from backend.app.repositories.base import Base
 
@@ -37,7 +36,7 @@ class TestCLIParity:
     def test_cli_probability_generate_unknown_lottery(self, session):
         """CLI returns error for unknown lottery."""
         from unittest.mock import patch
-        from backend.app.repositories.base import SessionLocal
+
 
         with patch("backend.app.cli.SessionLocal", return_value=session):
             result = cli_main(["probability", "generate", "--lottery", "NONEXISTENT"])
@@ -101,7 +100,8 @@ class TestDeterminism:
 
     def test_engine_exact_methods(self):
         from decimal import Decimal
-        from backend.app.probability.engine import hypergeometric, binomial, poisson
+
+        from backend.app.probability.engine import binomial, hypergeometric, poisson
 
         # Hypergeometric: C(3,1)*C(6,4)/C(9,5) = 3*15/126 = 45/126
         hg = hypergeometric(9, 5, 3)

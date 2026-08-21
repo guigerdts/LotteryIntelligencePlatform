@@ -1,4 +1,5 @@
-"""Tests for meta.types — frozen dataclasses (ContextVector, WeightConfig, RankingEntry, SelectionEntry).
+"""Tests for meta.types — frozen dataclasses (ContextVector, WeightConfig, RankingEntry,
+SelectionEntry).
 
 Spec refs: META-001 (weight config), META-003 (context vector fields).
 Design refs: Domain Types section.

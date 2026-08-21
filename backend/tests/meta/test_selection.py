@@ -6,8 +6,6 @@ Design refs: Selection section.
 
 from __future__ import annotations
 
-import pytest
-
 from backend.app.meta.selection import select_top_k
 from backend.app.meta.types import RankingEntry, SelectionEntry
 

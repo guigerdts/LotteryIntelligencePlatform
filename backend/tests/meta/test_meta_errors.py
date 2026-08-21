@@ -6,8 +6,6 @@ Design refs: Error System section.
 
 from __future__ import annotations
 
-import pytest
-
 from backend.app.services.errors import MetaServiceError, ServiceError
 
 

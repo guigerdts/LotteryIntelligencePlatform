@@ -955,7 +955,9 @@ def _add_meta_subparser(subparsers) -> None:
     meta_select = meta_sub.add_parser("select", help="compute a selection from the active ranking")
     meta_select.add_argument("--lottery-id", required=True, type=int, help="lottery ID")
     meta_select.add_argument("--top-k", type=int, default=None, help="top-K (1-20, default 5)")
-    meta_select.add_argument("--min-score", type=float, default=None, help="minimum score threshold")
+    meta_select.add_argument(
+        "--min-score", type=float, default=None, help="minimum score threshold"
+    )
     meta_select.set_defaults(func=_cmd_meta_select)
 
     # meta selection

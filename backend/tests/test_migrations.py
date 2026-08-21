@@ -693,7 +693,10 @@ HEAD_TABLES_0015 = HEAD_TABLES_0010 | OPT_TABLES | BT_TABLES | EXP_TABLES | META
 def test_upgrade_0008_creates_graph_tables_with_integrity_and_indexes(
     tmp_path: Path,
 ) -> None:
-    """0008 adds the two graph_* tables (integrity + indexes); core/stat_*/feature_*/prob_* untouched."""
+    """0008 adds the two graph_* tables (integrity + indexes).
+
+    core/stat_*/feature_*/prob_* untouched.
+    """
     db = tmp_path / "up_graph.db"
     cfg = _config(db)
     command.upgrade(cfg, _REV_0008)

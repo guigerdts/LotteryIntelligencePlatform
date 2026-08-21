@@ -36,7 +36,8 @@ class TestNextVersion:
     def test_first_version_is_one(self) -> None:
         """No existing versions → version 1."""
         session = MagicMock()
-        session.query.return_value.filter.return_value.order_by.return_value.scalar.return_value = None
+        scalar_mock = session.query.return_value.filter.return_value.order_by.return_value.scalar
+        scalar_mock.return_value = None
         store = MetaSnapshotStore(session)
         version = store.next_version(1, "abc123")
         assert version == "1"

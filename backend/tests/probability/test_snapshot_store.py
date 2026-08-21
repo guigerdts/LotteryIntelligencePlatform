@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import pytest
 from sqlalchemy import create_engine
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import sessionmaker
 
 from backend.app.models.prob_snapshot import ProbSnapshot
 from backend.app.models.prob_value import ProbValue

@@ -9,8 +9,6 @@ from __future__ import annotations
 import hashlib
 import json
 
-import pytest
-
 from backend.app.meta.context import compute_context_hash, resolve_context_vector
 from backend.app.meta.types import ContextVector
 

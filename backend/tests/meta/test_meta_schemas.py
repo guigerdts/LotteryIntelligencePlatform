@@ -10,12 +10,12 @@ import pytest
 from pydantic import ValidationError
 
 from backend.app.schemas.meta import (
-    RankRequest,
     RankingResult,
     RankingSnapshot,
-    SelectRequest,
+    RankRequest,
     SelectionResult,
     SelectionSnapshot,
+    SelectRequest,
 )
 
 
@@ -130,7 +130,9 @@ class TestSelectionSnapshot:
         snap = SelectionSnapshot(
             lottery_id=1,
             context_hash="abc123",
-            selections=[{"selection_id": 1, "version": "1", "status": "active", "fingerprint": "fp"}],
+            selections=[
+                {"selection_id": 1, "version": "1", "status": "active", "fingerprint": "fp"}
+            ],
         )
         assert snap.lottery_id == 1
         assert len(snap.selections) == 1
