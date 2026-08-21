@@ -29,7 +29,7 @@ Versión: 1.1 · Última actualización: 2026-08-21
 | Fase 16 — Performance | ✅ Archivada y cerrada |
 | Fase 17 — Testing | ✅ Archivada y cerrada (2026-08-20) |
 | Fase 18 — Documentation | ✅ Archivada y cerrada (2026-08-20) |
-| Fase 19 — Release Candidate | 🧊 RC congelada — tag `v1.0.0-rc.1` |
+| Fase 19 — Release Candidate | ✅ Archivada y cerrada (2026-08-21) — tag `v1.0.0-rc.1`, MIT |
 
 ## Feature freeze (2026-08-21)
 
