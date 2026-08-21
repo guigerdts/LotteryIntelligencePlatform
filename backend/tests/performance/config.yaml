@@ -3,11 +3,22 @@
 # Custom harness only — pytest-benchmark is banned (TEST-006 scenario 2);
 # functional timing tests (pytest --durations) are NOT benchmarks. Runs on
 # demand / schedule via .github/workflows/performance.yml; NOT a PR gate
-# (T-S4-03). Baselines are documented estimates: the harness records actuals
-# and marks pass/fail against baseline +/- tolerance. First calibration run
-# (2026-08-20): cold_start measured ~13-17 s vs the design's 5.6 s estimate
-# (flagged FAIL — real signal to review); stats GET ~0.03-0.06 s and parallel
-# bt ~0.37-0.6 s swing with box noise — baselines set to mid-range estimates.
+# (T-S4-03).
+#
+# Baseline calibration history:
+# - 2026-08-20 (F17 first run): baselines were documented estimates, not
+#   measurements. cold_start read ~13-17 s — later shown to be a COLD PAGE
+#   CACHE artifact of that box state, not an app regression.
+# - 2026-08-21 (F19 S4 investigation, RC-005): controlled measurement proved
+#   warm-cache cold start is ~4.0 s (in-process 4.57 s incl. create_app;
+#   bare interpreter 0.12 s; torch/sklearn/optuna/deap all lazy per DLE-17,
+#   only numpy eager). The harness's own warmup sample warms the cache, so
+#   its samples reflect the warm-cache steady state. All three ops measured
+#   FAR BELOW their estimated baselines (harness pass/fail is symmetric, so
+#   "too fast" also failed). Baselines recalibrated to the measured means;
+#   +/-20% tolerance retained. Caveat: on a cold-cache box the first
+#   cold_start sample can legitimately exceed these numbers several-fold —
+#   rerun once before treating it as a regression signal.
 
 runs: 5
 warmup: 1
@@ -16,10 +27,10 @@ tolerance: 0.20
 ops:
   cold_start:
     unit: s
-    baseline: 5.6
+    baseline: 4.0 # F19 calibration 2026-08-21: mean 3.998 (samples 3.72-4.38)
   cached_statistics_get:
     unit: s
-    baseline: 0.045
+    baseline: 0.015 # F19 calibration 2026-08-21: mean 0.0146 (samples 0.0127-0.0177)
   parallel_bt_train:
     unit: s
-    baseline: 0.52
+    baseline: 0.17 # F19 calibration 2026-08-21: mean 0.168 (samples 0.156-0.200)
