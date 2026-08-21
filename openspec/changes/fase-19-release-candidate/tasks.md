@@ -57,10 +57,10 @@
 - [x] T-S1-01 reproduce flakes
 - [x] T-S1-02 stabilize 3 flaky test files
 - [x] T-S1-03 three consecutive green runs
-- [ ] T-S2-01 run existing gates
-- [ ] T-S2-02 mypy/bandit status recorded
-- [ ] T-S2-03 audit-report.md written
-- [ ] T-S3-01 critical fixes applied/deferred
+- [x] T-S2-01 run existing gates
+- [x] T-S2-02 mypy/bandit status recorded
+- [x] T-S2-03 audit-report.md written
+- [x] T-S3-01 critical fixes applied/deferred (none required — audit F-1..F-4 fixed in S0/S1)
 - [ ] T-S4-01 cold_start investigation evidence
 - [ ] T-S4-02 perf verdict + recalibration/report
 - [ ] T-S5-01 clean validation session
