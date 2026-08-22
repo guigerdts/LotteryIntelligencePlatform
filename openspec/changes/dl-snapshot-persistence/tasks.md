@@ -25,9 +25,9 @@ Strict TDD (`openspec/config.yaml`: `tdd: true`) — every `[TDD-RED]` precedes 
 
 ## Phase 2: DlSnapshotStore
 
-- [ ] 2.1 [TDD-RED] Create `backend/tests/dl/test_snapshot_store.py` CRUD: newest-active `get_active`, active-only `find_by_fingerprint`, `next_version` `"1"` first then max+1, metrics filter by `model_id`. Red: missing module.
-- [ ] 2.2 [TDD-RED] Failure/idempotency tests: >16 MiB weights `ValueError` before add; Decimal bulk metrics; `retire_old_active(keep_id)` flips old actives AND deletes their weight rows in-tx; post-rollback `mark_failed` re-inserts terminal failed header, `is_locked=False` (recreate-pattern gotcha).
-- [ ] 2.3 [TDD-GREEN] Create `backend/src/backend/app/dl/snapshot_store.py` mirroring `ml/snapshot_store.py` method-for-method — flush-only, never commit/rollback; caller owns the single commit.
+- [x] 2.1 [TDD-RED] Create `backend/tests/dl/test_snapshot_store.py` CRUD: newest-active `get_active`, active-only `find_by_fingerprint`, `next_version` `"1"` first then max+1, metrics filter by `model_id`. Red: missing module.
+- [x] 2.2 [TDD-RED] Failure/idempotency tests: >16 MiB weights `ValueError` before add; Decimal bulk metrics; `retire_old_active(keep_id)` flips old actives AND deletes their weight rows in-tx; post-rollback `mark_failed` re-inserts terminal failed header, `is_locked=False` (recreate-pattern gotcha).
+- [x] 2.3 [TDD-GREEN] Create `backend/src/backend/app/dl/snapshot_store.py` mirroring `ml/snapshot_store.py` method-for-method — flush-only, never commit/rollback; caller owns the single commit.
 
 ## Phase 3: DlService Atomic Train Flow
 
