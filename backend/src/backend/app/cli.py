@@ -1223,9 +1223,9 @@ class _CliDrawAdapter:
 
         for draw in self._session.execute(stmt).scalars().all():
             nums_stmt = (
-                select(DrawNumber.drawn_number)
+                select(DrawNumber.number)
                 .where(DrawNumber.draw_id == draw.id)
-                .order_by(DrawNumber.drawn_number)
+                .order_by(DrawNumber.position)
             )
             numbers = tuple(self._session.execute(nums_stmt).scalars().all())
             yield DrawRow(draw_number=draw.draw_number, numbers=numbers)
