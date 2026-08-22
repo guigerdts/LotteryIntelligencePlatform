@@ -8,11 +8,12 @@ import torch
 
 from backend.app.dl.engine import TrainResult, _build_model, _compute_metrics, train
 from backend.app.dl.sequence_builder import SequenceBatch
+from backend.app.dl.window import DL_FEATURE_ORDER
 
 
 def _make_batch(N: int = 32, W: int = 10) -> SequenceBatch:
     """Create a synthetic SequenceBatch for testing."""
-    X = np.random.RandomState(42).randn(N, W, 10).astype(np.float32)
+    X = np.random.RandomState(42).randn(N, W, len(DL_FEATURE_ORDER)).astype(np.float32)
     y = np.random.RandomState(42).randint(0, 2, size=(N, 10)).astype(np.float32)
     return SequenceBatch(X=X, y=y, draw_numbers=list(range(1, N + 1)))
 

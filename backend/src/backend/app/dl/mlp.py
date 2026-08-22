@@ -1,7 +1,8 @@
 """MLP model for DL lottery prediction (DLE-02 / D-A8).
 
-Architecture: ``W*10 → hidden_layers → 1`` with ReLU activations between hidden
-layers and Sigmoid on the output.  Deterministic under ``configure_deterministic_torch``
+Architecture: ``W*F → hidden_layers → 1`` (F = ``len(DL_FEATURE_ORDER)``) with
+ReLU activations between hidden layers and Sigmoid on the output.
+Deterministic under ``configure_deterministic_torch``
 (seed 0, ``use_deterministic_algorithms(True)``, 1 CPU thread).
 
 Parameters flow to the fingerprint via ``hyperparameters["mlp"]`` so any change
@@ -15,11 +16,15 @@ from typing import Final
 import torch
 import torch.nn as nn
 
+from backend.app.dl.window import DL_FEATURE_ORDER
+
 # Canonical architecture defaults (DLE-02).
 DEFAULT_HIDDEN_LAYERS: Final[tuple[int, ...]] = (64, 32)
 DEFAULT_ACTIVATION: Final[str] = "relu"
 DEFAULT_DROPOUT: Final[float] = 0.0
-N_FEATURES: Final[int] = 10
+# Feature width follows the persistable F4 contract; the head stays one logit
+# per lottery number in the fixture universe (1..10).
+N_FEATURES: Final[int] = len(DL_FEATURE_ORDER)
 N_NUMBERS: Final[int] = 10
 
 _ACTIVATION_MAP: dict[str, type[nn.Module]] = {
@@ -85,7 +90,7 @@ class LotteryMLP(nn.Module):
         Parameters
         ----------
         x:
-            Input tensor of shape ``(batch, W, 10)``.
+            Input tensor of shape ``(batch, W, F)`` where ``F = N_FEATURES``.
 
         Returns
         -------
@@ -94,7 +99,7 @@ class LotteryMLP(nn.Module):
         """
         batch_size = x.shape[0]
         flat = x.view(batch_size, -1)  # (batch, W*10)
-        logits = self.network(flat)     # (batch, 10)
+        logits = self.network(flat)  # (batch, 10)
         return torch.sigmoid(logits)
 
     def count_parameters(self) -> int:

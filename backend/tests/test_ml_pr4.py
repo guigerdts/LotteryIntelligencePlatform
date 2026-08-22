@@ -13,6 +13,7 @@ from typing import NamedTuple
 from sqlalchemy.orm import Session, sessionmaker
 
 from backend.app.ml.feature_reader import FeatureValueRow
+from backend.app.ml.features import ML_FEATURE_ORDER
 from backend.app.ml.registry import MODEL_SET_CORE_5
 from backend.app.ml.snapshot_store import MlSnapshotStore
 from backend.app.ml.version import ML_GENERATOR_VERSION
@@ -76,21 +77,7 @@ class MockFeatureProviderEmpty:
 # Helpers
 # ---------------------------------------------------------------------------
 
-_FEATURES = [
-    FeatureValueRow(feature_id=f, draw_number=1, value=0.5)
-    for f in [
-        "consecutive_count",
-        "current_frequency",
-        "decade_distribution",
-        "draw_mean",
-        "draw_range",
-        "draw_sum",
-        "low_high_ratio",
-        "max_current_gap",
-        "odd_even_ratio",
-        "repeated_from_previous",
-    ]
-]
+_FEATURES = [FeatureValueRow(feature_id=f, draw_number=1, value=0.5) for f in ML_FEATURE_ORDER]
 
 
 def _seed_lottery(session: Session, lottery_id: int = 1) -> None:
@@ -309,23 +296,10 @@ class TestMlService:
             _Draw(draw_number=i, numbers=tuple(range(1 + (i % 5), 7 + (i % 5))))
             for i in range(1, 12)
         ]
-        # Build feature rows: all 10 features for each of the 11 draws.
+        # Build feature rows: every contract feature for each of the 11 draws.
         feat_rows = []
         for d in draws:
-            for j, fid in enumerate(
-                [
-                    "consecutive_count",
-                    "current_frequency",
-                    "decade_distribution",
-                    "draw_mean",
-                    "draw_range",
-                    "draw_sum",
-                    "low_high_ratio",
-                    "max_current_gap",
-                    "odd_even_ratio",
-                    "repeated_from_previous",
-                ]
-            ):
+            for j, fid in enumerate(ML_FEATURE_ORDER):
                 feat_rows.append(
                     FeatureValueRow(
                         feature_id=fid,

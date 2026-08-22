@@ -81,10 +81,10 @@ def test_mlp_forward_deterministic() -> None:
 
 def test_mlp_count_parameters() -> None:
     """Parameter count matches expected architecture."""
-    # W=10 → input=100, layers=[64,32], output=10
-    # 100*64+64 + 64*32+32 + 32*10+10 = 6464+2080+330 = 8874
+    # W=10, F=N_FEATURES=8 → input=80, layers=[64,32], output=10
+    # 80*64+64 + 64*32+32 + 32*10+10 = 5184+2080+330 = 7594
     model = LotteryMLP(W=10)
-    assert model.count_parameters() == 8874
+    assert model.count_parameters() == 7594
 
 
 def test_mlp_get_hyperparameters() -> None:

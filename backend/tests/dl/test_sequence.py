@@ -24,7 +24,7 @@ def _draw(draw_number: int, numbers: tuple[int, ...] = (1, 2, 3)) -> DrawRow:
 def test_build_tensors_empty_windows() -> None:
     """Empty windows produce empty tensors."""
     batch = build_tensors([], [_draw(1)])
-    assert batch.X.shape == (0, 0, 10)
+    assert batch.X.shape == (0, 0, len(DL_FEATURE_ORDER))
     assert batch.y.shape == (0, 10)
     assert batch.draw_numbers == []
 
@@ -34,7 +34,7 @@ def test_build_tensors_shape() -> None:
     windows = [_window(d, W=3) for d in [3, 4, 5]]
     draws = [_draw(d) for d in range(1, 7)]
     batch = build_tensors(windows, draws)
-    assert batch.X.shape == (3, 3, 10)
+    assert batch.X.shape == (3, 3, len(DL_FEATURE_ORDER))
     assert batch.y.shape == (3, 10)
 
 
@@ -90,7 +90,7 @@ def test_build_tensors_no_shuffle() -> None:
 
 def test_build_tensors_source_unchanged() -> None:
     """Input windows and draws are not mutated."""
-    matrix = np.ones((3, 10), dtype=np.float64)
+    matrix = np.ones((3, len(DL_FEATURE_ORDER)), dtype=np.float64)
     window = Window(draw_number=5, feature_matrix=matrix)
     draw = _draw(6, numbers=(1, 2, 3))
     _ = build_tensors([window], [draw])

@@ -71,21 +71,19 @@ def test_build_windows_last_draw_number() -> None:
 
 
 def test_build_windows_feature_shape() -> None:
-    """Feature matrix has shape (W, 10)."""
+    """Feature matrix has shape (W, len(DL_FEATURE_ORDER))."""
     draws = _make_draws(1, 15)
     features = _make_features(draws)
     windows = build_windows(draws, features, W=10)
     for w in windows:
-        assert w.feature_matrix.shape == (10, 10)
+        assert w.feature_matrix.shape == (10, len(DL_FEATURE_ORDER))
 
 
 def test_build_windows_canonical_order() -> None:
-    """Features are in canonical DL_FEATURE_ORDER."""
-    assert len(DL_FEATURE_ORDER) == 10
+    """Features are in canonical DL_FEATURE_ORDER (persistable scalars only)."""
+    assert len(DL_FEATURE_ORDER) == 8
     assert DL_FEATURE_ORDER == (
         "consecutive_count",
-        "current_frequency",
-        "decade_distribution",
         "draw_mean",
         "draw_range",
         "draw_sum",
@@ -94,6 +92,9 @@ def test_build_windows_canonical_order() -> None:
         "odd_even_ratio",
         "repeated_from_previous",
     )
+    # Mapping-valued F4 features never persist cells, so they stay out of the contract.
+    assert "decade_distribution" not in DL_FEATURE_ORDER
+    assert "current_frequency" not in DL_FEATURE_ORDER
 
 
 def test_build_windows_no_padding() -> None:

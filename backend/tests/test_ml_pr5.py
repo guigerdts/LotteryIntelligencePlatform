@@ -21,8 +21,6 @@ from backend.app.repositories.base import get_db
 
 _F4_FEATURES = [
     "consecutive_count",
-    "current_frequency",
-    "decade_distribution",
     "draw_mean",
     "draw_range",
     "draw_sum",
@@ -67,11 +65,10 @@ def _seed_draws(session: Session, lottery_id: int, count: int = 12) -> None:
         )
         draw_id = session.execute(sa.text("SELECT last_insert_rowid()")).scalar()
         for n in range(1, 7):
-                session.execute(
-                    sa.text(
-                        "INSERT INTO draw_numbers (draw_id, number, position) "
-                        "VALUES (:did, :num, :pos)"
-                    ),
+            session.execute(
+                sa.text(
+                    "INSERT INTO draw_numbers (draw_id, number, position) VALUES (:did, :num, :pos)"
+                ),
                 {"did": draw_id, "num": n + (i % 10), "pos": n},
             )
     session.flush()

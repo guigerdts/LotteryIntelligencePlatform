@@ -85,11 +85,11 @@ def test_lstm_forward_deterministic() -> None:
 
 def test_lstm_count_parameters() -> None:
     """Parameter count matches expected architecture."""
-    # LSTM(input=10, hidden=64, layers=2): 52736 params
-    # Linear(64, 10): 640+10 = 650 params
-    # Total: 53386
+    # LSTM(input=N_FEATURES=8, hidden=64, layers=2):
+    #   layer1: 4*64*8 + 4*64*64 + 2*256 = 18944; layer2: 16384+16384+512 = 33280
+    # Linear(64, 10): 640+10 = 650 params → total 52874
     model = LotteryLSTM()
-    assert model.count_parameters() == 53386
+    assert model.count_parameters() == 52874
 
 
 def test_lstm_get_hyperparameters() -> None:

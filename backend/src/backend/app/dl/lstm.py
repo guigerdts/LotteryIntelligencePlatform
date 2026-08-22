@@ -1,6 +1,7 @@
 """LSTM model for DL lottery prediction (DLE-02 / D-A8).
 
-Architecture: ``(W, 10) → LSTM → Linear → Sigmoid``.  Sequence-to-one using
+Architecture: ``(W, F) → LSTM → Linear → Sigmoid`` (F = ``len(DL_FEATURE_ORDER)``).
+Sequence-to-one using
 the last hidden state of the final LSTM layer.  Deterministic under
 ``configure_deterministic_torch`` (seed 0, ``use_deterministic_algorithms(True)``,
 1 CPU thread).
@@ -16,11 +17,15 @@ from typing import Final
 import torch
 import torch.nn as nn
 
+from backend.app.dl.window import DL_FEATURE_ORDER
+
 # Canonical architecture defaults (DLE-02).
 DEFAULT_HIDDEN_SIZE: Final[int] = 64
 DEFAULT_NUM_LAYERS: Final[int] = 2
 DEFAULT_DROPOUT: Final[float] = 0.1
-N_FEATURES: Final[int] = 10
+# Feature width follows the persistable F4 contract; the head stays one logit
+# per lottery number in the fixture universe (1..10).
+N_FEATURES: Final[int] = len(DL_FEATURE_ORDER)
 N_NUMBERS: Final[int] = 10
 
 
@@ -76,7 +81,7 @@ class LotteryLSTM(nn.Module):
         Parameters
         ----------
         x:
-            Input tensor of shape ``(batch, W, 10)``.
+            Input tensor of shape ``(batch, W, F)`` where ``F = N_FEATURES``.
 
         Returns
         -------
@@ -87,7 +92,7 @@ class LotteryLSTM(nn.Module):
         lstm_out, _ = self.lstm(x)
         # Take the last timestep's hidden state
         last_hidden = lstm_out[:, -1, :]  # (batch, hidden_size)
-        logits = self.head(last_hidden)   # (batch, 10)
+        logits = self.head(last_hidden)  # (batch, 10)
         return torch.sigmoid(logits)
 
     def count_parameters(self) -> int:

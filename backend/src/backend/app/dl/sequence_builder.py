@@ -1,10 +1,11 @@
 """Sequence builder for DL training (DLE-03/04/07).
 
 Converts windows into model-ready tensors: ``X`` of shape
-``(samples, W, 10)`` as float32, ``y`` of shape ``(samples, 10)`` as float32
-binary (participation in draw ``n+1``).  Canonical feature order matches
-``DL_FEATURE_ORDER`` (F12 parity with ``ML_FEATURE_ORDER``).  No shuffle,
-no source mutation (DLE-07).
+``(samples, W, F)`` as float32 (F = ``len(DL_FEATURE_ORDER)``), ``y`` of shape
+``(samples, 10)`` as float32 binary (participation in draw ``n+1``; the 10 is
+the fixture number universe, not the feature count).  Canonical feature order
+matches ``DL_FEATURE_ORDER`` (F12 parity with ``ML_FEATURE_ORDER``).  No
+shuffle, no source mutation (DLE-07).
 """
 
 from __future__ import annotations
@@ -21,7 +22,7 @@ from backend.app.dl.window import DL_FEATURE_ORDER, Window
 class SequenceBatch:
     """One batch of DL training data.
 
-    ``X``: shape ``(samples, W, 10)``, float32, canonical feature order.
+    ``X``: shape ``(samples, W, F)``, float32, canonical feature order.
     ``y``: shape ``(samples, 10)``, float32 binary (1.0 = number present in n+1).
     ``draw_numbers``: the last draw_number in each window (for traceability).
     """

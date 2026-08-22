@@ -15,6 +15,9 @@ Generated from the real Git history (260 commits, 2026-08-05 → 2026-08-21).
 
 Discovered during the post-release manual walkthrough of rc.1. The graph double-snapshot observation was reclassified as expected behavior: two legitimate deterministic runs (dashboard Redes panel POST + CLI) produce identical checksums.
 
+### Changed
+- ML and DL training contracts now consume exactly the 8 F4 features that persist as scalar cells: `ML_FEATURE_ORDER` (`ml/features.py`) and `DL_FEATURE_ORDER` (`dl/window.py`) were reduced from 10 ids, dropping FE-07 `decade_distribution` and FE-10 `current_frequency`. Both are mapping-valued, so F4 computes and fingerprints them but never stores cells (design §2/FES-05); demanding them from stored snapshots made real-data training fail with `SnapshotNotFoundError` (ML) or silently zero-fill columns (DL). The unit suites missed it because they fabricate all rows in memory. The DL model input width is now derived from the contract (`N_FEATURES = len(DL_FEATURE_ORDER)`), and docstrings no longer claim `_build_rows` persists every computed value. New seam integration tests lock the persisted-snapshot → reader → matrix/window path (`tests/ml/test_f4_snapshot_seam.py`).
+
 ## [1.0.0-rc.1] — 2026-08-21 (Fase 19 — Release Candidate)
 
 Feature freeze for v1.0.0: fixes only until release.

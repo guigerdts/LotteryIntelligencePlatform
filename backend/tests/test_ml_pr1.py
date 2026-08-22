@@ -111,19 +111,17 @@ def test_ml_version_constant_exists() -> None:
 
 
 def test_ml_feature_order_frozen() -> None:
-    """``ML_FEATURE_ORDER`` is an immutable 10-tuple in canonical F4 order (M-A5)."""
+    """``ML_FEATURE_ORDER`` is an immutable 8-tuple of scalar-persistable F4 ids (M-A5)."""
     from backend.app.ml.features import ML_FEATURE_ORDER
 
     assert isinstance(ML_FEATURE_ORDER, tuple)
-    assert len(ML_FEATURE_ORDER) == 10
+    assert len(ML_FEATURE_ORDER) == 8
     # Frozen/immutable: no mutation protocol on a tuple; assignment raises TypeError.
     with pytest.raises(TypeError):
         ML_FEATURE_ORDER[0] = "mutated"  # type: ignore[index]
-    # Canonical sorted order of the 10 base F4 ids (design M-A5).
+    # Canonical sorted order of the persistable subset (design M-A5 + FES-05).
     assert ML_FEATURE_ORDER == (
         "consecutive_count",
-        "current_frequency",
-        "decade_distribution",
         "draw_mean",
         "draw_range",
         "draw_sum",
@@ -132,6 +130,9 @@ def test_ml_feature_order_frozen() -> None:
         "odd_even_ratio",
         "repeated_from_previous",
     )
+    # Mapping-valued F4 features never persist cells, so they stay out of the contract.
+    assert "decade_distribution" not in ML_FEATURE_ORDER
+    assert "current_frequency" not in ML_FEATURE_ORDER
 
 
 def test_ml_registry_core5_only() -> None:

@@ -2,10 +2,11 @@
 
 Builds windows of W consecutive F4 feature vectors from ordered draws.  Each
 window captures a ``(draw_number, feature_matrix)`` pair where the matrix has
-shape ``(W, 10)`` — one row per consecutive draw, one column per F4 feature in
-canonical order.  Windows are valid only when ``n >= W`` (the first W draws
-form the first window).  No padding is ever applied; short histories raise
-``ValueError`` before any training begins (DLE-04).
+shape ``(W, len(DL_FEATURE_ORDER))`` — one row per consecutive draw, one column
+per persistable F4 feature in canonical order.  Windows are valid only when
+``n >= W`` (the first W draws form the first window).  No padding is ever
+applied; short histories raise ``ValueError`` before any training begins
+(DLE-04).
 """
 
 from __future__ import annotations
@@ -16,11 +17,10 @@ import numpy as np
 
 from backend.app.dl.providers import DrawRow, FeatureRow
 
-# F4 canonical feature order (mirrors ML_FEATURE_ORDER, DLE-04/F12 parity).
+# Persistable F4 feature order: the same 8 scalar-persistable ids as
+# ML_FEATURE_ORDER (DLE-04/F12 parity), matching what feature_values stores.
 DL_FEATURE_ORDER: tuple[str, ...] = (
     "consecutive_count",
-    "current_frequency",
-    "decade_distribution",
     "draw_mean",
     "draw_range",
     "draw_sum",
