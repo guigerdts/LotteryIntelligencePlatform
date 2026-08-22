@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from decimal import Decimal
+from unittest.mock import MagicMock, patch
+
 import pytest
 
 from backend.app.opt.objective import (
@@ -137,3 +140,31 @@ class TestProtocolCompliance:
         )
         assert hasattr(fn, "evaluate")
         assert callable(fn.evaluate)
+
+
+class TestDlObjectiveCutThreading:
+    """evaluate() threads ``cut`` from params into dl.engine.train (DLE-05).
+
+    The engine now REQUIRES a declared cut, so evaluate must always pass one;
+    ephemeral fitness runs default to 0 and are never persisted.
+    """
+
+    def _evaluate_capture_train(self, params: dict[str, object]) -> MagicMock:
+        """Run evaluate() with dl.engine.train patched out; return the mock."""
+        stub = MagicMock()
+        stub.metrics = {"f1": Decimal("0.5")}
+        with patch("backend.app.dl.engine.train", return_value=stub) as mock_train:
+            fn = DlObjectiveFunction(family="mlp", train_batch=None, eval_batch=None)
+            fitness = fn.evaluate(params)
+        assert fitness == Decimal("0.50000000")
+        return mock_train
+
+    def test_explicit_cut_threaded(self) -> None:
+        """Params carrying ``cut`` reach the engine call."""
+        mock_train = self._evaluate_capture_train({"cut": 42})
+        assert mock_train.call_args.kwargs["cut"] == 42
+
+    def test_missing_cut_defaults_to_zero(self) -> None:
+        """Absent ``cut`` falls back to 0 (ephemeral run)."""
+        mock_train = self._evaluate_capture_train({})
+        assert mock_train.call_args.kwargs["cut"] == 0
