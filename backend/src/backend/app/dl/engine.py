@@ -54,6 +54,7 @@ class TrainResult:
     fingerprint: str
     W: int
     seed: int
+    cut: int
 
 
 def _build_model(
@@ -158,6 +159,8 @@ def train(
     batch_size: int = DEFAULT_BATCH_SIZE,
     lr: float = DEFAULT_LR,
     seed: int = DL_SEED,
+    cut: int,
+    fingerprint: str | None = None,
 ) -> TrainResult:
     """Train a DL model and return in-memory artifacts.
 
@@ -177,11 +180,19 @@ def train(
         Adam learning rate.  Default 1e-3.
     seed:
         RNG seed.  Default ``DL_SEED`` (0).
+    cut:
+        Walk-forward boundary declared per run (DLE-05); participates in the
+        input fingerprint (DLE-08).  Required.
+    fingerprint:
+        Optional pre-computed run fingerprint.  When given, it overrides the
+        internal computation so a model-set run can share ONE fingerprint
+        across the snapshot header and both weight blobs; ``None`` keeps the
+        internal cut-aware computation for standalone/opt use.
 
     Returns
     -------
     TrainResult
-        Trained model, quantized metrics, weights BLOB, fingerprint.
+        Trained model, quantized metrics, weights BLOB, fingerprint, W/seed/cut.
     """
     import torch  # noqa: PLC0415  # deferred: torch must not load at cold start (DLE-17)
     import torch.nn as nn  # noqa: PLC0415
@@ -227,15 +238,16 @@ def train(
     data_hash = hashlib.sha256(eval_batch.X.tobytes() + eval_batch.y.tobytes()).hexdigest()
 
     hp = model.get_hyperparameters()
-    fingerprint = compute_dl_fingerprint(
-        data_hash=data_hash,
-        hyperparameters={family: hp},
-        architecture=family,
-        seed=seed,
-        window=W,
-        cut=0,  # cut not relevant for fingerprint at engine level
-        version=DL_GENERATOR_VERSION,
-    )
+    if fingerprint is None:
+        fingerprint = compute_dl_fingerprint(
+            data_hash=data_hash,
+            hyperparameters={family: hp},
+            architecture=family,
+            seed=seed,
+            window=W,
+            cut=cut,  # declared per run (DLE-05); digest participant (DLE-08)
+            version=DL_GENERATOR_VERSION,
+        )
 
     # Encode weights.
     weights_blob = encode_weights(
@@ -256,6 +268,7 @@ def train(
         fingerprint=fingerprint,
         W=W,
         seed=seed,
+        cut=cut,
     )
 
 
