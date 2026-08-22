@@ -112,6 +112,7 @@ class DlObjectiveFunction:
             epochs=int(params.get("epochs", 50)),
             batch_size=int(params.get("batch_size", 32)),
             lr=float(params.get("lr", 1e-3)),
+            cut=int(params.get("cut", 0)),  # ephemeral fitness run — never persisted
         )
         fitness = result.metrics.get(self._config.metric, Decimal("0"))
         if self._config.direction == "minimize":
