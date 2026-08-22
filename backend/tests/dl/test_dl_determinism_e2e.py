@@ -1,6 +1,6 @@
 """GF1 E2E determinism — two seeded CPU runs must be byte-identical.
 
-Two training runs on the same synthetic 120-draw fixture with identical
+Two training runs on the same synthetic 130-draw fixture with identical
 parameters must produce: identical fingerprints, identical quantized
 metrics, identical weights bytes.  Verifies deterministic reproducibility
 under ``configure_deterministic_torch`` with seed=0, CPU-only, float32.
@@ -26,7 +26,7 @@ from backend.app.dl.splitter import split_windows
 from backend.app.dl.window import DEFAULT_WINDOW, build_windows
 
 # ---------------------------------------------------------------------------
-# Synthetic fixture: 120 draws, deterministic RNG.
+# Synthetic fixture: 130 draws, deterministic RNG.
 # ---------------------------------------------------------------------------
 N_DRAWS: int = 130  # extra draws needed as targets for eval windows
 LOTTERY_ID: int = 1
@@ -120,6 +120,7 @@ def _run_training(
         batch_size=32,
         lr=1e-3,
         seed=seed,
+        cut=CUT,
     )
 
     checksum = compute_metrics_checksum(result.metrics)
@@ -136,9 +137,11 @@ class TestGF1Determinism:
 
     @pytest.fixture(autouse=True)
     def _seeded(self) -> None:
+        """Force deterministic torch (seed=0, CPU, deterministic algorithms)."""
         configure_deterministic_torch(DL_SEED)
 
     def test_mlp_two_runs_identical(self) -> None:
+        """Two MLP runs yield identical fingerprint, metrics, weights, and checksum."""
         draws = _seeded_draws(N_DRAWS)
         features = _seeded_features(draws)
 
@@ -151,6 +154,7 @@ class TestGF1Determinism:
         assert ch1 == ch2, "MLP metrics checksum must be byte-identical"
 
     def test_lstm_two_runs_identical(self) -> None:
+        """Two LSTM runs yield identical fingerprint, metrics, weights, and checksum."""
         draws = _seeded_draws(N_DRAWS)
         features = _seeded_features(draws)
 
