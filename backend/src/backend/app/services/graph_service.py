@@ -222,6 +222,15 @@ class GraphService:
         else:
             version = "1"
 
+        # Report real draw-number range; draw_ids are internal row IDs.
+        from backend.app.models.draw import Draw
+
+        used_numbers = (
+            self._session.execute(select(Draw.draw_number).where(Draw.id.in_(draw_ids)))
+            .scalars()
+            .all()
+        )
+
         # Persist snapshot (retires old active automatically)
         snapshot = upsert_snapshot(
             self._session,
@@ -233,8 +242,8 @@ class GraphService:
             fingerprint=fingerprint,
             params_json=json.dumps({"window": window, "threshold": threshold}),
             draw_count=len(draw_numbers),
-            draws_from=min(draw_ids) if draw_ids else 0,
-            draws_to=max(draw_ids) if draw_ids else 0,
+            draws_from=min(used_numbers) if used_numbers else 0,
+            draws_to=max(used_numbers) if used_numbers else 0,
             values=values,
         )
 

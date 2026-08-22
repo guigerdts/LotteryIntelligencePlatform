@@ -64,16 +64,18 @@ class _DrawReaderAdapter:
     """Adapter wrapping draw repository into Provider Protocol (PES-06)."""
 
     def __init__(self, session: Session) -> None:
-        from backend.app.repositories.draw_repository import DrawRepository
+        # DrawRepository has no iter_draws(); the keyset-paginated reader lives on
+        # StatPayloadRepository and yields (draw_number, numbers, jackpot, winners).
+        from backend.app.repositories.stat_payload_repository import StatPayloadRepository
 
-        self._repo = DrawRepository(session)
+        self._repo = StatPayloadRepository(session)
 
     def iter_draws(
         self, lottery_id: int, *, after_draw_number: int | None = None
     ) -> Iterator[DrawRow]:
         draws = self._repo.iter_draws(lottery_id, after_draw_number=after_draw_number)
-        for d in draws:
-            yield DrawRow(draw_number=d.draw_number, numbers=tuple(d.numbers))
+        for draw_number, numbers, _jackpot, _winners in draws:
+            yield DrawRow(draw_number=draw_number, numbers=tuple(numbers))
 
     def lottery_rules(self, lottery_id: int) -> LotteryRules:
         from backend.app.repositories.lottery_repository import LotteryRepository

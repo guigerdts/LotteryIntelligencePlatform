@@ -10,8 +10,10 @@ Generated from the real Git history (260 commits, 2026-08-05 → 2026-08-21).
 - `GET /api/v1/version` (and the startup log / snapshot `engine_version`) now report `1.0.0`, matching the release manifests; the value was hardcoded to `0.1.0` in `Settings.app_version`.
 - Dev-mode API wiring: `vite.config.ts` now proxies `/api` to the backend (`http://127.0.0.1:8000`). Previously `npm run dev` served the SPA fallback HTML for `/api/v1/*` with HTTP 200, producing "Invalid response from server" in the dashboard; E2E/tests masked it by using explicit base URLs and mocks.
 - CORS defaults now allow both dev origins (`localhost:5173` and `localhost:5174`) in `Settings.allowed_origins`.
+- Probability generation works again end-to-end (`lip probability generate` and `POST /api/v1/probability/generate`): `_DrawReaderAdapter` wrapped `DrawRepository`, which has no `iter_draws()`, crashing with `AttributeError`; it now reads through `StatPayloadRepository.iter_draws`. Unit tests stayed green because they injected a fake provider — new integration tests exercise the adapter against a real session (`tests/probability/test_draw_reader_adapter.py`).
+- Graph snapshots now record the real draw-number range in `draws_from`/`draws_to` instead of internal row IDs (e.g. Baloto reports `2091..2100`, consistent with statistics/features snapshots).
 
-Discovered during the post-release manual walkthrough of rc.1.
+Discovered during the post-release manual walkthrough of rc.1. The graph double-snapshot observation was reclassified as expected behavior: two legitimate deterministic runs (dashboard Redes panel POST + CLI) produce identical checksums.
 
 ## [1.0.0-rc.1] — 2026-08-21 (Fase 19 — Release Candidate)
 
