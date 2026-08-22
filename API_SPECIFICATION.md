@@ -160,6 +160,34 @@ No edites el contenido entre los marcadores a mano — vuelve a ejecutar el gene
 - Request body: application/json — BtRunRequest
 - Response 200: SuccessEnvelope_BtRunResponse_
 
+### GET /api/v1/dl/metrics
+
+- Summary: Get DL metrics for the active snapshot
+- Tags: dl
+- Parameters:
+  - `lottery_id` (query, required, integer)
+  - `model_id` (query, optional, string)
+- Response 200: SuccessEnvelope_list_dict__
+
+### GET /api/v1/dl/models
+
+- Summary: Get active DL snapshot metadata for a lottery
+- Tags: dl
+- Parameters:
+  - `lottery_id` (query, required, integer)
+- Response 200: SuccessEnvelope_dict_
+
+### POST /api/v1/dl/train
+
+- Summary: Train the core-3 DL families for a lottery
+- Tags: dl
+- Parameters:
+  - `lottery_id` (query, required, integer)
+  - `model_set` (query, optional, string)
+  - `window` (query, optional, integer)
+  - `cut` (query, optional, integer)
+- Response 200: SuccessEnvelope_dict_
+
 ### GET /api/v1/draws
 
 - Summary: List Draws

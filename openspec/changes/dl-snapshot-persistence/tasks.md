@@ -40,14 +40,14 @@ Strict TDD (`openspec/config.yaml`: `tdd: true`) — every `[TDD-RED]` precedes 
 
 ## Phase 4: CLI Surface `lip dl`
 
-- [ ] 4.1 [TDD-RED] Create `backend/tests/test_dl_cli.py`: train/models/metrics plain-JSON output (`{family,status,snapshot_id,fingerprint,metrics_checksum,error}`); unknown lottery errors; window outside 2..20 rejected.
-- [ ] 4.2 [TDD-GREEN] `cli.py`: `dl` argparse group after ml block; `_cmd_dl_*` handlers — deferred imports, `SessionLocal()`, `_resolve_lottery`, adapter conversion at handler, `print(json.dumps(...))`.
+- [x] 4.1 [TDD-RED] Create `backend/tests/test_dl_cli.py`: train/models/metrics plain-JSON output (`{family,status,snapshot_id,fingerprint,metrics_checksum,error}`); unknown lottery errors; window outside 2..20 rejected.
+- [x] 4.2 [TDD-GREEN] `cli.py`: `dl` argparse group after ml block; `_cmd_dl_*` handlers — deferred imports, `SessionLocal()`, `_resolve_lottery`, adapter conversion at handler, `print(json.dumps(...))`.
 
 ## Phase 5: API Router `/dl`
 
-- [ ] 5.1 [TDD-RED] Create `backend/tests/test_dl_api.py`: POST /dl/train SuccessEnvelope shape + invalid-lottery 404; GET /dl/models 404 `SNAPSHOT_NOT_FOUND`; GET /dl/metrics ETag ⇒ 304 empty body; no `/dl/predict` route.
-- [ ] 5.2 [TDD-GREEN] Create `api/v1/dl.py`: three routes; `_resolve_lottery`+`NotFoundError`; `SnapshotNotFoundError`; `etag_for`/`should_not_modify`; per-request adapters; reads never train (DLE-14).
-- [ ] 5.3 [TDD-GREEN] Mount in `api/v1/router.py` beside `ml_router`.
+- [x] 5.1 [TDD-RED] Create `backend/tests/test_dl_api.py`: POST /dl/train SuccessEnvelope shape + invalid-lottery 404; GET /dl/models 404 `SNAPSHOT_NOT_FOUND`; GET /dl/metrics ETag ⇒ 304 empty body; no `/dl/predict` route.
+- [x] 5.2 [TDD-GREEN] Create `api/v1/dl.py`: three routes; `_resolve_lottery`+`NotFoundError`; `SnapshotNotFoundError`; `etag_for`/`should_not_modify`; per-request adapters; reads never train (DLE-14).
+- [x] 5.3 [TDD-GREEN] Mount in `api/v1/router.py` beside `ml_router`.
 
 ## Phase 6: Cleanup Rides & Regression Sweep
 

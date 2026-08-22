@@ -18,6 +18,7 @@ import argparse
 import getpass
 import json
 import sys
+from typing import TYPE_CHECKING
 
 from backend.app.config.settings import get_settings
 from backend.app.repositories.base import SessionLocal
@@ -28,6 +29,9 @@ from backend.app.services.graph_service import GraphService
 from backend.app.services.import_service import ImportService
 from backend.app.services.probability_service import PROB_MODEL_SET_CORE, ProbabilityService
 from backend.app.services.statistics_service import StatisticsService
+
+if TYPE_CHECKING:
+    from backend.app.services.dl_service import DlService, DlTrainOutcome
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -190,6 +194,41 @@ def main(argv: list[str] | None = None) -> int:
     ml_metrics.add_argument("--lottery", required=True, help="lottery code (natural key)")
     ml_metrics.add_argument("--model", default=None, help="filter by model_id")
     ml_metrics.set_defaults(func=_cmd_ml_metrics)
+
+    # --- DL commands (REQ-12 dl paragraph) ---
+    dl_parser = subparsers.add_parser(
+        "dl",
+        help="DL engine: train deep models, show snapshots, view metrics",
+    )
+    dl_sub = dl_parser.add_subparsers(dest="dl_command", required=True)
+
+    dl_train = dl_sub.add_parser("train", help="train the core-3 DL families")
+    dl_train.add_argument("--lottery", required=True, help="lottery code (natural key)")
+    dl_train.add_argument(
+        "--model-set", default="core-3", help="model architecture set (default core-3)"
+    )
+    dl_train.add_argument(
+        "--window",
+        type=_dl_window,
+        default=10,
+        help="sequence length W, restricted to 2..20 (default 10)",
+    )
+    dl_train.add_argument(
+        "--cut",
+        type=int,
+        default=None,
+        help="explicit walk-forward cut draw number (default: len(frame)*4//5)",
+    )
+    dl_train.set_defaults(func=_cmd_dl_train)
+
+    dl_models = dl_sub.add_parser("models", help="show active DL snapshot for a lottery")
+    dl_models.add_argument("--lottery", required=True, help="lottery code (natural key)")
+    dl_models.set_defaults(func=_cmd_dl_models)
+
+    dl_metrics = dl_sub.add_parser("metrics", help="show DL metrics for the active snapshot")
+    dl_metrics.add_argument("--lottery", required=True, help="lottery code (natural key)")
+    dl_metrics.add_argument("--model", default=None, help="filter by model_id")
+    dl_metrics.set_defaults(func=_cmd_dl_metrics)
 
     # --- Opt commands (Fase 9, OE-10) ---
     opt_parser = subparsers.add_parser(
@@ -607,6 +646,21 @@ def _resolve_lottery(session, code: str) -> int:
     return lottery.id
 
 
+def _dl_window(value: str) -> int:
+    """Validate ``--window`` against the supported 2..20 bounds (DLE-04)."""
+    from backend.app.dl.window import MAX_WINDOW, MIN_WINDOW
+
+    try:
+        window = int(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError(f"invalid int value: {value!r}") from exc
+    if not MIN_WINDOW <= window <= MAX_WINDOW:
+        raise argparse.ArgumentTypeError(
+            f"window must be between {MIN_WINDOW} and {MAX_WINDOW}, got {window}"
+        )
+    return window
+
+
 def _generator_version() -> str:
     """The dataset generator version recorded on every dataset (CD-03)."""
     return get_settings().app_version
@@ -669,6 +723,63 @@ def _cmd_ml_metrics(args: argparse.Namespace) -> None:
         feature_provider = _CliFeatureAdapter(session)
         service = MlService(session, draw_reader, feature_provider)
         metrics = service.get_metrics(lottery_id, model_id=args.model)
+    print(json.dumps(metrics, indent=2))
+
+
+# --- DL CLI commands (REQ-12 dl paragraph) ---
+
+# Registry insertion order IS the canonical training order (mlp→lstm).
+_DL_FAMILY_ORDER: tuple[str, ...] = ("mlp", "lstm")
+
+
+def _dl_train_rows(outcome: DlTrainOutcome) -> list[dict]:
+    """Project one model-set run outcome onto per-family plain-JSON rows.
+
+    A DL run trains mlp→lstm under ONE snapshot, so both rows carry the same
+    run-level outcome — the shape mirrors the ML train output per family.
+    """
+    return [
+        {
+            "family": family,
+            "status": outcome.status,
+            "snapshot_id": outcome.snapshot_id,
+            "fingerprint": outcome.fingerprint,
+            "metrics_checksum": outcome.metrics_checksum,
+            "error": outcome.error,
+        }
+        for family in _DL_FAMILY_ORDER
+    ]
+
+
+def _cmd_dl_train(args: argparse.Namespace) -> None:
+    """Train the core-3 DL families for a lottery; print results as JSON."""
+    with SessionLocal() as session:
+        lottery_id = _resolve_lottery(session, args.lottery)
+        outcome = _make_dl_service(session).train(
+            lottery_id,
+            args.model_set,
+            window=args.window,
+            cut=args.cut,
+        )
+    print(json.dumps(_dl_train_rows(outcome), indent=2))
+
+
+def _cmd_dl_models(args: argparse.Namespace) -> None:
+    """Show the active DL snapshot for a lottery; print as JSON."""
+    with SessionLocal() as session:
+        lottery_id = _resolve_lottery(session, args.lottery)
+        result = _make_dl_service(session).get_active_snapshot(lottery_id)
+    if result is None:
+        print(json.dumps({"error": "no active DL snapshot"}))
+    else:
+        print(json.dumps(result, indent=2))
+
+
+def _cmd_dl_metrics(args: argparse.Namespace) -> None:
+    """Show DL metrics for the active snapshot; print as JSON."""
+    with SessionLocal() as session:
+        lottery_id = _resolve_lottery(session, args.lottery)
+        metrics = _make_dl_service(session).get_metrics(lottery_id, model_id=args.model)
     print(json.dumps(metrics, indent=2))
 
 
@@ -941,7 +1052,7 @@ def _add_meta_subparser(subparsers) -> None:
         "--engine-types", nargs="*", default=None, help="engine types to include"
     )
     meta_rank.add_argument(
-        "--weights", default=None, help='JSON weights, e.g. \'{"hit_rate": 0.5}\''
+        "--weights", default=None, help="JSON weights, e.g. '{\"hit_rate\": 0.5}'"
     )
     meta_rank.set_defaults(func=_cmd_meta_rank)
 
@@ -1208,9 +1319,11 @@ class _CliDrawAdapter:
     """Minimal draw adapter for CLI context."""
 
     def __init__(self, session) -> None:
+        """Store the session used for read-only draw queries."""
         self._session = session
 
     def iter_draws(self, lottery_id: int, *, after_draw_number: int | None = None):
+        """Yield ML ``DrawRow`` carriers in ascending draw-number order."""
         from sqlalchemy import select
 
         from backend.app.ml.providers import DrawRow
@@ -1235,9 +1348,11 @@ class _CliFeatureAdapter:
     """Minimal feature adapter for CLI context."""
 
     def __init__(self, session) -> None:
+        """Store the session used for read-only feature queries."""
         self._session = session
 
     def active_snapshot_id(self, lottery_id: int) -> int | None:
+        """Return the newest active ML snapshot id for the lottery, if any."""
         from sqlalchemy import select
 
         from backend.app.models.feature_snapshot import FeatureSnapshot
@@ -1255,6 +1370,7 @@ class _CliFeatureAdapter:
         return snap.id if snap is not None else None
 
     def feature_rows(self, snapshot_id: int):
+        """Yield ``FeatureValueRow`` carriers ordered by draw then feature."""
         from sqlalchemy import select
 
         from backend.app.ml.feature_reader import FeatureValueRow
@@ -1281,3 +1397,52 @@ def _cli_count_draws(session, lottery_id: int) -> int:
 
     stmt = select(func.count()).select_from(Draw).where(Draw.lottery_id == lottery_id)
     return int(session.execute(stmt).scalar())
+
+
+class _DlDrawAdapter:
+    """CLI draw seam: converts ML carriers to DL carriers at the composition root (DLE-13)."""
+
+    def __init__(self, inner: _CliDrawAdapter) -> None:
+        """Wrap the CLI draw adapter providing ML rows."""
+        self._inner = inner
+
+    def iter_draws(self, lottery_id: int, *, after_draw_number: int | None = None):
+        """Convert ML draw rows into DL ``DrawRow`` carriers (DLE-13)."""
+        from backend.app.dl.providers import DrawRow
+
+        for row in self._inner.iter_draws(lottery_id, after_draw_number=after_draw_number):
+            yield DrawRow(draw_number=row.draw_number, numbers=tuple(row.numbers))
+
+
+class _DlFeatureAdapter:
+    """CLI feature seam: converts ML carriers to DL carriers at the composition root (DLE-13)."""
+
+    def __init__(self, inner: _CliFeatureAdapter) -> None:
+        """Wrap the CLI feature adapter providing ML rows."""
+        self._inner = inner
+
+    def active_snapshot_id(self, lottery_id: int) -> int | None:
+        """Delegate the lookup to the wrapped CLI feature adapter."""
+        return self._inner.active_snapshot_id(lottery_id)
+
+    def feature_rows(self, snapshot_id: int):
+        """Convert ML feature-value rows into DL ``FeatureRow`` carriers (DLE-13)."""
+        from backend.app.dl.providers import FeatureRow
+
+        for row in self._inner.feature_rows(snapshot_id):
+            yield FeatureRow(
+                feature_id=row.feature_id,
+                draw_number=row.draw_number,
+                value=float(row.value),
+            )
+
+
+def _make_dl_service(session) -> DlService:
+    """Compose a DlService over CLI adapters converted to DL carriers (ADR-4, DLE-13)."""
+    from backend.app.services.dl_service import DlService
+
+    return DlService(
+        session,
+        _DlDrawAdapter(_CliDrawAdapter(session)),
+        _DlFeatureAdapter(_CliFeatureAdapter(session)),
+    )
