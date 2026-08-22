@@ -31,12 +31,12 @@ Strict TDD (`openspec/config.yaml`: `tdd: true`) — every `[TDD-RED]` precedes 
 
 ## Phase 3: DlService Atomic Train Flow
 
-- [ ] 3.1 [TDD-RED] Create `backend/tests/dl/test_service.py` success-tx: exactly-one-active per `(lottery_id, model_set)`; 2 weight rows (`format_version=1`, run-fp); one aggregate metric row per family×name (`number=0`, Decimal); filled header; sorted `params_json`.
-- [ ] 3.2 [TDD-RED] Forced failure: rollback → recreate-`mark_failed` → commit leaves ONLY terminal failed header; outcome carries `snapshot_id`+`error`; no active/partial.
-- [ ] 3.3 [TDD-RED] Idempotent rerun: fingerprint hit returns existing metadata, zero writes, no duplicate version/weights.
-- [ ] 3.4 [TDD-RED] No active F4 snapshot ⇒ failed outcome before any header write.
-- [ ] 3.5 [TDD-GREEN] Create `services/dl_service.py`: `(session, draw_reader, feature_provider)`; frame → windows(W) → split(`real_cut = cut or len(frame)*4//5`) → tensors via providers; run fp = f(data_hash, params, "core-3", seed, W, real_cut); reuse branch; placeholder → train mlp→lstm → fill header → metrics → weights → `retire_old_active(keep_id)` → single commit; lazy `dl.engine` import (DLE-17 torch ban).
-- [ ] 3.6 [TDD-GREEN] `_DL_CACHE = ThreadSafeLRU(256)` + register; key `("dl:metrics", snapshot.id, model_id)`; response-cache suite green.
+- [x] 3.1 [TDD-RED] Create `backend/tests/dl/test_service.py` success-tx: exactly-one-active per `(lottery_id, model_set)`; 2 weight rows (`format_version=1`, run-fp); one aggregate metric row per family×name (`number=0`, Decimal); filled header; sorted `params_json`.
+- [x] 3.2 [TDD-RED] Forced failure: rollback → recreate-`mark_failed` → commit leaves ONLY terminal failed header; outcome carries `snapshot_id`+`error`; no active/partial.
+- [x] 3.3 [TDD-RED] Idempotent rerun: fingerprint hit returns existing metadata, zero writes, no duplicate version/weights.
+- [x] 3.4 [TDD-RED] No active F4 snapshot ⇒ failed outcome before any header write.
+- [x] 3.5 [TDD-GREEN] Create `services/dl_service.py`: `(session, draw_reader, feature_provider)`; frame → windows(W) → split(`real_cut = cut or len(frame)*4//5`) → tensors via providers; run fp = f(data_hash, params, "core-3", seed, W, real_cut); reuse branch; placeholder → train mlp→lstm → fill header → metrics → weights → `retire_old_active(keep_id)` → single commit; lazy `dl.engine` import (DLE-17 torch ban).
+- [x] 3.6 [TDD-GREEN] `_DL_CACHE = ThreadSafeLRU(256)` + register; key `("dl:metrics", snapshot.id, model_id)`; response-cache suite green.
 
 ## Phase 4: CLI Surface `lip dl`
 
