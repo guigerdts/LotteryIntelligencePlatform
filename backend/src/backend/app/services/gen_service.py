@@ -29,6 +29,7 @@ from backend.app.generators.allocation import SelectionEntry, allocate_count
 from backend.app.generators.identity import generation_seed, snapshot_fingerprint
 from backend.app.generators.sampling import WeightedPool, sample_combinations
 from backend.app.generators.snapshot_store import GenSnapshotStore
+from backend.app.generators.validation import validate_combination
 from backend.app.generators.version import GENERATOR_VERSION
 from backend.app.models.gen_snapshot import GenSnapshot
 from backend.app.services.errors import GenServiceError
@@ -39,6 +40,8 @@ MAX_COUNT: int = 100
 """Upper bound for the combination count (GEN-002)."""
 MIN_COUNT: int = 1
 """Lower bound for the combination count (GEN-002)."""
+SB_SPARSE_THRESHOLD: int = 32
+"""Minimum SB observations before the empirical marginal is trusted (D2)."""
 
 
 @dataclass(frozen=True)
@@ -119,9 +122,12 @@ class GenService:
 
         Pipeline (GEN-001): resolve the F12 selection → validate count →
         allocate via the micro-unit rule (GEN-004) → load the F5 distribution →
-        sample with ``isolated_rng`` (GEN-005) → fingerprint → persist a NEW
-        active version atomically. Same inputs reproduce the identical snapshot
-        (GEN-008); a duplicate non-active fingerprint is a conflict (GEN-013).
+        load the SB historical marginal (R2/D2) → sample ``(combo, sb)`` pairs
+        with ``isolated_rng`` (GEN-005, D1) → compute the selection-weighted
+        score (R3/D3) → gate legality pre-persist (R1/D5) → fingerprint →
+        persist a NEW active version atomically. Same inputs reproduce the
+        identical snapshot including Superbalotas and scores (GEN-008); a
+        duplicate non-active fingerprint is a conflict (GEN-013).
         """
         lottery = self._resolve_lottery(lottery_id)
         effective_count = DEFAULT_COUNT if count is None else count
@@ -155,17 +161,52 @@ class GenService:
             )
 
         probabilities = self._load_distribution(lottery_id)
+        sb_marginal = self._load_sb_marginal(lottery)
         pools = [
             WeightedPool(probabilities=probabilities, score=entries[i].score)
             for i, allocated in allocations
             if allocated > 0
         ]
-        combos = sample_combinations(effective_seed, pools, effective_count, lottery)
+        sampled = sample_combinations(effective_seed, pools, effective_count, lottery, sb_marginal)
+
+        # D3: score = entry_score × mean(P(n)) computed where pools carry both
+        # inputs. Pools consume the sample sequentially in allocation order, so
+        # each pair's provenance (entry score) is recovered positionally.
+        scored: list[tuple[list[int], int, float]] = []
+        idx = 0
+        for entry_index, allocated in allocations:
+            if allocated <= 0:
+                continue
+            entry_score = float(entries[entry_index].score)
+            for _ in range(allocated):
+                combo, sb = sampled[idx]
+                idx += 1
+                mean_p = sum(probabilities.get(n, 0.0) for n in combo) / len(combo)
+                scored.append((combo, sb, round(entry_score * mean_p, 6)))
+
+        # R1/D5: legality assert before anything is persisted.
+        for combo, sb, _score in scored:
+            if validate_combination(combo, sb, lottery):
+                continue
+            if sb is None or sb < lottery.super_number_min or sb > lottery.super_number_max:
+                raise GenServiceError(
+                    GenServiceError.GEN_INVALID_SUPER_NUMBER,
+                    f"combination {combo} carries illegal super number {sb!r}",
+                )
+            raise GenServiceError(
+                GenServiceError.GEN_INVALID_NUMBERS,
+                f"combination {combo} violates lottery rules",
+            )
 
         version = self._store.next_version(lottery_id, selection.id)
         combo_dicts = [
-            {"position": i, "numbers": json.dumps(combo), "super_number": None, "score": None}
-            for i, combo in enumerate(combos)
+            {
+                "position": i,
+                "numbers": json.dumps(combo),
+                "super_number": sb,
+                "score": score,
+            }
+            for i, (combo, sb, score) in enumerate(scored)
         ]
         try:
             snapshot_id = self._store.create_active_snapshot(
@@ -357,6 +398,42 @@ class GenService:
                 f"probability snapshot {snapshot.id} has no numeric subjects",
             )
         return probabilities
+
+    def _load_sb_marginal(self, lottery: Any) -> dict[int, float]:
+        """Load the historical SuperBalota marginal for a lottery (R2/D2).
+
+        Empirical frequencies over imported ``SuperNumber.value`` rows of the
+        lottery's draws. Fallbacks: fewer than ``SB_SPARSE_THRESHOLD``
+        observations → uniform over the configured SB range; zero observations
+        → ``GEN_NO_HISTORY`` (422), nothing persisted.
+        """
+        from backend.app.models.draw import Draw
+        from backend.app.models.super_number import SuperNumber
+
+        sb_min = int(lottery.super_number_min)
+        sb_max = int(lottery.super_number_max)
+        uniform = {n: 1.0 / (sb_max - sb_min + 1) for n in range(sb_min, sb_max + 1)}
+
+        stmt = (
+            select(SuperNumber.value)
+            .join(Draw, SuperNumber.draw_id == Draw.id)
+            .where(Draw.lottery_id == lottery.id)
+        )
+        values = list(self._session.execute(stmt).scalars())
+        if not values:
+            raise GenServiceError(
+                GenServiceError.GEN_NO_HISTORY,
+                f"no imported super numbers for lottery {lottery.id}",
+            )
+        if len(values) < SB_SPARSE_THRESHOLD:
+            return uniform
+
+        counts: dict[int, int] = {}
+        for v in values:
+            counts[v] = counts.get(v, 0) + 1
+        total = len(values)
+        # Keys span the declared SB range; unseen values keep zero weight.
+        return {n: counts.get(n, 0) / total for n in range(sb_min, sb_max + 1)}
 
     def _find_duplicate_fingerprint(
         self, lottery_id: int, selection_id: int, fingerprint: str

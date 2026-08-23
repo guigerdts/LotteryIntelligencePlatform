@@ -72,6 +72,11 @@ _CODE_TO_STATUS: dict[str, int] = {
     "GEN_SNAPSHOT_NOT_FOUND": 404,
     "GEN_DUPLICATE_SNAPSHOT": 409,
     "GEN_SPACE_EXHAUSTED": 422,
+    # Generator legality channel (R1/R2, D10): illegal combo shape, missing or
+    # out-of-range Superbalota and zero imported history are all 422.
+    "GEN_INVALID_NUMBERS": 422,
+    "GEN_INVALID_SUPER_NUMBER": 422,
+    "GEN_NO_HISTORY": 422,
     # F15 AI assistant channel (A-12): a true generation failure is 500.
     "assistant_error": 500,
 }
