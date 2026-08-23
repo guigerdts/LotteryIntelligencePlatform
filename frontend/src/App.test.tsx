@@ -46,6 +46,20 @@ const server = setupServer(
     }),
   ),
   http.get("*/api/v1/ml/metrics", () => env([])),
+  http.get("*/api/v1/dl/models", () =>
+    env({
+      id: 7,
+      lottery_id: 1,
+      model_set: "core-3",
+      version: "v1",
+      status: "active",
+      checksum: "cs1",
+      input_fingerprint: "fp-dl",
+      cut: 305,
+      window: 10,
+    }),
+  ),
+  http.get("*/api/v1/dl/metrics", () => env([])),
   http.get("*/api/v1/probability/L1/probabilities", () =>
     env({
       snapshot_id: 3,
@@ -138,6 +152,18 @@ describe("App router", () => {
     ).toBeInTheDocument();
     expect(
       screen.getByRole("region", { name: "System status" }),
+    ).toBeInTheDocument();
+  }, 20000);
+
+  it("deep-links to the Deep Learning page at /dl through its lazy chunk", async () => {
+    useLotteryStore.setState({ selectedLotteryId: 1, selectedLotteryCode: "L1" });
+    renderAt("/dl");
+
+    expect(
+      await screen.findByRole("heading", { name: /deep learning/i }, ASYNC_TIMEOUT),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("region", { name: "Deep learning results" }),
     ).toBeInTheDocument();
   }, 20000);
 });
