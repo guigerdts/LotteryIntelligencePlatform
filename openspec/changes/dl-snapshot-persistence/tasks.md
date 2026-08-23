@@ -51,9 +51,9 @@ Strict TDD (`openspec/config.yaml`: `tdd: true`) — every `[TDD-RED]` precedes 
 
 ## Phase 6: Cleanup Rides & Regression Sweep
 
-- [ ] 6.1 Comment fix D-A7→D-A8 in `models/dl_metric.py:6`, `dl/determinism.py:48`; grep clean, ruff green.
-- [ ] 6.2 Sweep: `pytest backend/tests -q`; `ruff check .`; `ruff format --check .` — meta/exp suites prove consumer contracts intact.
-- [ ] 6.3 Real-data smoke: `lip dl train --lottery baloto` persists one active + 2 weights + Decimal metrics in one tx; meta/exp read persisted rows; rerun returns same `snapshot_id`; record evidence for verify-report.
+- [x] 6.1 Comment fix D-A7→D-A8 in `models/dl_metric.py:6`, `dl/determinism.py:48`; grep clean, ruff green.
+- [x] 6.2 Sweep: `pytest backend/tests -q`; `ruff check .`; `ruff format --check .` — meta/exp suites prove consumer contracts intact.
+- [x] 6.3 Real-data smoke: `lip dl train --lottery baloto` persists one active + 2 weights + Decimal metrics in one tx; meta/exp read persisted rows; rerun returns same `snapshot_id`; record evidence for verify-report.
 
 ## Review Workload Forecast
 

@@ -45,7 +45,7 @@ def quantize_metric(value: Real) -> Decimal:
     """Round ``value`` to a ``Decimal`` with 8 fraction digits (Numeric(20,8)).
 
     Quantizes via ``str`` (exact round-trip, no binary-float artifacts), matching
-    design D-A7 ``Decimal(str(x)).quantize("0.00000001")``.
+    design D-A8 ``Decimal(str(x)).quantize("0.00000001")``.
     """
     return Decimal(str(value)).quantize(_QUANTUM)
 

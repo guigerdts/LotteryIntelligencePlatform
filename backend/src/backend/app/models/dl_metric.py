@@ -1,9 +1,9 @@
-"""DlMetric entity: one normalized DL metric payload row (design Data Model, D-A7/DLE-01).
+"""DlMetric entity: one normalized DL metric payload row (design Data Model, D-A1/DLE-01).
 
 Mirrors the ``MlMetric`` pattern: a surrogate ``id`` PK with an FK RESTRICT to the
 ``dl_snapshots`` header. ``value`` is an exact ``Decimal`` (Numeric(20,8)) — float
 NEVER reaches a persisted value (float red line, DLE-08). ``metric_name`` is one of
-the canonical metrics (accuracy|precision|recall|f1|roc_auc, D-A7); ``params_json``
+the canonical metrics (accuracy|precision|recall|f1|roc_auc, D-A8); ``params_json``
 stores the frozen, per-model hyperparameters as portable JSON Text — including
 architecture config (hidden layers, hidden size, etc.) and training params (epochs,
 batch_size, lr).
