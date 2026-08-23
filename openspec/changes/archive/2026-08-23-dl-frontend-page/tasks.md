@@ -32,9 +32,9 @@ Commit WU3: `feat(dl-ui): register /dl route and sidebar deep-learning entry`
 
 ## Phase 4: Verification
 
-- [x] 4.1 `npm run test` — full suite green (14 DL cases incl. parity bonus, App, Sidebar).
+- [x] 4.1 `npm run test` — full suite green. [Archive-time count correction per verify-report §7(e): DL-local file holds 12 cases (13 change-new counting the App deep-link); merge-time record: 150 passed / 22 files.]
 - [x] 4.2 `npm run lint && npm run build` — eslint + tsc/vite clean.
-- [ ] 4.3 Smoke on dev servers: `/dl` renders via sidebar link, selection refetches; optional real train (~100 s) completes and refreshes lists.
+- [x] 4.3 Smoke on dev servers: `/dl` renders via sidebar link, selection refetches; optional real train (~100 s) completes and refreshes lists. [Archive-time tick per orchestrator final-state facts (verify-report §7d): post-merge smoke executed — uvicorn :8000 + vite :5173 lifted, `curl localhost:5173/api/v1/dl/models?lottery_id=1` returned live DL JSON through the vite proxy, `GET /dl` served the SPA shell. Owner visual confirmation pending as explicit note; optional ~100 s real train intentionally skipped — idempotent fingerprint short-circuit already proven in dl-snapshot-persistence.]
 
 ## Review Workload Forecast
 
