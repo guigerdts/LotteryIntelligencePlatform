@@ -16,6 +16,7 @@ const ALL_ITEMS = [
   { label: "Modelos", to: "/modelos" },
   { label: "Experimentos", to: "/experimentos" },
   { label: "Backtesting", to: "/backtesting" },
+  { label: "Deep Learning", to: "/dl" },
   { label: "Generador", to: "/generador" },
 ];
 

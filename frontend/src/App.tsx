@@ -18,6 +18,7 @@ const AI = lazy(() => import("./pages/IA"));
 const Models = lazy(() => import("./pages/Models"));
 const Experiments = lazy(() => import("./pages/Experiments"));
 const Backtesting = lazy(() => import("./pages/Backtesting"));
+const DeepLearning = lazy(() => import("./pages/DL"));
 
 /** Suspense fallback shown while a lazy page chunk loads. */
 function PageFallback() {
@@ -63,6 +64,7 @@ export const routes: RouteObject[] = [
       { path: "modelos", element: <Models /> },
       { path: "experimentos", element: <Experiments /> },
       { path: "backtesting", element: <Backtesting /> },
+      { path: "dl", element: <DeepLearning /> },
       { path: "generador", element: <Generator /> },
       { path: "*", element: <NotFound /> },
     ],
