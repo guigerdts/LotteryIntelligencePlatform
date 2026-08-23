@@ -1,8 +1,9 @@
 """Validation module — GEN-006 lottery rules check.
 
 Validates that a generated combination respects the lottery configuration:
-distinct numbers, all in [min_number, max_number], sorted ascending,
-and super_number in [super_number_min, super_number_max] when provided.
+distinct numbers, all in [min_number, max_number], sorted ascending, and a
+REQUIRED super_number in [super_number_min, super_number_max] (R1/D5): a
+missing Superbalota is always invalid.
 """
 
 from __future__ import annotations
@@ -30,14 +31,15 @@ def validate_combination(
     super_number: int | None,
     lottery_config: LotteryConfig,
 ) -> bool:
-    """Check that a combination is valid per lottery rules (GEN-006).
+    """Check that a combination is valid per lottery rules (GEN-006, R1/D5).
 
     Rules:
       - Exactly ``numbers_to_select`` numbers.
       - All distinct.
       - All in ``[min_number, max_number]``.
       - Sorted ascending.
-      - ``super_number`` in ``[super_number_min, super_number_max]`` when provided.
+      - ``super_number`` present and in ``[super_number_min, super_number_max]``
+        (a missing Superbalota is always invalid).
 
     Returns ``True`` if valid, ``False`` otherwise.
     """
@@ -60,9 +62,7 @@ def validate_combination(
     if numbers != sorted(numbers):
         return False
 
-    # Super number in range when provided
-    if super_number is not None:
-        if super_number < cfg.super_number_min or super_number > cfg.super_number_max:
-            return False
-
-    return True
+    # Super number REQUIRED and in range (D5: None no longer skips the check)
+    if super_number is None:
+        return False
+    return cfg.super_number_min <= super_number <= cfg.super_number_max

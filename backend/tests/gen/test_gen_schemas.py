@@ -86,12 +86,14 @@ class TestResponseSchemas:
             seed=42,
             count=10,
             combinations=[
-                CombinationRow(position=0, numbers=[1, 15, 22, 33, 41, 49], super_number=7)
+                CombinationRow(
+                    position=0, numbers=[1, 15, 22, 33, 41, 49], super_number=7, score=0.035
+                )
             ],
         )
         assert result.count == 10
         assert result.combinations[0].super_number == 7
-        assert result.combinations[0].score is None
+        assert result.combinations[0].score == 0.035
 
     def test_combination_row_with_score(self) -> None:
         row = CombinationRow(position=0, numbers=[1, 2, 3, 4, 5, 6], super_number=None, score=0.85)
@@ -100,6 +102,65 @@ class TestResponseSchemas:
     def test_combination_list(self) -> None:
         data = CombinationList(snapshot_id=1, lottery_id=1, combinations=[])
         assert data.snapshot_id == 1
+
+    def test_combination_row_tolerates_null_for_legacy_reads(self) -> None:
+        """Read-path row stays tolerant: legacy NULL-SB rows deserialize (D6/R2)."""
+        row = CombinationRow(position=0, numbers=[1, 2, 3, 4, 5, 6], super_number=None)
+        assert row.super_number is None
+
+
+class TestGenerationResultStrictRows:
+    """R3 — the generate response echoes NON-null super_number/score (D10/R3)."""
+
+    @staticmethod
+    def _result_kwargs() -> dict:
+        return dict(
+            snapshot_id=1,
+            lottery_id=1,
+            selection_id=1,
+            version="1",
+            status="active",
+            fingerprint="fp123",
+            seed=42,
+            count=10,
+        )
+
+    def test_accepts_fully_scored_row(self) -> None:
+        result = GenerationResult(
+            combinations=[
+                CombinationRow(
+                    position=0, numbers=[1, 15, 22, 33, 41, 49], super_number=7, score=0.035
+                )
+            ],
+            **self._result_kwargs(),
+        )
+        assert result.combinations[0].super_number == 7
+        assert result.combinations[0].score == 0.035
+
+    def test_rejects_null_score_in_generate_echo(self) -> None:
+        with pytest.raises(ValidationError):
+            GenerationResult(
+                combinations=[
+                    {"position": 0, "numbers": [1, 2, 3], "super_number": 7, "score": None}
+                ],
+                **self._result_kwargs(),
+            )
+
+    def test_rejects_null_super_number_in_generate_echo(self) -> None:
+        with pytest.raises(ValidationError):
+            GenerationResult(
+                combinations=[
+                    {"position": 0, "numbers": [1, 2, 3], "super_number": None, "score": 0.5}
+                ],
+                **self._result_kwargs(),
+            )
+
+    def test_rejects_missing_super_number_in_generate_echo(self) -> None:
+        with pytest.raises(ValidationError):
+            GenerationResult(
+                combinations=[{"position": 0, "numbers": [1, 2, 3]}],
+                **self._result_kwargs(),
+            )
 
     def test_snapshot_result_created_at_optional(self) -> None:
         snap = SnapshotResult(

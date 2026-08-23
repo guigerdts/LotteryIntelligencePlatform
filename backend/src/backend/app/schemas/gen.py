@@ -33,7 +33,11 @@ class GenerateRequest(BaseModel):
 
 
 class CombinationRow(BaseModel):
-    """One stored combination row (GEN-012)."""
+    """One stored combination row (GEN-012).
+
+    Tolerant read shape (D6/R2): ``super_number``/``score`` stay optional so
+    legacy NULL-SB rows keep deserializing on reads.
+    """
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -43,8 +47,23 @@ class CombinationRow(BaseModel):
     score: float | None = None
 
 
+class GeneratedCombinationRow(CombinationRow):
+    """One generated combination echoed by ``POST /gen/generate`` (R3).
+
+    Strict echo typing: every freshly generated combination carries a NON-null
+    Superbalota and finite selection-weighted score.
+    """
+
+    super_number: int
+    score: float
+
+
 class GenerationResult(BaseModel):
-    """``POST /gen/generate`` response data — snapshot header plus combinations."""
+    """``POST /gen/generate`` response data — snapshot header plus combinations.
+
+    Rows use the strict ``GeneratedCombinationRow`` (R3): the generate echo
+    always carries non-null ``super_number``/``score``.
+    """
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -56,7 +75,7 @@ class GenerationResult(BaseModel):
     fingerprint: str
     seed: int
     count: int
-    combinations: list[CombinationRow]
+    combinations: list[GeneratedCombinationRow]
 
 
 class CombinationList(BaseModel):

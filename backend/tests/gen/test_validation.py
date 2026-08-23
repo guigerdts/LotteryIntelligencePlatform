@@ -41,9 +41,9 @@ class TestValidateCombination:
         """Valid combination → True."""
         assert validate_combination([1, 15, 22, 33, 41, 49], 7, cfg) is True
 
-    def test_valid_no_super_number(self, cfg: LotteryConfig) -> None:
-        """Valid combo without super_number (when not required) → True."""
-        assert validate_combination([1, 15, 22, 33, 41, 49], None, cfg) is True
+    def test_none_super_number_returns_false(self, cfg: LotteryConfig) -> None:
+        """Missing Superbalota → False (D5 legality tightening, R1)."""
+        assert validate_combination([1, 15, 22, 33, 41, 49], None, cfg) is False
 
     def test_unsorted_returns_false(self, cfg: LotteryConfig) -> None:
         """Unsorted numbers → False."""
@@ -67,10 +67,6 @@ class TestValidateCombination:
         """Super number out of [super_number_min, super_number_max] → False."""
         assert validate_combination([1, 15, 22, 33, 41, 49], 0, cfg) is False
         assert validate_combination([1, 15, 22, 33, 41, 49], 10, cfg) is False
-
-    def test_super_number_none_when_not_required(self, cfg: LotteryConfig) -> None:
-        """Super_number None is valid when config allows it."""
-        assert validate_combination([1, 15, 22, 33, 41, 49], None, cfg) is True
 
     def test_super_number_in_range(self, cfg: LotteryConfig) -> None:
         """Super number within valid range → True."""

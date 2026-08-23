@@ -8,9 +8,12 @@ refs: GenService section.
 
 from __future__ import annotations
 
+import math
+
 import pytest
 from sqlalchemy.orm import Session
 
+import backend.app.services.gen_service as gen_service_module
 from backend.app.generators.snapshot_store import GenSnapshotStore
 from backend.app.models.gen_snapshot import GenSnapshot
 from backend.app.services.errors import GenServiceError
@@ -120,6 +123,128 @@ class TestGenerate:
                 lottery_id=ids_a["lottery_id"], selection_id=ids_b["selection_id"]
             )
         assert exc_info.value.code == GenServiceError.GEN_NO_SELECTION
+
+
+class TestSuperBalotaAndScore:
+    """R2/R3 — reproducible SB from historical marginals + non-null score."""
+
+    def test_persisted_rows_carry_sb_and_score(self, db: Session, seed_gen_data) -> None:
+        """Every persisted row has an in-range integer SB and a finite score (R1/R3)."""
+        ids = seed_gen_data(super_number_min=1, super_number_max=16)
+        result = _service(db).generate(lottery_id=ids["lottery_id"])
+        assert len(result.combinations) == 10
+        for row in result.combinations:
+            assert isinstance(row.super_number, int)
+            assert 1 <= row.super_number <= 16
+            assert row.score is not None
+            assert math.isfinite(row.score)
+            assert row.score > 0
+
+    def test_generation_byte_reproducible_including_sb(self, db: Session, seed_gen_data) -> None:
+        """Same seed, identical history → identical numbers AND Superbalotas (R2)."""
+        ids_a = seed_gen_data(context="RA")
+        ids_b = seed_gen_data(context="RB")
+        svc = _service(db)
+        ra = svc.generate(lottery_id=ids_a["lottery_id"], seed=42)
+        rb = svc.generate(lottery_id=ids_b["lottery_id"], seed=42)
+        pairs_a = [(c.numbers, c.super_number, c.score) for c in ra.combinations]
+        pairs_b = [(c.numbers, c.super_number, c.score) for c in rb.combinations]
+        assert ra.fingerprint != rb.fingerprint  # different lottery scope
+        assert pairs_a == pairs_b
+
+    def test_score_formula_selection_weighted(self, db: Session, seed_gen_data) -> None:
+        """score == round(entry_score × mean(P(n)), 6) with uniform P=0.05 (D3)."""
+        ids = seed_gen_data(scores=(0.7, 0.3))
+        result = _service(db).generate(lottery_id=ids["lottery_id"], count=1)
+        expected = round(0.7 * ((0.05 * 6) / 6), 6)
+        assert result.combinations[0].score == expected
+
+    def test_score_reflects_both_entry_weights(self, db: Session, seed_gen_data) -> None:
+        """count=10 spans both entries → scores ∈ {0.7×0.05, 0.3×0.05} rounded (D3)."""
+        ids = seed_gen_data(scores=(0.7, 0.3))
+        result = _service(db).generate(lottery_id=ids["lottery_id"], count=10)
+        allowed = {round(0.7 * 0.05, 6), round(0.3 * 0.05, 6)}
+        for row in result.combinations:
+            assert row.score in allowed
+
+    def test_sparse_sb_history_falls_back_to_uniform(self, db: Session, seed_gen_data) -> None:
+        """<32 observations → uniform fallback: SBs spread beyond the only seen value."""
+        ids = seed_gen_data(
+            sb_observations=5,
+            sb_fixed_value=3,
+            super_number_min=1,
+            super_number_max=9,
+            context="sparse",
+        )
+        result = _service(db).generate(lottery_id=ids["lottery_id"], count=50)
+        sb_values = {row.super_number for row in result.combinations}
+        assert len(sb_values) > 1
+
+    def test_legacy_null_sb_rows_still_readable(self, db: Session, seed_gen_data) -> None:
+        """Legacy rows with super_number IS NULL deserialize on reads (D6/R2)."""
+        ids = seed_gen_data(with_sb_history=False)
+        store = GenSnapshotStore(db)
+        snapshot_id = store.create_active_snapshot(
+            lottery_id=ids["lottery_id"],
+            selection_id=ids["selection_id"],
+            version="1",
+            fingerprint="legacy_fp",
+            config_json={"generator_version": "1.0.0"},
+            combinations=[{"position": 0, "numbers": "[1,2,3,4,5,6]", "super_number": None}],
+        )
+        db.commit()
+        rows = _service(db).get_combinations(ids["lottery_id"], snapshot_id).combinations
+        assert len(rows) == 1
+        assert rows[0].numbers == [1, 2, 3, 4, 5, 6]
+        assert rows[0].super_number is None
+
+
+class TestLegalityGateErrors:
+    """R1 — typed legality errors raised pre-persist; zero rows written."""
+
+    def test_duplicate_numbers_raise_invalid_numbers(
+        self, db: Session, seed_gen_data, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Candidate [7,7,12,30,41] → GEN_INVALID_NUMBERS, nothing persisted."""
+        ids = seed_gen_data(numbers_to_select=5, context="dup")
+        monkeypatch.setattr(
+            gen_service_module,
+            "sample_combinations",
+            lambda *a, **k: [([7, 7, 12, 30, 41], 3)],
+        )
+        with pytest.raises(GenServiceError) as exc_info:
+            _service(db).generate(lottery_id=ids["lottery_id"], seed=1, count=1)
+        assert exc_info.value.code == GenServiceError.GEN_INVALID_NUMBERS
+        assert (
+            db.query(GenSnapshot).filter(GenSnapshot.lottery_id == ids["lottery_id"]).count() == 0
+        )
+
+    def test_out_of_range_sb_raises_invalid_super_number(
+        self, db: Session, seed_gen_data, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """SB 99 outside 1–9 → GEN_INVALID_SUPER_NUMBER, nothing persisted."""
+        ids = seed_gen_data()
+        monkeypatch.setattr(
+            gen_service_module,
+            "sample_combinations",
+            lambda *a, **k: [([1, 15, 22, 33, 41, 49], 99)],
+        )
+        with pytest.raises(GenServiceError) as exc_info:
+            _service(db).generate(lottery_id=ids["lottery_id"], seed=1, count=1)
+        assert exc_info.value.code == GenServiceError.GEN_INVALID_SUPER_NUMBER
+        assert (
+            db.query(GenSnapshot).filter(GenSnapshot.lottery_id == ids["lottery_id"]).count() == 0
+        )
+
+    def test_zero_imported_draws_raise_no_history(self, db: Session, seed_gen_data) -> None:
+        """No imported draws → GEN_NO_HISTORY, no snapshot persists (R2/D2)."""
+        ids = seed_gen_data(with_sb_history=False)
+        with pytest.raises(GenServiceError) as exc_info:
+            _service(db).generate(lottery_id=ids["lottery_id"])
+        assert exc_info.value.code == GenServiceError.GEN_NO_HISTORY
+        assert (
+            db.query(GenSnapshot).filter(GenSnapshot.lottery_id == ids["lottery_id"]).count() == 0
+        )
 
 
 class TestGenerateErrors:

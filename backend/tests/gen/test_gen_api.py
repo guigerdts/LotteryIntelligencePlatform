@@ -15,6 +15,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from fastapi.testclient import TestClient
 
+from backend.app.api.errors import status_for_code
 from backend.app.main import create_app
 from backend.app.services.errors import GenServiceError
 
@@ -97,6 +98,23 @@ class TestGenerateEndpoint:
         resp = api_client.post(f"{PREFIX}/generate", json={})
         assert resp.status_code == 422
         assert resp.json()["error"]["code"] == "validation_error"
+
+    @pytest.mark.parametrize(
+        "code",
+        [
+            GenServiceError.GEN_INVALID_NUMBERS,
+            GenServiceError.GEN_INVALID_SUPER_NUMBER,
+            GenServiceError.GEN_NO_HISTORY,
+        ],
+    )
+    def test_new_legality_codes_map_to_422(self, api_client: TestClient, code: str) -> None:
+        """GEN_INVALID_NUMBERS / GEN_INVALID_SUPER_NUMBER / GEN_NO_HISTORY → 422 (D10)."""
+        assert status_for_code(code) == 422
+        with patch("backend.app.api.v1.gen.GenService") as MockService:
+            MockService.return_value.generate.side_effect = GenServiceError(code, "illegal")
+            resp = api_client.post(f"{PREFIX}/generate", json={"lottery_id": 1})
+        assert resp.status_code == 422
+        assert resp.json()["error"]["code"] == code
 
 
 class TestCombinationsEndpoint:
@@ -244,3 +262,23 @@ class TestIntegration:
         resp = client.post(f"{PREFIX}/generate", json={"lottery_id": ids["lottery_id"], "count": 0})
         assert resp.status_code == 422
         assert resp.json()["error"]["code"] == "GEN_COUNT_INVALID"
+
+    def test_generate_no_history_returns_422(self, client: TestClient, db, seed_gen_data) -> None:
+        """Zero imported draws → 422 with GEN_NO_HISTORY (real service, R2)."""
+        ids = seed_gen_data(with_sb_history=False)
+        resp = client.post(f"{PREFIX}/generate", json={"lottery_id": ids["lottery_id"]})
+        assert resp.status_code == 422
+        assert resp.json()["error"]["code"] == "GEN_NO_HISTORY"
+
+    def test_generated_combinations_echo_sb_and_score(
+        self, client: TestClient, db, seed_gen_data
+    ) -> None:
+        """API payload echoes non-null super_number and score per combination (R3)."""
+        ids = seed_gen_data()
+        body = client.post(f"{PREFIX}/generate", json={"lottery_id": ids["lottery_id"]}).json()
+        combos = body["data"]["combinations"]
+        assert len(combos) == 10
+        for combo in combos:
+            assert isinstance(combo["super_number"], int)
+            assert isinstance(combo["score"], (int, float))
+            assert combo["score"] is not None
