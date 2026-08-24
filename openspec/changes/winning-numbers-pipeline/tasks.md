@@ -93,31 +93,33 @@ Threat matrix: N/A per design (single internal FastAPI route behind existing env
 
 ## SLICE S3 = PR 3 — mis-numeros-page (`feat(numbers-ui)`)
 
-### Phase 7: RED — vitest+MSW (`frontend/src/pages/MyNumbers.test.tsx`)
+### Phase 7: RED — vitest+MSW (`frontend/src/pages/MisNumeros.test.tsx`)
 
-- [ ] 7.1 RED R1: CTA click → exactly ONE POST to `/api/v1/pipeline/numbers`; zero calls to any stage endpoint (MSW request counters). Verify: `cd frontend && npx vitest run src/pages/MyNumbers.test.tsx`
-- [ ] 7.2 RED busy/retry: delayed handler → CTA disabled with `aria-busy` during flight; then 500 → `ErrorState` Retry re-posts (DL page precedent).
-- [ ] 7.3 RED stages (R2): 200 with 8 entries → all render in canonical order with statuses; failed `rank` shows its error, combinations absent, page stays interactive.
-- [ ] 7.4 RED dual-draw (R3): tickets labeled “un boleto, dos sorteos (Baloto+Revancha)”; NO toggle/Baloto-vs-Revancha control anywhere in DOM.
-- [ ] 7.5 RED count (R4/D11): untouched control → request body `count: 5`; control remains adjustable pre-run.
-- [ ] 7.6 RED tiers (R5): tier table renders exactly the 8 official tiers (5+SB jackpot, 5, 4+SB, 4, 3+SB, 3, 2+SB paramutual, 0+SB refund).
-- [ ] 7.7 RED disclaimer (R6): randomness disclaimer visible idle AND after generation.
+> Naming note: the owner-instructed page/route names (`MisNumeros.tsx`, `/numeros`, nav "Mis Números") govern this slice, superseding the earlier `MyNumbers`/`/my-numbers` file names below.
+
+- [x] 7.1 RED R1: CTA click → exactly ONE POST to `/api/v1/pipeline/numbers`; zero calls to any stage endpoint (MSW request counters). Verify: `cd frontend && npx vitest run src/pages/MisNumeros.test.tsx`
+- [x] 7.2 RED busy/retry: delayed handler → CTA disabled with `aria-busy` during flight; then 500 → `ErrorState` Retry re-posts (DL page precedent).
+- [x] 7.3 RED stages (R2): 200 with 8 entries → all render in canonical order with statuses; failed `rank` shows its error, combinations absent, page stays interactive.
+- [x] 7.4 RED dual-draw (R3): tickets labeled “un boleto, dos sorteos (Baloto+Revancha)”; NO toggle/Baloto-vs-Revancha control anywhere in DOM.
+- [x] 7.5 RED count (R4/D11): untouched control → request body `count: 5`; control remains adjustable pre-run.
+- [x] 7.6 RED tiers (R5): tier table renders exactly the 8 official tiers (5+SB jackpot, 5, 4+SB, 4, 3+SB, 3, 2+SB paramutual, 0+SB refund).
+- [x] 7.7 RED disclaimer (R6): randomness disclaimer visible idle AND after generation.
 
 ### Phase 8: GREEN — implementation
 
-- [ ] 8.1 `types/gen.ts` + `services/gen.ts`: pipeline stage/result types + `runNumbersPipeline()` (+32).
-- [ ] 8.2 `frontend/src/components/TierTable.tsx`: static 8-tier official-rules reference table (+40).
-- [ ] 8.3 `frontend/src/pages/MyNumbers.tsx` (+235): single CTA with busy-hold, indeterminate in-flight indicator, StageReport list, TicketCards reusing `CombinationRow` columns (`super_number`/`score` survive from Generator.tsx:27–44), dual-draw label, persistent disclaimer, `ErrorState` retry via `useApi`.
-- [ ] 8.4 Route/nav swap (dl-frontend-page precedent): `App.tsx` route `/generator`→`/my-numbers`; `Sidebar.tsx` nav entry; update `App.test.tsx` + `Sidebar.test.tsx` assertions.
-- [ ] 8.5 Delete `frontend/src/pages/Generator.tsx` + `Generator.test.tsx` in the same commit as 8.4.
+- [x] 8.1 `types/gen.ts` + `services/gen.ts`: pipeline stage/result types + `runNumbersPipeline()` (+32).
+- [x] 8.2 `frontend/src/components/TierTable.tsx`: static 8-tier official-rules reference table (+40).
+- [x] 8.3 `frontend/src/pages/MyNumbers.tsx` (+235): single CTA with busy-hold, indeterminate in-flight indicator, StageReport list, TicketCards reusing `CombinationRow` columns (`super_number`/`score` survive from Generator.tsx:27–44), dual-draw label, persistent disclaimer, `ErrorState` retry via `useApi`.
+- [x] 8.4 Route/nav (dl-frontend-page precedent, ADDITIVE per owner anchors): `App.tsx` lazy route `/numeros` added beside `/generador`; `Sidebar.tsx` nav entry "Mis Números" in the Generador group; additive entries in `App.test.tsx` + `Sidebar.test.tsx`. NOTE: no `/generador` swap — Generator stays until owner ratifies removal.
+- [ ] 8.5 Delete `frontend/src/pages/Generator.tsx` + `Generator.test.tsx` in the same commit as 8.4. *(Deferred: S3 anchors specify additive delivery; deletion needs explicit owner go-ahead.)*
 
-**Commits**: `feat(numbers-ui): add pipeline types and runNumbersPipeline client` (8.1) → `feat(numbers-ui): add MyNumbers pipeline page with prize tiers` (7.1–7.7, 8.2–8.3) → `refactor(numbers-ui): replace generator route with my-numbers` (8.4–8.5).
+**Commits**: `feat(numbers-ui): add pipeline types and runNumbersPipeline client` (8.1) → `feat(numbers-ui): add MisNumeros pipeline page with prize tiers` (7.1–7.7, 8.2–8.3) → `feat(numbers-ui): add mis-numeros route and sidebar entry` (8.4).
 
 ### Phase 9: Regression gates
 
-- [ ] 9.1 Full frontend suite: `cd frontend && npx vitest run`
-- [ ] 9.2 tsc/build gate: `cd frontend && npm run build`
-- [ ] 9.3 Lint/format: `cd frontend && npm run lint && npx prettier --check "src/**/*.{ts,tsx,css}"`
+- [x] 9.1 Full frontend suite: `cd frontend && npx vitest run`
+- [x] 9.2 tsc/build gate: `cd frontend && npm run build`
+- [x] 9.3 Lint/format: `cd frontend && npm run lint && npx prettier --check "src/**/*.{ts,tsx,css}"`. NOTE: eslint clean on all touched files; prettier default-config check passes on all NEW files but fails repo-wide on ~50 PRE-EXISTING unformatted files (no .prettierrc in repo) — pre-existing condition, out of slice scope.
 
 ## Implementation Order
 

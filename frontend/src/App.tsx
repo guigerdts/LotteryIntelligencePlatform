@@ -8,7 +8,6 @@ import DashboardLayout from "./layouts/DashboardLayout";
 const Home = lazy(() => import("./pages/Home"));
 const History = lazy(() => import("./pages/History"));
 const Statistics = lazy(() => import("./pages/Statistics"));
-const Generator = lazy(() => import("./pages/Generator"));
 
 const Heatmaps = lazy(() => import("./pages/Heatmaps"));
 const Trends = lazy(() => import("./pages/Trends"));
@@ -19,6 +18,7 @@ const Models = lazy(() => import("./pages/Models"));
 const Experiments = lazy(() => import("./pages/Experiments"));
 const Backtesting = lazy(() => import("./pages/Backtesting"));
 const DeepLearning = lazy(() => import("./pages/DL"));
+const MisNumeros = lazy(() => import("./pages/MisNumeros"));
 
 /** Suspense fallback shown while a lazy page chunk loads. */
 function PageFallback() {
@@ -65,7 +65,7 @@ export const routes: RouteObject[] = [
       { path: "experimentos", element: <Experiments /> },
       { path: "backtesting", element: <Backtesting /> },
       { path: "dl", element: <DeepLearning /> },
-      { path: "generador", element: <Generator /> },
+      { path: "numeros", element: <MisNumeros /> },
       { path: "*", element: <NotFound /> },
     ],
   },

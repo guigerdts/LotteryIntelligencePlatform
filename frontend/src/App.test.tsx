@@ -128,10 +128,10 @@ describe("App router", () => {
     renderAt("/");
 
     await screen.findByRole("heading", { name: /operational summary/i }, ASYNC_TIMEOUT);
-    fireEvent.click(screen.getByRole("link", { name: "Generador" }));
+    fireEvent.click(screen.getByRole("link", { name: "Mis Números" }));
 
     expect(
-      await screen.findByRole("heading", { name: "Generator" }, ASYNC_TIMEOUT),
+      await screen.findByRole("heading", { name: /mis n[uú]meros/i }, ASYNC_TIMEOUT),
     ).toBeInTheDocument();
   });
 
@@ -164,6 +164,15 @@ describe("App router", () => {
     ).toBeInTheDocument();
     expect(
       screen.getByRole("region", { name: "Deep learning results" }),
+    ).toBeInTheDocument();
+  }, 20000);
+
+  it("deep-links to the Mis Números page at /numeros through its lazy chunk", async () => {
+    useLotteryStore.setState({ selectedLotteryId: 1, selectedLotteryCode: "L1" });
+    renderAt("/numeros");
+
+    expect(
+      await screen.findByRole("heading", { name: /mis números/i }, ASYNC_TIMEOUT),
     ).toBeInTheDocument();
   }, 20000);
 });
