@@ -11,7 +11,7 @@ interface UseApiState<T> {
  * Wraps any async function that returns data.
  */
 export function useApi<TArgs extends unknown[], TResult>(
-  fetcher: (...args: TArgs) => Promise<TResult>,
+  fetcher: (...args: TArgs) => Promise<TResult>
 ): UseApiState<TResult> & {
   execute: (...args: TArgs) => Promise<TResult | null>;
 } {
@@ -34,7 +34,7 @@ export function useApi<TArgs extends unknown[], TResult>(
         return null;
       }
     },
-    [fetcher],
+    [fetcher]
   );
 
   return { ...state, execute };

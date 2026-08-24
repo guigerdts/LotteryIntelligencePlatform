@@ -2,13 +2,9 @@ import type { Draw } from "../types/draw";
 import { apiClient } from "./api";
 
 /** Fetch draws for a lottery, ordered descending. */
-export async function getDraws(
-  lotteryCode: string,
-  page = 1,
-  pageSize = 50,
-): Promise<Draw[]> {
+export async function getDraws(lotteryCode: string, page = 1, pageSize = 50): Promise<Draw[]> {
   return apiClient<Draw[]>(
-    `/draws?lottery=${lotteryCode}&order=desc&page=${page}&page_size=${pageSize}`,
+    `/draws?lottery=${lotteryCode}&order=desc&page=${page}&page_size=${pageSize}`
   );
 }
 

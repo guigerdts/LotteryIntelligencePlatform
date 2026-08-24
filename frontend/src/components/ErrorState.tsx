@@ -8,11 +8,7 @@ interface ErrorStateProps {
  * Reusable error-state block for failed API requests. Renders the message in an
  * alert region and an optional retry button that re-executes the failed call.
  */
-export default function ErrorState({
-  message,
-  onRetry,
-  retryLabel = "Retry",
-}: ErrorStateProps) {
+export default function ErrorState({ message, onRetry, retryLabel = "Retry" }: ErrorStateProps) {
   return (
     <div
       role="alert"

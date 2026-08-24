@@ -33,7 +33,7 @@ function renderTable(props: Partial<Parameters<typeof DataTable<TestRow>>[0]> = 
       rowKey={(row) => String(row.id)}
       caption="Draws"
       {...props}
-    />,
+    />
   );
 }
 
@@ -43,9 +43,7 @@ describe("DataTable", () => {
 
     expect(screen.getByText("Draws")).toHaveClass("sr-only");
     expect(screen.getByRole("columnheader", { name: "ID" })).toBeInTheDocument();
-    expect(
-      screen.getByRole("columnheader", { name: "Name" }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "Name" })).toBeInTheDocument();
     expect(screen.getByText("Bravo")).toBeInTheDocument();
     expect(screen.getByText("Alpha")).toBeInTheDocument();
   });
@@ -109,7 +107,10 @@ describe("DataTable", () => {
 
   it("renders non-sortable columns as plain text without a button", () => {
     renderTable({
-      columns: [{ key: "id", label: "ID" }, { key: "name", label: "Name" }],
+      columns: [
+        { key: "id", label: "ID" },
+        { key: "name", label: "Name" },
+      ],
     });
 
     expect(screen.queryByRole("button")).not.toBeInTheDocument();
@@ -145,7 +146,7 @@ describe("DataTable", () => {
         rows={[{ id: 1, meta: { nested: true } }]}
         rowKey={(row) => String(row.id)}
         caption="Meta"
-      />,
+      />
     );
 
     expect(screen.getByText('{"nested":true}')).toBeInTheDocument();
@@ -156,9 +157,7 @@ describe("ErrorState", () => {
   it("renders the message in an alert role", () => {
     render(<ErrorState message="Server error — try again later" />);
 
-    expect(screen.getByRole("alert")).toHaveTextContent(
-      "Server error — try again later",
-    );
+    expect(screen.getByRole("alert")).toHaveTextContent("Server error — try again later");
   });
 
   it("calls the retry callback when the retry button is clicked", () => {
@@ -179,24 +178,17 @@ describe("ErrorState", () => {
 describe("EmptyState", () => {
   it("renders the message and an optional action", () => {
     render(
-      <EmptyState
-        message="No data available."
-        action={<button type="button">Generate</button>}
-      />,
+      <EmptyState message="No data available." action={<button type="button">Generate</button>} />
     );
 
     expect(screen.getByText("No data available.")).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: /generate/i }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /generate/i })).toBeInTheDocument();
   });
 });
 
 describe("Skeleton", () => {
   it("renders a pulse placeholder hidden from the accessibility tree", () => {
-    const { container } = render(
-      <Skeleton variant="card" className="w-1/2" />,
-    );
+    const { container } = render(<Skeleton variant="card" className="w-1/2" />);
 
     const skeleton = container.querySelector("[aria-hidden=true]");
     expect(skeleton).not.toBeNull();

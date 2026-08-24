@@ -94,9 +94,7 @@ describe("useLotteryStore", () => {
       result.current.setSelected(3, "L3");
     });
 
-    const stored = JSON.parse(
-      localStorage.getItem("lip:selectedLottery") ?? "{}",
-    );
+    const stored = JSON.parse(localStorage.getItem("lip:selectedLottery") ?? "{}");
     expect(stored.state.selectedLotteryId).toBe(3);
     expect(stored.state.selectedLotteryCode).toBe("L3");
   });
@@ -108,9 +106,7 @@ describe("useLotteryStore", () => {
       result.current.setSelected(1, "L1");
     });
 
-    const stored = JSON.parse(
-      localStorage.getItem("lip:selectedLottery") ?? "{}",
-    );
+    const stored = JSON.parse(localStorage.getItem("lip:selectedLottery") ?? "{}");
     expect(stored.state.lotteries).toBeUndefined();
   });
 });

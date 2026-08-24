@@ -11,7 +11,7 @@ const env = (data: unknown) =>
 const err = (message: string, status = 500) =>
   HttpResponse.json(
     { success: false, error: { code: "INTERNAL_ERROR", message }, timestamp: "" },
-    { status },
+    { status }
   );
 
 const draw = (id: number, drawNumber: number): Draw => ({
@@ -63,7 +63,7 @@ const server = setupServer(
   http.get("*/api/v1/statistics/L1/frequencies", () => {
     fetchCalls += 1;
     return env(frequencyList);
-  }),
+  })
 );
 
 const selectLottery = () =>
@@ -92,10 +92,10 @@ describe("Trends", () => {
     expect(
       screen.getByRole("img", {
         name: "Rolling frequency trend of hot numbers over recent draws",
-      }),
+      })
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("img", { name: "Frequency distribution per number" }),
+      screen.getByRole("img", { name: "Frequency distribution per number" })
     ).toBeInTheDocument();
     const hot = screen.getByRole("region", { name: "Hot numbers" });
     expect(within(hot).getAllByText("25×").length).toBeGreaterThan(0);
@@ -108,35 +108,37 @@ describe("Trends", () => {
     server.use(
       http.get("*/api/v1/statistics/L1/frequencies", () =>
         HttpResponse.json(
-          { success: false, error: { code: "RESOURCE_NOT_FOUND", message: "No snapshot" }, timestamp: "" },
-          { status: 404 },
-        ),
-      ),
+          {
+            success: false,
+            error: { code: "RESOURCE_NOT_FOUND", message: "No snapshot" },
+            timestamp: "",
+          },
+          { status: 404 }
+        )
+      )
     );
     render(<Trends />);
     expect(
       await screen.findByRole("img", {
         name: "Rolling frequency trend of hot numbers over recent draws",
-      }),
+      })
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("img", { name: "Frequency distribution per number" }),
+      screen.getByRole("img", { name: "Frequency distribution per number" })
     ).toBeInTheDocument();
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
   it("shows skeleton placeholders while draws are loading", async () => {
     selectLottery();
-    server.use(
-      http.get("*/api/v1/draws", () => delay(50).then(() => env(drawRange(25)))),
-    );
+    server.use(http.get("*/api/v1/draws", () => delay(50).then(() => env(drawRange(25)))));
     const { container } = render(<Trends />);
     expect(container.querySelector(".animate-pulse")).not.toBeNull();
     await waitFor(() => expect(container.querySelector(".animate-pulse")).toBeNull());
     expect(
       screen.getByRole("img", {
         name: "Rolling frequency trend of hot numbers over recent draws",
-      }),
+      })
     ).toBeInTheDocument();
   });
 
@@ -152,17 +154,15 @@ describe("Trends", () => {
       expect(
         screen.getByRole("img", {
           name: "Rolling frequency trend of hot numbers over recent draws",
-        }),
-      ).toBeInTheDocument(),
+        })
+      ).toBeInTheDocument()
     );
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
   it("prompts to select a lottery and does not call the API", async () => {
     render(<Trends />);
-    expect(
-      await screen.findByText(/select a lottery to see its trends/i),
-    ).toBeInTheDocument();
+    expect(await screen.findByText(/select a lottery to see its trends/i)).toBeInTheDocument();
     expect(fetchCalls).toBe(0);
     expect(screen.queryByRole("img")).not.toBeInTheDocument();
   });

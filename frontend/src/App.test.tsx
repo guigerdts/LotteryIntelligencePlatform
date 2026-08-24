@@ -12,9 +12,7 @@ const env = (data: unknown) =>
   HttpResponse.json({ success: true, data, timestamp: "2026-01-01T00:00:00Z" });
 
 const server = setupServer(
-  http.get("*/api/v1/lotteries", () =>
-    env([{ id: 1, code: "L1", name: "Loto", country: "ES" }]),
-  ),
+  http.get("*/api/v1/lotteries", () => env([{ id: 1, code: "L1", name: "Loto", country: "ES" }])),
   http.get("*/api/v1/draws", () => env([])),
   http.get("*/api/v1/statistics/L1/frequencies", () =>
     env({
@@ -27,11 +25,11 @@ const server = setupServer(
       draw_count: 0,
       checksum: "x",
       frequencies: [],
-    }),
+    })
   ),
   http.get("*/api/v1/health", () => env({ status: "ok" })),
   http.get("*/api/v1/version", () =>
-    env({ version: "1.0.0", app: "Lottery Intelligence Platform" }),
+    env({ version: "1.0.0", app: "Lottery Intelligence Platform" })
   ),
   http.get("*/api/v1/ml/models", () =>
     env({
@@ -43,7 +41,7 @@ const server = setupServer(
       checksum: "abc",
       input_fingerprint: "fp1",
       cut: 1200,
-    }),
+    })
   ),
   http.get("*/api/v1/ml/metrics", () => env([])),
   http.get("*/api/v1/dl/models", () =>
@@ -57,7 +55,7 @@ const server = setupServer(
       input_fingerprint: "fp-dl",
       cut: 305,
       window: 10,
-    }),
+    })
   ),
   http.get("*/api/v1/dl/metrics", () => env([])),
   http.get("*/api/v1/probability/L1/probabilities", () =>
@@ -71,10 +69,16 @@ const server = setupServer(
       draw_count: 100,
       checksum: "abc",
       probabilities: [
-        { model_id: "baseline", model_version: "v1", subject: "5", draw_number: 101, value: "0.1420" },
+        {
+          model_id: "baseline",
+          model_version: "v1",
+          subject: "5",
+          draw_number: 101,
+          value: "0.1420",
+        },
       ],
-    }),
-  ),
+    })
+  )
 );
 
 function renderAt(path: string) {
@@ -104,7 +108,7 @@ describe("App router", () => {
 
     expect(container.querySelector("[aria-busy='true']")).not.toBeNull();
     expect(
-      await screen.findByRole("heading", { name: /operational summary/i }, ASYNC_TIMEOUT),
+      await screen.findByRole("heading", { name: /operational summary/i }, ASYNC_TIMEOUT)
     ).toBeInTheDocument();
   }, 20000);
 
@@ -113,14 +117,10 @@ describe("App router", () => {
     renderAt("/");
 
     expect(
-      await screen.findByRole("heading", { name: /operational summary/i }, ASYNC_TIMEOUT),
+      await screen.findByRole("heading", { name: /operational summary/i }, ASYNC_TIMEOUT)
     ).toBeInTheDocument();
-    expect(
-      screen.getByRole("navigation", { name: "Main navigation" }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("complementary", { name: "Sidebar" }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("navigation", { name: "Main navigation" })).toBeInTheDocument();
+    expect(screen.getByRole("complementary", { name: "Sidebar" })).toBeInTheDocument();
   }, 20000);
 
   it("navigates between routes through the sidebar links", async () => {
@@ -131,7 +131,7 @@ describe("App router", () => {
     fireEvent.click(screen.getByRole("link", { name: "Mis Números" }));
 
     expect(
-      await screen.findByRole("heading", { name: /mis n[uú]meros/i }, ASYNC_TIMEOUT),
+      await screen.findByRole("heading", { name: /mis n[uú]meros/i }, ASYNC_TIMEOUT)
     ).toBeInTheDocument();
   });
 
@@ -139,7 +139,7 @@ describe("App router", () => {
     renderAt("/unknown");
 
     expect(
-      await screen.findByRole("heading", { name: /page not found/i }, ASYNC_TIMEOUT),
+      await screen.findByRole("heading", { name: /page not found/i }, ASYNC_TIMEOUT)
     ).toBeInTheDocument();
   });
 
@@ -148,11 +148,9 @@ describe("App router", () => {
     renderAt("/ia");
 
     expect(
-      await screen.findByRole("heading", { name: /ai assistant/i }, ASYNC_TIMEOUT),
+      await screen.findByRole("heading", { name: /ai assistant/i }, ASYNC_TIMEOUT)
     ).toBeInTheDocument();
-    expect(
-      screen.getByRole("region", { name: "System status" }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "System status" })).toBeInTheDocument();
   }, 20000);
 
   it("deep-links to the Deep Learning page at /dl through its lazy chunk", async () => {
@@ -160,11 +158,9 @@ describe("App router", () => {
     renderAt("/dl");
 
     expect(
-      await screen.findByRole("heading", { name: /deep learning/i }, ASYNC_TIMEOUT),
+      await screen.findByRole("heading", { name: /deep learning/i }, ASYNC_TIMEOUT)
     ).toBeInTheDocument();
-    expect(
-      screen.getByRole("region", { name: "Deep learning results" }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Deep learning results" })).toBeInTheDocument();
   }, 20000);
 
   it("deep-links to the Mis Números page at /numeros through its lazy chunk", async () => {
@@ -172,7 +168,7 @@ describe("App router", () => {
     renderAt("/numeros");
 
     expect(
-      await screen.findByRole("heading", { name: /mis números/i }, ASYNC_TIMEOUT),
+      await screen.findByRole("heading", { name: /mis números/i }, ASYNC_TIMEOUT)
     ).toBeInTheDocument();
   }, 20000);
 });

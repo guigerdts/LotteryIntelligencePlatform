@@ -44,7 +44,7 @@ const server = setupServer(
     lastUrl = request.url;
     lastBody = await request.json();
     return env(response);
-  }),
+  })
 );
 
 beforeAll(() => server.listen());
@@ -101,9 +101,9 @@ describe("assistant service", () => {
             error: { code: "RESOURCE_NOT_FOUND", message: "Lottery not found" },
             timestamp: "",
           },
-          { status: 404 },
-        ),
-      ),
+          { status: 404 }
+        )
+      )
     );
     await expect(explainAssistant("L999")).rejects.toBeInstanceOf(NotFoundError);
   });
@@ -117,9 +117,9 @@ describe("assistant service", () => {
             error: { code: "assistant_error", message: "Generation failed" },
             timestamp: "",
           },
-          { status: 500 },
-        ),
-      ),
+          { status: 500 }
+        )
+      )
     );
     await expect(reportAssistant("L1")).rejects.toThrow("Generation failed");
     await expect(reportAssistant("L1")).rejects.toBeInstanceOf(ServerError);

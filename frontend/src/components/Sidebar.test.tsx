@@ -24,7 +24,7 @@ function renderSidebar(initialPath = "/") {
   return render(
     <MemoryRouter initialEntries={[initialPath]}>
       <Sidebar />
-    </MemoryRouter>,
+    </MemoryRouter>
   );
 }
 
@@ -36,17 +36,9 @@ describe("Sidebar", () => {
   it("renders the five navigation groups with their titles", () => {
     renderSidebar();
 
-    const headings = [
-      "General",
-      "Análisis",
-      "Avanzado",
-      "ML",
-      "Números",
-    ];
+    const headings = ["General", "Análisis", "Avanzado", "ML", "Números"];
     for (const title of headings) {
-      expect(
-        screen.getByRole("heading", { name: title }),
-      ).toBeInTheDocument();
+      expect(screen.getByRole("heading", { name: title })).toBeInTheDocument();
     }
   });
 
@@ -62,31 +54,24 @@ describe("Sidebar", () => {
   it("exposes a navigation landmark", () => {
     renderSidebar();
 
-    expect(
-      screen.getByRole("navigation", { name: "Main navigation" }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("navigation", { name: "Main navigation" })).toBeInTheDocument();
   });
 
   it("marks the active route with aria-current=page", () => {
     renderSidebar("/estadisticas");
 
-    expect(
-      screen.getByRole("link", { name: "Estadísticas" }),
-    ).toHaveAttribute("aria-current", "page");
-    expect(screen.getByRole("link", { name: "Inicio" })).not.toHaveAttribute(
+    expect(screen.getByRole("link", { name: "Estadísticas" })).toHaveAttribute(
       "aria-current",
+      "page"
     );
+    expect(screen.getByRole("link", { name: "Inicio" })).not.toHaveAttribute("aria-current");
   });
 
   it("does not mark the root link as active on nested routes", () => {
     renderSidebar("/modelos");
 
-    expect(
-      screen.getByRole("link", { name: "Modelos" }),
-    ).toHaveAttribute("aria-current", "page");
-    expect(screen.getByRole("link", { name: "Inicio" })).not.toHaveAttribute(
-      "aria-current",
-    );
+    expect(screen.getByRole("link", { name: "Modelos" })).toHaveAttribute("aria-current", "page");
+    expect(screen.getByRole("link", { name: "Inicio" })).not.toHaveAttribute("aria-current");
   });
 
   it("collapses and re-expands through the toggle", () => {

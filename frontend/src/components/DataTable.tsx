@@ -113,13 +113,7 @@ export default function DataTable<T>({
               <th
                 key={column.key}
                 scope="col"
-                aria-sort={
-                  isSorted
-                    ? sortDir === "asc"
-                      ? "ascending"
-                      : "descending"
-                    : undefined
-                }
+                aria-sort={isSorted ? (sortDir === "asc" ? "ascending" : "descending") : undefined}
                 className="px-3 py-2 font-semibold"
               >
                 {column.sortable ? (
@@ -154,10 +148,7 @@ export default function DataTable<T>({
           ))
         ) : sortedRows.length === 0 ? (
           <tr>
-            <td
-              colSpan={columns.length}
-              className="px-3 py-8 text-center text-gray-500"
-            >
+            <td colSpan={columns.length} className="px-3 py-8 text-center text-gray-500">
               {emptyMessage}
             </td>
           </tr>

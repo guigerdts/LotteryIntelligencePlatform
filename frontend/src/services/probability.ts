@@ -1,13 +1,10 @@
-import type {
-  ProbabilityList,
-  ProbabilitySnapshot,
-} from "../types/probability";
+import type { ProbabilityList, ProbabilitySnapshot } from "../types/probability";
 import { apiClient } from "./api";
 
 /** Trigger probability generation for a lottery. */
 export async function generateProbability(
   lotteryCode: string,
-  scope: "incremental" | "full" = "incremental",
+  scope: "incremental" | "full" = "incremental"
 ): Promise<ProbabilitySnapshot> {
   return apiClient<ProbabilitySnapshot>("/probability/generate", {
     method: "POST",
@@ -18,7 +15,7 @@ export async function generateProbability(
 /** Fetch probability rows for a lottery. */
 export async function getProbabilities(
   lotteryCode: string,
-  params?: { model?: string; subject?: string; last?: number },
+  params?: { model?: string; subject?: string; last?: number }
 ): Promise<ProbabilityList> {
   const searchParams = new URLSearchParams();
   if (params?.model) searchParams.set("model", params.model);
@@ -26,6 +23,6 @@ export async function getProbabilities(
   if (params?.last !== undefined) searchParams.set("last", String(params.last));
   const qs = searchParams.toString();
   return apiClient<ProbabilityList>(
-    `/probability/${lotteryCode}/probabilities${qs ? `?${qs}` : ""}`,
+    `/probability/${lotteryCode}/probabilities${qs ? `?${qs}` : ""}`
   );
 }

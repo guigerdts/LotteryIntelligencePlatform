@@ -38,9 +38,7 @@ describe("FrequencyChart", () => {
 
   it("does not crash on empty rows", () => {
     render(<FrequencyChart rows={[]} />);
-    expect(
-      screen.getByRole("img", { name: /frequency distribution/i }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: /frequency distribution/i })).toBeInTheDocument();
   });
 });
 
@@ -54,17 +52,11 @@ describe("GapChart", () => {
   });
 
   it("does not crash on null gaps or empty rows", () => {
-    const withNulls = [
-      { number: 4, count: 5, min_gap: null, max_gap: null, avg_gap: null },
-    ];
+    const withNulls = [{ number: 4, count: 5, min_gap: null, max_gap: null, avg_gap: null }];
     const { rerender } = render(<GapChart rows={withNulls} />);
-    expect(
-      screen.getByRole("img", { name: /gap analysis/i }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: /gap analysis/i })).toBeInTheDocument();
     rerender(<GapChart rows={[]} />);
-    expect(
-      screen.getByRole("img", { name: /gap analysis/i }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: /gap analysis/i })).toBeInTheDocument();
   });
 });
 
@@ -78,17 +70,11 @@ describe("AverageChart", () => {
   });
 
   it("does not crash on null means or empty series", () => {
-    const withNulls = [
-      { series_key: "empty", mean: null, non_null_count: 0 },
-    ];
+    const withNulls = [{ series_key: "empty", mean: null, non_null_count: 0 }];
     const { rerender } = render(<AverageChart series={withNulls} />);
-    expect(
-      screen.getByRole("img", { name: /average gap per series/i }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: /average gap per series/i })).toBeInTheDocument();
     rerender(<AverageChart series={[]} />);
-    expect(
-      screen.getByRole("img", { name: /average gap per series/i }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: /average gap per series/i })).toBeInTheDocument();
   });
 });
 
@@ -107,12 +93,8 @@ describe("DistributionChart", () => {
       { subject: "number-2", value: "" },
     ];
     const { rerender } = render(<DistributionChart rows={bad} />);
-    expect(
-      screen.getByRole("img", { name: /probability distribution/i }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: /probability distribution/i })).toBeInTheDocument();
     rerender(<DistributionChart rows={[]} />);
-    expect(
-      screen.getByRole("img", { name: /probability distribution/i }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: /probability distribution/i })).toBeInTheDocument();
   });
 });

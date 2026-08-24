@@ -10,7 +10,7 @@ const env = (data: unknown) =>
 const err = (message: string, status = 500) =>
   HttpResponse.json(
     { success: false, error: { code: "INTERNAL_ERROR", message }, timestamp: "" },
-    { status },
+    { status }
   );
 
 const runResult = {
@@ -49,7 +49,7 @@ const server = setupServer(
   http.get("*/api/v1/backtesting/results", () => {
     resultsCalls += 1;
     return env(resultData);
-  }),
+  })
 );
 
 const selectLottery = () =>
@@ -139,9 +139,7 @@ describe("Backtesting", () => {
 
   it("prompts to select a lottery and does not call the API", async () => {
     render(<Backtesting />);
-    expect(
-      await screen.findByText(/select a lottery to run a backtest/i),
-    ).toBeInTheDocument();
+    expect(await screen.findByText(/select a lottery to run a backtest/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /^run backtest$/i })).toBeDisabled();
     expect(runCalls).toBe(0);
     expect(resultsCalls).toBe(0);

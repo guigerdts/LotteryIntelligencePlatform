@@ -65,8 +65,7 @@ export default function Sidebar() {
       return;
     }
     const media = window.matchMedia(MOBILE_QUERY);
-    const apply = () =>
-      useModuleStore.getState().setSidebarCollapsed(media.matches);
+    const apply = () => useModuleStore.getState().setSidebarCollapsed(media.matches);
     apply();
     media.addEventListener("change", apply);
     return () => media.removeEventListener("change", apply);
@@ -95,19 +94,11 @@ export default function Sidebar() {
             strokeWidth={2}
             className="h-5 w-5"
           >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M4 6h16M4 12h16M4 18h16"
-            />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
           </svg>
         </button>
       </div>
-      <nav
-        id="main-navigation"
-        aria-label="Main navigation"
-        className="flex-1 overflow-y-auto p-3"
-      >
+      <nav id="main-navigation" aria-label="Main navigation" className="flex-1 overflow-y-auto p-3">
         {NAV_GROUPS.map((group) => (
           <NavGroup
             key={group.title}

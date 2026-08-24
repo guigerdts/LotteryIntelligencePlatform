@@ -30,12 +30,7 @@ const columns: DataColumn<Experiment>[] = [
  */
 export default function Experiments() {
   const selectedLotteryId = useLotteryStore((s) => s.selectedLotteryId);
-  const {
-    data,
-    isLoading,
-    error,
-    execute: fetchExperiments,
-  } = useApi(listExperiments);
+  const { data, isLoading, error, execute: fetchExperiments } = useApi(listExperiments);
   const {
     isLoading: creating,
     error: createError,
@@ -63,7 +58,7 @@ export default function Experiments() {
     const result = await createExperimentFn(
       selectedLotteryId,
       trimmedName,
-      description.trim() || undefined,
+      description.trim() || undefined
     );
     if (result) {
       setName("");
@@ -100,9 +95,7 @@ export default function Experiments() {
     <div className="space-y-6 p-4 sm:p-6">
       <div>
         <h2 className="text-lg font-semibold text-gray-900">Experiments</h2>
-        <p className="text-sm text-gray-500">
-          Experiment tracking for the selected lottery.
-        </p>
+        <p className="text-sm text-gray-500">Experiment tracking for the selected lottery.</p>
       </div>
       <section
         aria-label="Create experiment"

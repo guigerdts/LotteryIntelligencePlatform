@@ -10,7 +10,7 @@ const env = (data: unknown) =>
 const err = (message: string, status = 500) =>
   HttpResponse.json(
     { success: false, error: { code: "INTERNAL_ERROR", message }, timestamp: "" },
-    { status },
+    { status }
   );
 
 const snapshot = {
@@ -61,7 +61,9 @@ const assistantResponse = {
 
 const server = setupServer(
   http.get("*/api/v1/health", () => env({ status: "ok" })),
-  http.get("*/api/v1/version", () => env({ version: "1.0.0", app: "Lottery Intelligence Platform" })),
+  http.get("*/api/v1/version", () =>
+    env({ version: "1.0.0", app: "Lottery Intelligence Platform" })
+  ),
   http.get("*/api/v1/ml/models", () => {
     modelsCalls += 1;
     return env(snapshot);
@@ -97,7 +99,7 @@ const server = setupServer(
       lottery_code: string;
     };
     return env({ ...assistantResponse, text: "Respuesta generada para tu pregunta." });
-  }),
+  })
 );
 
 const selectLottery = () =>
@@ -170,7 +172,9 @@ describe("IA", () => {
   it("shows skeleton placeholders while sections load", async () => {
     selectLottery();
     server.use(
-      http.get("*/api/v1/probability/L1/probabilities", () => delay(50).then(() => env(probabilityList))),
+      http.get("*/api/v1/probability/L1/probabilities", () =>
+        delay(50).then(() => env(probabilityList))
+      )
     );
     const { container } = render(<IA />);
     expect(container.querySelector(".animate-pulse")).not.toBeNull();
@@ -181,7 +185,7 @@ describe("IA", () => {
   it("prompts to select a lottery and does not call lottery-scoped endpoints", async () => {
     render(<IA />);
     expect(
-      (await screen.findAllByText(/select a lottery to see the ai assistant/i)).length,
+      (await screen.findAllByText(/select a lottery to see the ai assistant/i)).length
     ).toBeGreaterThan(0);
     expect(modelsCalls).toBe(0);
     expect(metricsCalls).toBe(0);
@@ -199,9 +203,7 @@ describe("IA", () => {
       question: "¿Por qué cambió la frecuencia?",
       lottery_code: "L1",
     });
-    expect(
-      await screen.findByText("Respuesta generada para tu pregunta."),
-    ).toBeInTheDocument();
+    expect(await screen.findByText("Respuesta generada para tu pregunta.")).toBeInTheDocument();
   });
 
   it("shows a skeleton while an assistant request is in flight", async () => {
@@ -211,7 +213,7 @@ describe("IA", () => {
         assistCalls += 1;
         await delay(50);
         return env({ ...assistantResponse, text: "Respuesta lenta." });
-      }),
+      })
     );
     const { container } = render(<IA />);
     await screen.findByText("ok");
@@ -230,7 +232,9 @@ describe("IA", () => {
     const alert = await screen.findByRole("alert");
     expect(alert).toHaveTextContent(/assistant error/i);
     server.use(
-      http.post("*/api/v1/assistant/assist", async () => env({ ...assistantResponse, text: "Recuperado." })),
+      http.post("*/api/v1/assistant/assist", async () =>
+        env({ ...assistantResponse, text: "Recuperado." })
+      )
     );
     fireEvent.click(screen.getByRole("button", { name: /retry/i }));
     await waitFor(() => expect(screen.getByText("Recuperado.")).toBeInTheDocument());
@@ -241,8 +245,8 @@ describe("IA", () => {
     selectLottery();
     server.use(
       http.post("*/api/v1/assistant/assist", async () =>
-        env({ ...assistantResponse, text: "No hay datos suficientes." }),
-      ),
+        env({ ...assistantResponse, text: "No hay datos suficientes." })
+      )
     );
     render(<IA />);
     await screen.findByText("ok");
@@ -254,10 +258,16 @@ describe("IA", () => {
   it("only calls the five assistant endpoints and existing status endpoints (NFR-2)", async () => {
     selectLottery();
     const allowed = new Set([
-      "/api/v1/health", "/api/v1/version", "/api/v1/ml/models", "/api/v1/ml/metrics",
+      "/api/v1/health",
+      "/api/v1/version",
+      "/api/v1/ml/models",
+      "/api/v1/ml/metrics",
       "/api/v1/probability/L1/probabilities",
-      "/api/v1/assistant/explain", "/api/v1/assistant/interpret", "/api/v1/assistant/report",
-      "/api/v1/assistant/summarize", "/api/v1/assistant/assist",
+      "/api/v1/assistant/explain",
+      "/api/v1/assistant/interpret",
+      "/api/v1/assistant/report",
+      "/api/v1/assistant/summarize",
+      "/api/v1/assistant/assist",
     ]);
     const unexpected: string[] = [];
     const onRequest = ({ request }: { request: Request }) => {
@@ -275,7 +285,9 @@ describe("IA", () => {
       fireEvent.click(screen.getByRole("button", { name: "Summarize" }));
       ask("Hola");
       await waitFor(() => {
-        expect([explainCalls, interpretCalls, reportCalls, summarizeCalls, assistCalls]).toEqual([1, 1, 1, 1, 1]);
+        expect([explainCalls, interpretCalls, reportCalls, summarizeCalls, assistCalls]).toEqual([
+          1, 1, 1, 1, 1,
+        ]);
       });
       expect(unexpected).toEqual([]);
     } finally {

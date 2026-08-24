@@ -60,8 +60,7 @@ export default function AssistantPanel({ lotteryCode }: AssistantPanelProps) {
   };
 
   const experimentIdNumber = Number(experimentId);
-  const hasExperimentId =
-    Number.isInteger(experimentIdNumber) && experimentIdNumber > 0;
+  const hasExperimentId = Number.isInteger(experimentIdNumber) && experimentIdNumber > 0;
 
   if (!lotteryCode) {
     return (
@@ -69,10 +68,7 @@ export default function AssistantPanel({ lotteryCode }: AssistantPanelProps) {
         aria-labelledby="ia-assistant-title"
         className="rounded-md border border-gray-200 bg-white p-4"
       >
-        <h3
-          id="ia-assistant-title"
-          className="mb-3 text-sm font-semibold text-gray-900"
-        >
+        <h3 id="ia-assistant-title" className="mb-3 text-sm font-semibold text-gray-900">
           Assistant
         </h3>
         <EmptyState message={NO_LOTTERY_MESSAGE} />
@@ -104,9 +100,7 @@ export default function AssistantPanel({ lotteryCode }: AssistantPanelProps) {
     if (result) {
       return (
         <div className="rounded-md border border-gray-200 bg-gray-50 p-3">
-          <p className="whitespace-pre-wrap text-sm text-gray-900">
-            {result.text}
-          </p>
+          <p className="whitespace-pre-wrap text-sm text-gray-900">{result.text}</p>
         </div>
       );
     }
@@ -118,10 +112,7 @@ export default function AssistantPanel({ lotteryCode }: AssistantPanelProps) {
       aria-labelledby="ia-assistant-title"
       className="rounded-md border border-gray-200 bg-white p-4"
     >
-      <h3
-        id="ia-assistant-title"
-        className="mb-3 text-sm font-semibold text-gray-900"
-      >
+      <h3 id="ia-assistant-title" className="mb-3 text-sm font-semibold text-gray-900">
         Assistant
       </h3>
       <div className="space-y-4">
@@ -140,22 +131,13 @@ export default function AssistantPanel({ lotteryCode }: AssistantPanelProps) {
             placeholder="¿Por qué cambió la frecuencia del número 5?"
             className={FIELD_CLASS}
           />
-          <button
-            type="submit"
-            disabled={question.trim() === ""}
-            className={BUTTON_CLASS}
-          >
+          <button type="submit" disabled={question.trim() === ""} className={BUTTON_CLASS}>
             Ask
           </button>
         </form>
         <div className="flex flex-wrap items-end gap-3">
           {actions.map(({ label, onRun }) => (
-            <button
-              key={label}
-              type="button"
-              onClick={onRun}
-              className={BUTTON_CLASS}
-            >
+            <button key={label} type="button" onClick={onRun} className={BUTTON_CLASS}>
               {label}
             </button>
           ))}
@@ -179,9 +161,7 @@ export default function AssistantPanel({ lotteryCode }: AssistantPanelProps) {
                 type="button"
                 onClick={() => {
                   if (hasExperimentId) {
-                    run(() =>
-                      summarizeAssistant({ experiment_id: experimentIdNumber }),
-                    );
+                    run(() => summarizeAssistant({ experiment_id: experimentIdNumber }));
                   }
                 }}
                 disabled={!hasExperimentId}

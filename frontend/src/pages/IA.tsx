@@ -113,7 +113,7 @@ export default function IA() {
         .slice()
         .sort((a, b) => b.value - a.value)
         .slice(0, TOP_METRICS),
-    [metrics],
+    [metrics]
   );
 
   const renderSystem = () => {
@@ -211,8 +211,8 @@ export default function IA() {
       <div>
         <h2 className="text-lg font-semibold text-gray-900">AI Assistant</h2>
         <p className="text-sm text-gray-500">
-          Intelligence status derived from the live system, the active ML model and
-          the latest probability rows for the selected lottery.
+          Intelligence status derived from the live system, the active ML model and the latest
+          probability rows for the selected lottery.
         </p>
       </div>
       <Section id="ia-system-title" title="System status">

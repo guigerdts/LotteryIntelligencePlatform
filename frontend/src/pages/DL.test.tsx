@@ -8,15 +8,8 @@ import { useLotteryStore } from "../store/useLotteryStore";
 
 const env = (data: unknown) =>
   HttpResponse.json({ success: true, data, timestamp: "2026-01-01T00:00:00Z" });
-const err = (
-  message: string,
-  status = 500,
-  code = "INTERNAL_ERROR",
-) =>
-  HttpResponse.json(
-    { success: false, error: { code, message }, timestamp: "" },
-    { status },
-  );
+const err = (message: string, status = 500, code = "INTERNAL_ERROR") =>
+  HttpResponse.json({ success: false, error: { code, message }, timestamp: "" }, { status });
 
 const snapshot = {
   id: 7,
@@ -37,7 +30,14 @@ const metrics = [
 const trainResult = {
   lottery_id: 1,
   results: [
-    { family: "mlp", status: "active", snapshot_id: 7, fingerprint: "fp-dl", metrics_checksum: "cs1", error: null },
+    {
+      family: "mlp",
+      status: "active",
+      snapshot_id: 7,
+      fingerprint: "fp-dl",
+      metrics_checksum: "cs1",
+      error: null,
+    },
   ],
 };
 
@@ -63,7 +63,7 @@ const server = setupServer(
     trainCalls += 1;
     lastTrainRequest = request;
     return env(trainResult);
-  }),
+  })
 );
 
 const selectLottery = () =>
@@ -139,9 +139,7 @@ describe("DL page", () => {
     expect(within(table).getAllByText("mlp").length).toBeGreaterThan(0);
     expect(within(table).getByText("lstm")).toBeInTheDocument();
     expect(within(table).getByText("0.12")).toBeInTheDocument();
-    expect(table.textContent?.indexOf("mlp")).toBeLessThan(
-      table.textContent!.indexOf("lstm"),
-    );
+    expect(table.textContent?.indexOf("mlp")).toBeLessThan(table.textContent!.indexOf("lstm"));
   });
 
   it("refetches snapshot and metrics when the lottery selection changes (R2-S2)", async () => {
@@ -157,9 +155,7 @@ describe("DL page", () => {
 
   it("prompts to select a lottery with zero API calls and a disabled Train button (parity bonus)", async () => {
     render(<DL />);
-    expect(
-      await screen.findByText(/select a lottery/i),
-    ).toBeInTheDocument();
+    expect(await screen.findByText(/select a lottery/i)).toBeInTheDocument();
     expect(modelsCalls).toBe(0);
     expect(metricsCalls).toBe(0);
     expect(trainCalls).toBe(0);
@@ -169,17 +165,12 @@ describe("DL page", () => {
   it("renders the empty-state Train CTA on 404 SNAPSHOT_NOT_FOUND, not an error (R3-S1)", async () => {
     selectLottery();
     server.use(
-      http.get(
-        "*/api/v1/dl/models",
-        () => err("no active snapshot", 404, "SNAPSHOT_NOT_FOUND"),
-      ),
-      http.get("*/api/v1/dl/metrics", () => env([])),
+      http.get("*/api/v1/dl/models", () => err("no active snapshot", 404, "SNAPSHOT_NOT_FOUND")),
+      http.get("*/api/v1/dl/metrics", () => env([]))
     );
     render(<DL />);
 
-    expect(
-      await screen.findByText(/no models trained yet/i),
-    ).toBeInTheDocument();
+    expect(await screen.findByText(/no models trained yet/i)).toBeInTheDocument();
     const trainButtons = screen.getAllByRole("button", { name: /^train$/i });
     expect(trainButtons.length).toBeGreaterThan(0);
     for (const button of trainButtons) {
@@ -191,17 +182,12 @@ describe("DL page", () => {
   it("keeps an unrelated 404 as an error with retry (R3-S2)", async () => {
     selectLottery();
     server.use(
-      http.get(
-        "*/api/v1/dl/models",
-        () => err("unknown lottery", 404, "RESOURCE_NOT_FOUND"),
-      ),
+      http.get("*/api/v1/dl/models", () => err("unknown lottery", 404, "RESOURCE_NOT_FOUND"))
     );
     render(<DL />);
 
     expect(await screen.findByRole("alert")).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: /retry/i }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /retry/i })).toBeInTheDocument();
   });
 
   it("shows the skeleton while models load, then the table replaces it (R6-S1)", async () => {
@@ -210,7 +196,7 @@ describe("DL page", () => {
       http.get("*/api/v1/dl/models", async () => {
         await delay(100);
         return env(snapshot);
-      }),
+      })
     );
     const { container } = render(<DL />);
 
@@ -223,9 +209,7 @@ describe("DL page", () => {
     selectLottery();
     let failing = true;
     server.use(
-      http.get("*/api/v1/dl/models", () =>
-        failing ? err("backend down") : env(snapshot),
-      ),
+      http.get("*/api/v1/dl/models", () => (failing ? err("backend down") : env(snapshot)))
     );
     render(<DL />);
 
@@ -243,7 +227,7 @@ describe("DL page", () => {
       http.post("*/api/v1/dl/train", async () => {
         await delay(100);
         return env(trainResult);
-      }),
+      })
     );
     render(<DL />);
     await screen.findByRole("table");
@@ -272,20 +256,25 @@ describe("DL page", () => {
         env({
           lottery_id: 1,
           results: [
-            { family: "mlp", status: "active", snapshot_id: 7, fingerprint: "fp-dl", metrics_checksum: "cs1", error: null },
+            {
+              family: "mlp",
+              status: "active",
+              snapshot_id: 7,
+              fingerprint: "fp-dl",
+              metrics_checksum: "cs1",
+              error: null,
+            },
             { family: "lstm", status: "failed", error: "no active F4 snapshot" },
           ],
-        }),
-      ),
+        })
+      )
     );
     render(<DL />);
     await screen.findByRole("table");
 
     fireEvent.click(screen.getByRole("button", { name: /^train$/i }));
 
-    expect(
-      await screen.findByText(/lstm: no active F4 snapshot/i),
-    ).toBeInTheDocument();
+    expect(await screen.findByText(/lstm: no active F4 snapshot/i)).toBeInTheDocument();
   });
 
   it("renders an ErrorState when training rejects and Retry re-issues the POST (R4-S3)", async () => {
@@ -294,7 +283,7 @@ describe("DL page", () => {
       http.post("*/api/v1/dl/train", () => {
         trainCalls += 1;
         return err("training failed");
-      }),
+      })
     );
     render(<DL />);
     await screen.findByRole("table");
@@ -307,7 +296,7 @@ describe("DL page", () => {
       http.post("*/api/v1/dl/train", () => {
         trainCalls += 1;
         return env(trainResult);
-      }),
+      })
     );
     fireEvent.click(screen.getByRole("button", { name: /retry/i }));
     await waitFor(() => expect(trainCalls).toBe(2));

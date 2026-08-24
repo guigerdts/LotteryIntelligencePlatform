@@ -22,17 +22,15 @@ export async function generateCombinations(params: {
 /** Get combinations for a snapshot. */
 export async function getCombinations(
   lotteryId: number,
-  snapshotId: number,
+  snapshotId: number
 ): Promise<CombinationList> {
   return apiClient<CombinationList>(
-    `/gen/combinations?lottery_id=${lotteryId}&snapshot_id=${snapshotId}`,
+    `/gen/combinations?lottery_id=${lotteryId}&snapshot_id=${snapshotId}`
   );
 }
 
 /** List generator snapshots for a lottery. */
-export async function getSnapshots(
-  lotteryId: number,
-): Promise<GenSnapshotList> {
+export async function getSnapshots(lotteryId: number): Promise<GenSnapshotList> {
   return apiClient<GenSnapshotList>(`/gen/snapshots?lottery_id=${lotteryId}`);
 }
 

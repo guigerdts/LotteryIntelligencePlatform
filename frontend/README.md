@@ -31,20 +31,20 @@ frontend/
 
 ## Páginas
 
-| Ruta | Componente | Descripción |
-|------|------------|-------------|
-| `/` | Home | Inicio |
-| `/historial` | History | Historial de sorteos |
-| `/estadisticas` | Statistics | Estadísticas |
-| `/heatmaps` | Heatmaps | Mapas de calor |
-| `/tendencias` | Trends | Tendencias |
-| `/redes` | Networks | Grafos |
-| `/monte-carlo` | MonteCarlo | Simulación |
-| `/ia` | IA | Asistente |
-| `/modelos` | Models | Modelos ML |
-| `/experimentos` | Experiments | Experimentos |
-| `/backtesting` | Backtesting | Backtesting |
-| `/generador` | Generator | Generador |
+| Ruta            | Componente  | Descripción          |
+| --------------- | ----------- | -------------------- |
+| `/`             | Home        | Inicio               |
+| `/historial`    | History     | Historial de sorteos |
+| `/estadisticas` | Statistics  | Estadísticas         |
+| `/heatmaps`     | Heatmaps    | Mapas de calor       |
+| `/tendencias`   | Trends      | Tendencias           |
+| `/redes`        | Networks    | Grafos               |
+| `/monte-carlo`  | MonteCarlo  | Simulación           |
+| `/ia`           | IA          | Asistente            |
+| `/modelos`      | Models      | Modelos ML           |
+| `/experimentos` | Experiments | Experimentos         |
+| `/backtesting`  | Backtesting | Backtesting          |
+| `/generador`    | Generator   | Generador            |
 
 ## Tests
 

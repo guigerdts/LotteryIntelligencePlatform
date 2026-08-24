@@ -9,8 +9,7 @@ import { useLotteryStore } from "../store/useLotteryStore";
 import type { DLMetric, DLSnapshot, DLTrainResult } from "../types/dl";
 
 const NO_LOTTERY_MESSAGE = "Select a lottery to see deep learning models.";
-const NO_MODELS_MESSAGE =
-  "No models trained yet for this lottery. Click Train to generate them.";
+const NO_MODELS_MESSAGE = "No models trained yet for this lottery. Click Train to generate them.";
 const NO_METRICS_MESSAGE = "No metrics available for this lottery.";
 const BUTTON_CLASS =
   "rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500";
@@ -32,8 +31,7 @@ function SnapshotSummary({ snapshot }: { snapshot: DLSnapshot }) {
         Snapshot <span className="font-medium text-gray-900">#{snapshot.id}</span>
       </span>
       <span>
-        Model set{" "}
-        <span className="font-medium text-gray-900">{snapshot.model_set}</span>
+        Model set <span className="font-medium text-gray-900">{snapshot.model_set}</span>
       </span>
       <span>
         Version <span className="font-medium text-gray-900">{snapshot.version}</span>
@@ -42,14 +40,11 @@ function SnapshotSummary({ snapshot }: { snapshot: DLSnapshot }) {
         Status <span className="font-medium text-gray-900">{snapshot.status}</span>
       </span>
       <span>
-        Checksum{" "}
-        <span className="font-mono text-xs text-gray-900">{snapshot.checksum}</span>
+        Checksum <span className="font-mono text-xs text-gray-900">{snapshot.checksum}</span>
       </span>
       <span>
         Input fingerprint{" "}
-        <span className="font-mono text-xs text-gray-900">
-          {snapshot.input_fingerprint}
-        </span>
+        <span className="font-mono text-xs text-gray-900">{snapshot.input_fingerprint}</span>
       </span>
       <span>
         Cut <span className="font-medium text-gray-900">{snapshot.cut}</span>
@@ -109,7 +104,7 @@ export default function DL() {
   };
 
   const rows = [...(metrics ?? [])].sort(
-    (a, b) => (FAMILY_ORDER[a.model_id] ?? 2) - (FAMILY_ORDER[b.model_id] ?? 2),
+    (a, b) => (FAMILY_ORDER[a.model_id] ?? 2) - (FAMILY_ORDER[b.model_id] ?? 2)
   );
 
   const renderContent = () => {
@@ -174,8 +169,7 @@ export default function DL() {
         <div>
           <h2 className="text-lg font-semibold text-gray-900">Deep Learning</h2>
           <p className="text-sm text-gray-500">
-            Active deep learning snapshot and per-family metrics for the selected
-            lottery.
+            Active deep learning snapshot and per-family metrics for the selected lottery.
           </p>
         </div>
         <button

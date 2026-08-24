@@ -9,22 +9,10 @@ import { useLotteryStore } from "../store/useLotteryStore";
 const env = (data: unknown) =>
   HttpResponse.json({ success: true, data, timestamp: "2026-01-01T00:00:00Z" });
 const err = (message: string, status = 500, code = "INTERNAL_ERROR") =>
-  HttpResponse.json(
-    { success: false, error: { code, message }, timestamp: "" },
-    { status },
-  );
+  HttpResponse.json({ success: false, error: { code, message }, timestamp: "" }, { status });
 
 /** Canonical stage order of POST /pipeline/numbers (R2/S2 contract). */
-const STAGE_ORDER = [
-  "stats",
-  "features",
-  "ml",
-  "dl",
-  "bt",
-  "rank",
-  "select",
-  "gen",
-];
+const STAGE_ORDER = ["stats", "features", "ml", "dl", "bt", "rank", "select", "gen"];
 
 const combinations = [
   {
@@ -74,7 +62,7 @@ const failedRankStages = () =>
           error_code: "PIPE_STAGE_FAILED",
           detail: "ranking stale for backtest context after one rerank",
         }
-      : stage,
+      : stage
   );
 
 let pipelineCalls = 0;
@@ -86,7 +74,7 @@ const server = setupServer(
     pipelineCalls += 1;
     lastPipelineBody = (await request.json()) as Record<string, unknown>;
     return env({ stages: okStages(), result: generationResult });
-  }),
+  })
 );
 
 const selectLottery = () =>
@@ -150,7 +138,7 @@ describe("Mis Números page", () => {
         pipelineCalls += 1;
         await delay(150);
         return err("pipeline failed", 502, "PIPE_STAGE_FAILED");
-      }),
+      })
     );
     render(<MisNumeros />);
 
@@ -167,7 +155,7 @@ describe("Mis Números page", () => {
         pipelineCalls += 1;
         lastPipelineBody = null;
         return env({ stages: okStages(), result: generationResult });
-      }),
+      })
     );
     fireEvent.click(screen.getByRole("button", { name: /retry/i }));
     await screen.findByRole("table", { name: /generated combinations/i });
@@ -186,23 +174,21 @@ describe("Mis Números page", () => {
     const text = report.textContent ?? "";
     for (let i = 0; i < STAGE_ORDER.length - 1; i++) {
       expect(text.indexOf(STAGE_ORDER[i] as string)).toBeLessThan(
-        text.indexOf(STAGE_ORDER[i + 1] as string),
+        text.indexOf(STAGE_ORDER[i + 1] as string)
       );
     }
     for (const name of STAGE_ORDER) {
       expect(text).toContain(name);
     }
-    expect(
-      screen.getByRole("table", { name: /generated combinations/i }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("table", { name: /generated combinations/i })).toBeInTheDocument();
   });
 
   it("surfaces a failed rank stage without crashing and hides combinations (R2)", async () => {
     selectLottery();
     server.use(
       http.post("*/api/v1/pipeline/numbers", () =>
-        env({ stages: failedRankStages(), result: null }),
-      ),
+        env({ stages: failedRankStages(), result: null })
+      )
     );
     render(<MisNumeros />);
 
@@ -214,12 +200,10 @@ describe("Mis Números page", () => {
     expect(report.textContent).toContain("failed");
     expect(screen.getByText(/PIPE_STAGE_FAILED/)).toBeInTheDocument();
     expect(
-      screen.queryByRole("table", { name: /generated combinations/i }),
+      screen.queryByRole("table", { name: /generated combinations/i })
     ).not.toBeInTheDocument();
     // Page stays interactive: CTA re-enabled and disclaimer still visible.
-    expect(
-      screen.getByRole("button", { name: /generate numbers/i }),
-    ).toBeEnabled();
+    expect(screen.getByRole("button", { name: /generate numbers/i })).toBeEnabled();
     expect(screen.getByText(/remain/i)).toBeInTheDocument();
   });
 
@@ -284,9 +268,7 @@ describe("Mis Números page", () => {
     render(<MisNumeros />);
 
     expect(await screen.findByText(/select a lottery/i)).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: /generate numbers/i }),
-    ).toBeDisabled();
+    expect(screen.getByRole("button", { name: /generate numbers/i })).toBeDisabled();
     expect(pipelineCalls).toBe(0);
   });
 });

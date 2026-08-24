@@ -24,9 +24,18 @@ const TABS: { id: StatTab; label: string }[] = [
 function SnapshotHeader({ list }: { list: StatList }) {
   return (
     <p className="flex flex-wrap gap-x-6 gap-y-1 text-sm text-gray-500">
-      <span>Draws <span className="font-medium text-gray-900">{list.draw_count}</span></span>
-      <span>Range <span className="font-medium text-gray-900">{list.draws_from}–{list.draws_to}</span></span>
-      <span>Snapshot <span className="font-medium text-gray-900">#{list.snapshot_id}</span></span>
+      <span>
+        Draws <span className="font-medium text-gray-900">{list.draw_count}</span>
+      </span>
+      <span>
+        Range{" "}
+        <span className="font-medium text-gray-900">
+          {list.draws_from}–{list.draws_to}
+        </span>
+      </span>
+      <span>
+        Snapshot <span className="font-medium text-gray-900">#{list.snapshot_id}</span>
+      </span>
     </p>
   );
 }
@@ -59,9 +68,24 @@ function ChartPanel({ list, loading, error, onRetry, empty, children }: ChartPan
 export default function Statistics() {
   const selectedLotteryCode = useLotteryStore((s) => s.selectedLotteryCode);
   const [activeTab, setActiveTab] = useState<StatTab>("frequencies");
-  const { data: freq, isLoading: freqLoading, error: freqError, execute: fetchFrequencies } = useApi(getFrequencies);
-  const { data: gaps, isLoading: gapsLoading, error: gapsError, execute: fetchGaps } = useApi(getGaps);
-  const { data: averages, isLoading: avgLoading, error: avgError, execute: fetchAverages } = useApi(getAverages);
+  const {
+    data: freq,
+    isLoading: freqLoading,
+    error: freqError,
+    execute: fetchFrequencies,
+  } = useApi(getFrequencies);
+  const {
+    data: gaps,
+    isLoading: gapsLoading,
+    error: gapsError,
+    execute: fetchGaps,
+  } = useApi(getGaps);
+  const {
+    data: averages,
+    isLoading: avgLoading,
+    error: avgError,
+    execute: fetchAverages,
+  } = useApi(getAverages);
   const { isLoading: generating, execute: generate } = useApi(generateStatistics);
 
   useEffect(() => {
@@ -127,7 +151,9 @@ export default function Statistics() {
 
   const tabClass = (active: boolean) =>
     `rounded-md px-3 py-1.5 text-sm font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
-      active ? "bg-blue-600 text-white" : "border border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+      active
+        ? "bg-blue-600 text-white"
+        : "border border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
     }`;
 
   return (
@@ -135,7 +161,9 @@ export default function Statistics() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-lg font-semibold text-gray-900">Statistics</h2>
-          <p className="text-sm text-gray-500">Frequencies, gaps and averages for the selected lottery.</p>
+          <p className="text-sm text-gray-500">
+            Frequencies, gaps and averages for the selected lottery.
+          </p>
         </div>
         <button
           type="button"

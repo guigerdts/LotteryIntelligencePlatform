@@ -53,7 +53,7 @@ export default function HeatmapChart({ rows, numbers }: HeatmapChartProps) {
     }
     if (size <= 0) return { size: 0, matrix: [], min: 0, max: 0 };
     const matrix: (number | null)[][] = Array.from({ length: size }, () =>
-      Array.from({ length: size }, () => null),
+      Array.from({ length: size }, () => null)
     );
     let min = Infinity;
     let max = -Infinity;
@@ -86,15 +86,31 @@ export default function HeatmapChart({ rows, numbers }: HeatmapChartProps) {
       const value = grid.matrix[i]?.[j] ?? null;
       const t = value === null ? 0 : (value - grid.min) / span;
       nodes.push(
-        <rect key={`${i}-${j}`} x={LABEL + j * cell} y={LABEL + i * cell} width={CELL} height={CELL} rx={2} fill={value === null ? "#f3f4f6" : blend(t)}>
+        <rect
+          key={`${i}-${j}`}
+          x={LABEL + j * cell}
+          y={LABEL + i * cell}
+          width={CELL}
+          height={CELL}
+          rx={2}
+          fill={value === null ? "#f3f4f6" : blend(t)}
+        >
           {value === null ? null : <title>{`${i + 1}–${j + 1}: ${value}`}</title>}
-        </rect>,
+        </rect>
       );
       if (value !== null) {
         nodes.push(
-          <text key={`t-${i}-${j}`} x={LABEL + j * cell + CELL / 2} y={LABEL + i * cell + CELL / 2} textAnchor="middle" dominantBaseline="central" fontSize={9} fill={readableFill(t)}>
+          <text
+            key={`t-${i}-${j}`}
+            x={LABEL + j * cell + CELL / 2}
+            y={LABEL + i * cell + CELL / 2}
+            textAnchor="middle"
+            dominantBaseline="central"
+            fontSize={9}
+            fill={readableFill(t)}
+          >
             {value}
-          </text>,
+          </text>
         );
       }
     }
@@ -102,7 +118,12 @@ export default function HeatmapChart({ rows, numbers }: HeatmapChartProps) {
 
   return (
     <div className="w-full overflow-auto" role="img" aria-label={ARIA_LABEL}>
-      <svg viewBox={`0 0 ${width} ${height}`} width="100%" style={{ maxWidth: 640 }} role="presentation">
+      <svg
+        viewBox={`0 0 ${width} ${height}`}
+        width="100%"
+        style={{ maxWidth: 640 }}
+        role="presentation"
+      >
         {nodes}
       </svg>
     </div>

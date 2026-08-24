@@ -40,7 +40,7 @@ export default defineConfig({
     {
       // Migrate a fresh tmp DB, then serve the API from it on :8000.
       command:
-        'DB=$(mktemp /tmp/lip-e2e-db-XXXXXX.db) && ' +
+        "DB=$(mktemp /tmp/lip-e2e-db-XXXXXX.db) && " +
         'LIP_DATABASE_URL="sqlite:///$DB" .venv/bin/python -m alembic upgrade head && ' +
         'LIP_DATABASE_URL="sqlite:///$DB" .venv/bin/uvicorn backend.app.main:create_app --factory --host 127.0.0.1 --port 8000',
       cwd: BACKEND_DIR,

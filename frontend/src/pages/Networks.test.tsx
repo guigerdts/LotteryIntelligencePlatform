@@ -19,8 +19,13 @@ vi.mock("react-force-graph-2d", () => ({
   },
 }));
 
-const env = (data: unknown) => HttpResponse.json({ success: true, data, timestamp: "2026-01-01T00:00:00Z" });
-const err = (message: string, status = 500) => HttpResponse.json({ success: false, error: { code: "INTERNAL_ERROR", message }, timestamp: "" }, { status });
+const env = (data: unknown) =>
+  HttpResponse.json({ success: true, data, timestamp: "2026-01-01T00:00:00Z" });
+const err = (message: string, status = 500) =>
+  HttpResponse.json(
+    { success: false, error: { code: "INTERNAL_ERROR", message }, timestamp: "" },
+    { status }
+  );
 
 const snapshot = (id: number, extra: Record<string, unknown> = {}) => ({
   snapshot_id: id,
@@ -33,9 +38,24 @@ const snapshot = (id: number, extra: Record<string, unknown> = {}) => ({
   ...extra,
 });
 
-const coo = (subject: string, value: number) => ({ metric_type: "cooccurrence", subject, draw_number: null, value });
-const centrality = (subject: string, value: number) => ({ metric_type: "centrality_degree", subject, draw_number: null, value });
-const community = (subject: string, value: number) => ({ metric_type: "community_id", subject, draw_number: null, value });
+const coo = (subject: string, value: number) => ({
+  metric_type: "cooccurrence",
+  subject,
+  draw_number: null,
+  value,
+});
+const centrality = (subject: string, value: number) => ({
+  metric_type: "centrality_degree",
+  subject,
+  draw_number: null,
+  value,
+});
+const community = (subject: string, value: number) => ({
+  metric_type: "community_id",
+  subject,
+  draw_number: null,
+  value,
+});
 
 const snap2Values = [
   coo("1-2", 5),
@@ -55,7 +75,10 @@ let snapshotCalls = 0;
 let valuesRequests: number[] = [];
 
 const snapList = () => ({
-  snapshots: [snapshot(2, { version: "v2", draw_count: 150, created_at: "2026-02-01T00:00:00Z" }), snapshot(1)],
+  snapshots: [
+    snapshot(2, { version: "v2", draw_count: 150, created_at: "2026-02-01T00:00:00Z" }),
+    snapshot(1),
+  ],
 });
 
 const server = setupServer(
@@ -70,10 +93,11 @@ const server = setupServer(
   http.get("*/api/v1/graph/L1/snapshots/2", () => {
     valuesRequests.push(2);
     return env({ rows: snap2Values, count: snap2Values.length });
-  }),
+  })
 );
 
-const selectLottery = () => useLotteryStore.setState({ selectedLotteryId: 1, selectedLotteryCode: "L1" });
+const selectLottery = () =>
+  useLotteryStore.setState({ selectedLotteryId: 1, selectedLotteryCode: "L1" });
 
 beforeAll(() => server.listen());
 afterEach(() => {
@@ -83,7 +107,13 @@ afterEach(() => {
   forceGraphProps.nodes = [];
   forceGraphProps.links = [];
   localStorage.clear();
-  useLotteryStore.setState({ lotteries: [], selectedLotteryId: null, selectedLotteryCode: null, isLoading: false, error: null });
+  useLotteryStore.setState({
+    lotteries: [],
+    selectedLotteryId: null,
+    selectedLotteryCode: null,
+    isLoading: false,
+    error: null,
+  });
 });
 afterAll(() => server.close());
 
@@ -91,7 +121,9 @@ describe("Networks", () => {
   it("renders the network graph on mount, auto-selecting the latest snapshot", async () => {
     selectLottery();
     render(<Networks />);
-    expect(await screen.findByRole("heading", { name: /networks/i }, ASYNC_TIMEOUT)).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { name: /networks/i }, ASYNC_TIMEOUT)
+    ).toBeInTheDocument();
     expect(await screen.findByTestId("network-graph", {}, ASYNC_TIMEOUT)).toBeInTheDocument();
     await waitFor(() => {
       expect(valuesRequests).toContain(2);
@@ -118,10 +150,15 @@ describe("Networks", () => {
 
   it("shows skeleton placeholders while data is loading", async () => {
     selectLottery();
-    server.use(http.get("*/api/v1/graph/L1/snapshots", () => delay(50).then(() => env(snapList()))));
+    server.use(
+      http.get("*/api/v1/graph/L1/snapshots", () => delay(50).then(() => env(snapList())))
+    );
     const { container } = render(<Networks />);
     expect(container.querySelector(".animate-pulse")).not.toBeNull();
-    await waitFor(() => expect(container.querySelector(".animate-pulse")).toBeNull(), ASYNC_TIMEOUT);
+    await waitFor(
+      () => expect(container.querySelector(".animate-pulse")).toBeNull(),
+      ASYNC_TIMEOUT
+    );
     expect(await screen.findByTestId("network-graph", {}, ASYNC_TIMEOUT)).toBeInTheDocument();
   });
 
@@ -133,13 +170,18 @@ describe("Networks", () => {
     expect(screen.getByRole("button", { name: /retry/i })).toBeInTheDocument();
     server.use(http.get("*/api/v1/graph/L1/snapshots", () => env(snapList())));
     fireEvent.click(screen.getByRole("button", { name: /retry/i }));
-    await waitFor(() => expect(screen.getByTestId("network-graph")).toBeInTheDocument(), ASYNC_TIMEOUT);
+    await waitFor(
+      () => expect(screen.getByTestId("network-graph")).toBeInTheDocument(),
+      ASYNC_TIMEOUT
+    );
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
   it("prompts to select a lottery and does not call the API", async () => {
     render(<Networks />);
-    expect(await screen.findByText(/select a lottery to see the network graph/i)).toBeInTheDocument();
+    expect(
+      await screen.findByText(/select a lottery to see the network graph/i)
+    ).toBeInTheDocument();
     expect(snapshotCalls).toBe(0);
   });
 });
