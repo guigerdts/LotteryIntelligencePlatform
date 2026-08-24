@@ -7,6 +7,7 @@ Design refs: History / Comparison section.
 
 from __future__ import annotations
 
+from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
@@ -36,7 +37,7 @@ class TestNextVersion:
     def test_first_version_is_one(self) -> None:
         """No existing versions → version 1."""
         session = MagicMock()
-        scalar_mock = session.query.return_value.filter.return_value.order_by.return_value.scalar
+        scalar_mock = session.query.return_value.filter.return_value.scalar
         scalar_mock.return_value = None
         store = MetaSnapshotStore(session)
         version = store.next_version(1, "abc123")
@@ -45,7 +46,7 @@ class TestNextVersion:
     def test_monotonic_increment(self) -> None:
         """Existing max version → max + 1."""
         session = MagicMock()
-        session.query.return_value.filter.return_value.order_by.return_value.scalar.return_value = 3
+        session.query.return_value.filter.return_value.scalar.return_value = 3
         store = MetaSnapshotStore(session)
         version = store.next_version(1, "abc123")
         assert version == "4"
@@ -53,10 +54,54 @@ class TestNextVersion:
     def test_handles_string_version(self) -> None:
         """Existing version '5' → '6'."""
         session = MagicMock()
-        session.query.return_value.filter.return_value.order_by.return_value.scalar.return_value = 5
+        session.query.return_value.filter.return_value.scalar.return_value = 5
         store = MetaSnapshotStore(session)
         version = store.next_version(1, "abc123")
         assert version == "6"
+
+    def test_multiple_versions_do_not_crash(self, db: Any) -> None:
+        """Regression: active + retired versions for one context must coexist.
+
+        Legacy ``Query.scalar()`` (one-row semantics) raised
+        ``MultipleResultsFound`` once a re-ranked context had two ranking
+        rows; the aggregate MAX fix must keep versioning monotonic.
+        """
+        from backend.app.models.lottery import Lottery
+        from backend.app.models.meta_ranking import MetaRanking
+
+        lottery = Lottery(
+            code="MV",
+            name="Version Regression",
+            country="AR",
+            min_number=1,
+            max_number=10,
+            numbers_to_select=3,
+            super_number_min=1,
+            super_number_max=5,
+        )
+        db.add(lottery)
+        db.flush()
+        db.add(
+            MetaRanking(
+                lottery_id=lottery.id,
+                context_hash="ctx-multi",
+                version="1",
+                fingerprint="fp-1",
+                status="retired",
+            )
+        )
+        db.add(
+            MetaRanking(
+                lottery_id=lottery.id,
+                context_hash="ctx-multi",
+                version="2",
+                fingerprint="fp-2",
+                status="active",
+            )
+        )
+        db.flush()
+        store = MetaSnapshotStore(db)
+        assert store.next_version(int(lottery.id), "ctx-multi") == "3"
 
 
 class TestFindByFingerprint:

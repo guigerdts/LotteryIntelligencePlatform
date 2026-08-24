@@ -20,6 +20,7 @@ from backend.app.api.v1.lotteries import router as lotteries_router
 from backend.app.api.v1.meta import router as meta_router
 from backend.app.api.v1.ml import router as ml_router
 from backend.app.api.v1.opt import router as opt_router
+from backend.app.api.v1.pipeline import router as pipeline_router
 from backend.app.api.v1.probability import router as probability_router
 from backend.app.api.v1.statistics import router as statistics_router
 from backend.app.config.settings import get_settings
@@ -39,6 +40,7 @@ api_v1_router.include_router(bt_router)
 api_v1_router.include_router(exp_router)
 api_v1_router.include_router(meta_router)
 api_v1_router.include_router(gen_router)
+api_v1_router.include_router(pipeline_router)
 api_v1_router.include_router(assistant_router)
 
 

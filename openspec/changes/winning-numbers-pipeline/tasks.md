@@ -67,29 +67,29 @@ Threat matrix: N/A per design (single internal FastAPI route behind existing env
 
 ### Phase 4: RED — service-layer tests (`backend/tests/pipeline/`, strict TDD)
 
-- [ ] 4.1 Create `backend/tests/pipeline/conftest.py`: seeded-import SQLite fixture, service-layer harness (no HTTP), stage spies/instrumentation.
-- [ ] 4.2 RED `test_pipeline_cold_chain.py` (R1/R3): one call runs `stats → features → ml → dl → bt → rank → select → gen` in canonical order, all 8 completed; ordered report entries carry allowed statuses + snapshot_id/fingerprint refs; combinations returned. Verify: `cd backend && .venv/bin/pytest tests/pipeline/test_pipeline_cold_chain.py -v`
-- [ ] 4.3 RED `test_pipeline_healing.py::test_healing_matrix` (R2) — explicit parametrized rows, each asserting the EXACT skip/run set: `{}` cold; `{stats}`; `{stats,features}`; `{stats…bt}` (missing ml/dl/rank/select/gen); `{stats…rank}` (missing select/gen only); plus fresh-draw row: completed chain + 1 new draw → draw-coverage-dependent stages re-run, unaffected upstream skip. Verify: `cd backend && .venv/bin/pytest tests/pipeline/test_pipeline_healing.py -v`
-- [ ] 4.4 RED `test_pipeline_idempotent.py` (R4): two identical runs → identical payloads; zero new snapshot versions in ANY store. Verify: `cd backend && .venv/bin/pytest tests/pipeline/test_pipeline_idempotent.py -v`
-- [ ] 4.5 RED `test_pipeline_failures.py` (R1): forced rank failure → `PIPE_STAGE_FAILED` naming `rank`; `gen` never runs; earlier artifacts persist. Verify: `cd backend && .venv/bin/pytest tests/pipeline/test_pipeline_failures.py -v`
-- [ ] 4.6 RED bt-before-rank context (D8): spies assert `bt` completes before `rank`; rank ctx derived from executed bt fingerprint via `resolve_context_vector` + `compute_context_hash` (no hardcoded hash — retires `meta_service.py:242`); stale ranking (`created_at` ≤ newest active BtSnapshot) triggers exactly ONE rerank, second failure → `PIPE_STAGE_FAILED(rank)`.
-- [ ] 4.7 RED `test_pipeline_autotrain.py` (D12): missing ml/dl artifacts → `MlService.train`/`DlService.train` with registry defaults (`model_set="core"`, DL order `mlp→lstm`), chain proceeds. Verify: `cd backend && .venv/bin/pytest tests/pipeline/test_pipeline_autotrain.py -v`
-- [ ] 4.8 RED `test_pipeline_api.py`: `POST /api/v1/pipeline/numbers` SuccessEnvelope; `PipelineRunRequest(lottery_id, count?, seed?)`; failed run → 502 with stage detail (D10). Verify: `cd backend && .venv/bin/pytest tests/pipeline/test_pipeline_api.py -v`
+- [x] 4.1 Create `backend/tests/pipeline/conftest.py`: seeded-import SQLite fixture, service-layer harness (no HTTP), stage spies/instrumentation.
+- [x] 4.2 RED `test_pipeline_cold_chain.py` (R1/R3): one call runs `stats → features → ml → dl → bt → rank → select → gen` in canonical order, all 8 completed; ordered report entries carry allowed statuses + snapshot_id/fingerprint refs; combinations returned. Verify: `cd backend && .venv/bin/pytest tests/pipeline/test_pipeline_cold_chain.py -v`
+- [x] 4.3 RED `test_pipeline_healing.py::test_healing_matrix` (R2) — explicit parametrized rows, each asserting the EXACT skip/run set: `{}` cold; `{stats}`; `{stats,features}`; `{stats…bt}` (missing ml/dl/rank/select/gen); `{stats…rank}` (missing select/gen only); plus fresh-draw row: completed chain + 1 new draw → draw-coverage-dependent stages re-run, unaffected upstream skip. Verify: `cd backend && .venv/bin/pytest tests/pipeline/test_pipeline_healing.py -v`
+- [x] 4.4 RED `test_pipeline_idempotent.py` (R4): two identical runs → identical payloads; zero new snapshot versions in ANY store. Verify: `cd backend && .venv/bin/pytest tests/pipeline/test_pipeline_idempotent.py -v`
+- [x] 4.5 RED `test_pipeline_failures.py` (R1): forced rank failure → `PIPE_STAGE_FAILED` naming `rank`; `gen` never runs; earlier artifacts persist. Verify: `cd backend && .venv/bin/pytest tests/pipeline/test_pipeline_failures.py -v`
+- [x] 4.6 RED bt-before-rank context (D8): spies assert `bt` completes before `rank`; rank ctx derived from executed bt fingerprint via `resolve_context_vector` + `compute_context_hash` (no hardcoded hash — retires `meta_service.py:242`); stale ranking (`created_at` ≤ newest active BtSnapshot) triggers exactly ONE rerank, second failure → `PIPE_STAGE_FAILED(rank)`.
+- [x] 4.7 RED `test_pipeline_autotrain.py` (D12): missing ml/dl artifacts → `MlService.train`/`DlService.train` with registry defaults (`model_set="core"`, DL order `mlp→lstm`), chain proceeds. Verify: `cd backend && .venv/bin/pytest tests/pipeline/test_pipeline_autotrain.py -v`
+- [x] 4.8 RED `test_pipeline_api.py`: `POST /api/v1/pipeline/numbers` SuccessEnvelope; `PipelineRunRequest(lottery_id, count?, seed?)`; failed run → 502 with stage detail (D10). Verify: `cd backend && .venv/bin/pytest tests/pipeline/test_pipeline_api.py -v`
 
 ### Phase 5: GREEN — implementation
 
-- [ ] 5.1 `services/pipeline_service.py` (+175): ordered stage runner; skip-vs-run decided by comparing active-artifact fingerprint before/after each call; D9 features stage runs FeatureEngine then Probability internally; D8 detect-and-rerank; D12 auto-train. Verify: `cd backend && .venv/bin/pytest tests/pipeline -v`
-- [ ] 5.2 `schemas/pipeline.py` (+45): `PipelineRunRequest`, `PipelineStageResult(name,status∈{skipped,completed,failed},snapshot_id,fingerprint,error_code,detail)`, `PipelineRunResult(stages[8], result|None)`.
-- [ ] 5.3 `api/v1/pipeline.py` (+55) + mount in `api/v1/router.py` (+2). Verify: `cd backend && .venv/bin/pytest tests/pipeline/test_pipeline_api.py -v`
-- [ ] 5.4 `PIPE_STAGE_FAILED` in `services/errors.py` + 502 row in `api/errors.py` (+10). Verify: `cd backend && .venv/bin/pytest tests/pipeline/test_pipeline_api.py -v`
+- [x] 5.1 `services/pipeline_service.py` (+175): ordered stage runner; skip-vs-run decided by comparing active-artifact fingerprint before/after each call; D9 features stage runs FeatureEngine then Probability internally; D8 detect-and-rerank; D12 auto-train. Verify: `cd backend && .venv/bin/pytest tests/pipeline -v`
+- [x] 5.2 `schemas/pipeline.py` (+45): `PipelineRunRequest`, `PipelineStageResult(name,status∈{skipped,completed,failed},snapshot_id,fingerprint,error_code,detail)`, `PipelineRunResult(stages[8], result|None)`.
+- [x] 5.3 `api/v1/pipeline.py` (+55) + mount in `api/v1/router.py` (+2). Verify: `cd backend && .venv/bin/pytest tests/pipeline/test_pipeline_api.py -v`
+- [x] 5.4 `PIPE_STAGE_FAILED` in `services/errors.py` + 502 row in `api/errors.py` (+10). Verify: `cd backend && .venv/bin/pytest tests/pipeline/test_pipeline_api.py -v`
 
 **Commits**: `feat(pipeline): add fingerprint-healing orchestrator for canonical chain` (4.1–4.7, 5.1) → `feat(pipeline): expose POST /pipeline/numbers with per-stage report` (4.8, 5.2–5.4).
 
 ### Phase 6: Regression gates
 
-- [ ] 6.1 Meta regression (retired `:242` coupling): `cd backend && .venv/bin/pytest tests/meta -v`
-- [ ] 6.2 Full regression: `cd backend && .venv/bin/pytest`
-- [ ] 6.3 Gates: `cd backend && .venv/bin/ruff check . && .venv/bin/ruff format --check .`
+- [x] 6.1 Meta regression (retired `:242` coupling): `cd backend && .venv/bin/pytest tests/meta -v`
+- [x] 6.2 Full regression: `cd backend && .venv/bin/pytest`
+- [x] 6.3 Gates: `cd backend && .venv/bin/ruff check . && .venv/bin/ruff format --check .`
 
 ## SLICE S3 = PR 3 — mis-numeros-page (`feat(numbers-ui)`)
 

@@ -499,6 +499,13 @@ No edites el contenido entre los marcadores a mano — vuelve a ejecutar el gene
   - `seed` (query, optional, integer)
 - Response 200: SuccessEnvelope_dict_
 
+### POST /api/v1/pipeline/numbers
+
+- Summary: Run the canonical numbers chain and return the per-stage report
+- Tags: pipeline
+- Request body: application/json — PipelineRunRequest
+- Response 200: SuccessEnvelope_PipelineRunResult_
+
 ### POST /api/v1/probability/generate
 
 - Summary: Generate (or idempotently return) a probability snapshot
