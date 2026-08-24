@@ -10,7 +10,7 @@ const env = (data: unknown) =>
 const err = (message: string, status = 500) =>
   HttpResponse.json(
     { success: false, error: { code: "INTERNAL_ERROR", message }, timestamp: "" },
-    { status },
+    { status }
   );
 
 const snapshot = {
@@ -31,7 +31,14 @@ const metrics = [
 const trainResult = {
   lottery_id: 1,
   results: [
-    { family: "rf", status: "active", snapshot_id: 3, fingerprint: "fp1", metrics_checksum: "mc1", error: null },
+    {
+      family: "rf",
+      status: "active",
+      snapshot_id: 3,
+      fingerprint: "fp1",
+      metrics_checksum: "mc1",
+      error: null,
+    },
   ],
 };
 
@@ -51,7 +58,7 @@ const server = setupServer(
   http.post("*/api/v1/ml/train", () => {
     trainCalls += 1;
     return env(trainResult);
-  }),
+  })
 );
 
 const selectLottery = () =>
@@ -99,9 +106,7 @@ describe("Models", () => {
 
   it("shows skeleton placeholders while data is loading", async () => {
     selectLottery();
-    server.use(
-      http.get("*/api/v1/ml/models", () => delay(50).then(() => env(snapshot))),
-    );
+    server.use(http.get("*/api/v1/ml/models", () => delay(50).then(() => env(snapshot))));
     const { container } = render(<Models />);
     expect(container.querySelector(".animate-pulse")).not.toBeNull();
     await waitFor(() => expect(container.querySelector(".animate-pulse")).toBeNull());
@@ -122,9 +127,7 @@ describe("Models", () => {
 
   it("prompts to select a lottery and does not call the API", async () => {
     render(<Models />);
-    expect(
-      await screen.findByText(/select a lottery to see models/i),
-    ).toBeInTheDocument();
+    expect(await screen.findByText(/select a lottery to see models/i)).toBeInTheDocument();
     expect(modelsCalls).toBe(0);
     expect(metricsCalls).toBe(0);
     expect(trainCalls).toBe(0);

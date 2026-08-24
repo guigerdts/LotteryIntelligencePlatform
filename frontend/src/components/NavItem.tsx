@@ -20,12 +20,7 @@ interface NavItemProps extends NavItemDef {
  * derived from the current route via NavLink and exposed with
  * aria-current="page".
  */
-export default function NavItem({
-  label,
-  to,
-  end,
-  showLabel = true,
-}: NavItemProps) {
+export default function NavItem({ label, to, end, showLabel = true }: NavItemProps) {
   return (
     <NavLink
       to={to}
@@ -40,17 +35,12 @@ export default function NavItem({
         ].join(" ")
       }
     >
-      <span
-        aria-hidden="true"
-        className="flex h-4 w-4 shrink-0 items-center justify-center"
-      >
+      <span aria-hidden="true" className="flex h-4 w-4 shrink-0 items-center justify-center">
         <svg viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5">
           <circle cx="10" cy="10" r="4" />
         </svg>
       </span>
-      <span className={showLabel ? "whitespace-nowrap" : "sr-only"}>
-        {label}
-      </span>
+      <span className={showLabel ? "whitespace-nowrap" : "sr-only"}>{label}</span>
     </NavLink>
   );
 }

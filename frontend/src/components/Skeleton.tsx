@@ -15,10 +15,7 @@ const VARIANT_CLASSES: Record<SkeletonVariant, string> = {
  * Reusable loading placeholder hidden from the accessibility tree. Variants map
  * to common page layouts: text lines, table rows, and card blocks.
  */
-export default function Skeleton({
-  variant = "text",
-  className = "",
-}: SkeletonProps) {
+export default function Skeleton({ variant = "text", className = "" }: SkeletonProps) {
   return (
     <div
       aria-hidden="true"

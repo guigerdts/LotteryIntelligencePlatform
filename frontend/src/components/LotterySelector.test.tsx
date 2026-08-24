@@ -41,8 +41,8 @@ const server = setupServer(
       success: true,
       data: lotteries,
       timestamp: "2026-01-01T00:00:00Z",
-    }),
-  ),
+    })
+  )
 );
 
 beforeAll(() => server.listen());
@@ -80,15 +80,13 @@ describe("LotterySelector", () => {
           data: lotteries,
           timestamp: "2026-01-01T00:00:00Z",
         });
-      }),
+      })
     );
 
     render(<LotterySelector />);
 
     expect(screen.getByText(/loading lotteries/i)).toBeInTheDocument();
-    expect(
-      await screen.findByRole("option", { name: /Quini 6/ }),
-    ).toBeInTheDocument();
+    expect(await screen.findByRole("option", { name: /Quini 6/ })).toBeInTheDocument();
   });
 
   it("calls setSelected with id and code when an option is chosen", async () => {
@@ -112,19 +110,15 @@ describe("LotterySelector", () => {
             error: { code: "INTERNAL_ERROR", message: "Server error" },
             timestamp: "",
           },
-          { status: 500 },
-        ),
-      ),
+          { status: 500 }
+        )
+      )
     );
 
     render(<LotterySelector />);
 
-    expect(
-      await screen.findByText(/failed to load lotteries/i),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: /retry/i }),
-    ).toBeInTheDocument();
+    expect(await screen.findByText(/failed to load lotteries/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /retry/i })).toBeInTheDocument();
   });
 
   it("retries loading lotteries when the retry button is clicked", async () => {
@@ -136,9 +130,9 @@ describe("LotterySelector", () => {
             error: { code: "INTERNAL_ERROR", message: "Server error" },
             timestamp: "",
           },
-          { status: 500 },
-        ),
-      ),
+          { status: 500 }
+        )
+      )
     );
 
     render(<LotterySelector />);
@@ -150,14 +144,12 @@ describe("LotterySelector", () => {
           success: true,
           data: lotteries,
           timestamp: "2026-01-01T00:00:00Z",
-        }),
-      ),
+        })
+      )
     );
     fireEvent.click(screen.getByRole("button", { name: /retry/i }));
 
-    expect(
-      await screen.findByRole("option", { name: /Quini 6/ }),
-    ).toBeInTheDocument();
+    expect(await screen.findByRole("option", { name: /Quini 6/ })).toBeInTheDocument();
   });
 
   it("renders a disabled empty select when no lotteries exist", async () => {
@@ -167,16 +159,14 @@ describe("LotterySelector", () => {
           success: true,
           data: [],
           timestamp: "2026-01-01T00:00:00Z",
-        }),
-      ),
+        })
+      )
     );
 
     render(<LotterySelector />);
 
     const select = await screen.findByRole("combobox", { name: /lottery/i });
     expect(select).toBeDisabled();
-    expect(
-      screen.getByRole("option", { name: /no lotteries available/i }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: /no lotteries available/i })).toBeInTheDocument();
   });
 });

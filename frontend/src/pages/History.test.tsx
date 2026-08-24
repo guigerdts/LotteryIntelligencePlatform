@@ -1,11 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll, afterEach } from "vitest";
-import {
-  render,
-  screen,
-  waitFor,
-  within,
-  fireEvent,
-} from "@testing-library/react";
+import { render, screen, waitFor, within, fireEvent } from "@testing-library/react";
 import { http, HttpResponse, delay } from "msw";
 import { setupServer } from "msw/node";
 import History from "./History";
@@ -22,7 +16,7 @@ const env = (data: unknown) =>
 const err = (message: string, status = 500) =>
   HttpResponse.json(
     { success: false, error: { code: "INTERNAL_ERROR", message }, timestamp: "" },
-    { status },
+    { status }
   );
 
 const draw = (id: number, drawNumber: number): Draw => ({
@@ -52,10 +46,8 @@ const server = setupServer(
     drawsCalls += 1;
     const url = new URL(request.url);
     const page = Number(url.searchParams.get("page") ?? "1");
-    return page === 1
-      ? env(drawRange(200, 200, PAGE_SIZE))
-      : env(drawRange(150, 150, 3));
-  }),
+    return page === 1 ? env(drawRange(200, 200, PAGE_SIZE)) : env(drawRange(150, 150, 3));
+  })
 );
 
 const selectLottery = () =>
@@ -84,7 +76,7 @@ describe("History", () => {
     render(<History />);
 
     expect(
-      await screen.findByRole("heading", { name: /history/i }, ASYNC_TIMEOUT),
+      await screen.findByRole("heading", { name: /history/i }, ASYNC_TIMEOUT)
     ).toBeInTheDocument();
     const table = await screen.findByRole("table", {}, ASYNC_TIMEOUT);
     expect(within(table).getByText("200")).toBeInTheDocument();
@@ -117,9 +109,7 @@ describe("History", () => {
   it("shows skeleton placeholders while draws are loading", async () => {
     selectLottery();
     server.use(
-      http.get("*/api/v1/draws", () =>
-        delay(50).then(() => env(drawRange(200, 200, PAGE_SIZE))),
-      ),
+      http.get("*/api/v1/draws", () => delay(50).then(() => env(drawRange(200, 200, PAGE_SIZE))))
     );
     const { container } = render(<History />);
 
@@ -152,9 +142,7 @@ describe("History", () => {
     server.use(http.get("*/api/v1/draws", () => env([])));
     render(<History />);
 
-    expect(
-      await screen.findByText(/no draws available for this lottery/i),
-    ).toBeInTheDocument();
+    expect(await screen.findByText(/no draws available for this lottery/i)).toBeInTheDocument();
     expect(screen.queryByRole("table")).not.toBeInTheDocument();
   });
 
@@ -162,7 +150,7 @@ describe("History", () => {
     render(<History />);
 
     expect(
-      await screen.findByText(/select a lottery to see its draw history/i),
+      await screen.findByText(/select a lottery to see its draw history/i)
     ).toBeInTheDocument();
     expect(drawsCalls).toBe(0);
     expect(screen.queryByRole("table")).not.toBeInTheDocument();

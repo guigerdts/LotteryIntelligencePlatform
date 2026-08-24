@@ -12,8 +12,7 @@ import type { CombinationRow, GenerationResult } from "../types/gen";
 import type { PipelineRunResult, PipelineStageResult } from "../types/pipeline";
 
 const NO_LOTTERY_MESSAGE = "Select a lottery to generate your numbers.";
-const IDLE_HINT =
-  "Click Generate numbers to run the full analysis chain and build your ticket.";
+const IDLE_HINT = "Click Generate numbers to run the full analysis chain and build your ticket.";
 /** Owner decision: every ticket is valid for BOTH draws; no toggle exists. */
 const DUAL_DRAW_LABEL = "Un boleto, dos sorteos (Baloto + Revancha)";
 const DISCLAIMER_TEXT =
@@ -74,9 +73,7 @@ function StageReport({ stages }: { stages: PipelineStageResult[] }) {
           key={stage.name}
           className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded border border-gray-100 px-3 py-1.5"
         >
-          <span className="font-mono text-xs font-medium text-gray-900">
-            {stage.name}
-          </span>
+          <span className="font-mono text-xs font-medium text-gray-900">{stage.name}</span>
           <span
             data-status={stage.status}
             className={
@@ -108,19 +105,13 @@ function TicketCards({ result }: { result: GenerationResult }) {
       <p className="text-sm font-semibold text-gray-900">{DUAL_DRAW_LABEL}</p>
       <p className="flex flex-wrap gap-x-6 gap-y-1 text-sm text-gray-500">
         <span>
-          Snapshot{" "}
-          <span className="font-medium text-gray-900">
-            #{result.snapshot_id}
-          </span>
+          Snapshot <span className="font-medium text-gray-900">#{result.snapshot_id}</span>
         </span>
         <span>
           Seed <span className="font-medium text-gray-900">{result.seed}</span>
         </span>
         <span>
-          Fingerprint{" "}
-          <span className="font-mono text-xs text-gray-900">
-            {result.fingerprint}
-          </span>
+          Fingerprint <span className="font-mono text-xs text-gray-900">{result.fingerprint}</span>
         </span>
       </p>
       <DataTable
@@ -190,8 +181,8 @@ export default function MisNumeros() {
         <div>
           <h2 className="text-lg font-semibold text-gray-900">Mis Números</h2>
           <p className="text-sm text-gray-500">
-            One request runs stats → features → ml → dl → backtesting → rank →
-            select → generate for the selected lottery.
+            One request runs stats → features → ml → dl → backtesting → rank → select → generate for
+            the selected lottery.
           </p>
         </div>
         <button
@@ -206,10 +197,7 @@ export default function MisNumeros() {
       </div>
 
       <div className="rounded-md border border-gray-200 bg-white p-4">
-        <label
-          htmlFor="mis-numeros-count"
-          className="mb-1 block text-sm font-medium text-gray-700"
-        >
+        <label htmlFor="mis-numeros-count" className="mb-1 block text-sm font-medium text-gray-700">
           Count
         </label>
         <input

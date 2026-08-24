@@ -59,6 +59,6 @@ export const useLotteryStore = create<LotteryState>()(
         selectedLotteryId: state.selectedLotteryId,
         selectedLotteryCode: state.selectedLotteryCode,
       }),
-    },
-  ),
+    }
+  )
 );

@@ -1,11 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll, afterEach } from "vitest";
-import {
-  render,
-  screen,
-  waitFor,
-  within,
-  fireEvent,
-} from "@testing-library/react";
+import { render, screen, waitFor, within, fireEvent } from "@testing-library/react";
 import { http, HttpResponse, delay } from "msw";
 import { setupServer } from "msw/node";
 import Home from "./Home";
@@ -19,7 +13,7 @@ const env = (data: unknown) =>
 const err = (message: string, status = 500) =>
   HttpResponse.json(
     { success: false, error: { code: "INTERNAL_ERROR", message }, timestamp: "" },
-    { status },
+    { status }
   );
 
 const draw = (
@@ -27,7 +21,7 @@ const draw = (
   drawNumber: number,
   drawDate: string,
   nums: number[],
-  superNumber: number | null,
+  superNumber: number | null
 ): Draw => ({
   id,
   lottery_id: 1,
@@ -71,8 +65,8 @@ const server = setupServer(
   http.get("*/api/v1/statistics/L1/frequencies", () => env(frequencyList)),
   http.get("*/api/v1/health", () => env({ status: "ok" })),
   http.get("*/api/v1/version", () =>
-    env({ version: "1.0.0", app: "Lottery Intelligence Platform" }),
-  ),
+    env({ version: "1.0.0", app: "Lottery Intelligence Platform" })
+  )
 );
 
 const selectLottery = () =>
@@ -99,17 +93,13 @@ describe("Home", () => {
     selectLottery();
     render(<Home />);
 
-    expect(
-      await screen.findByRole("heading", { name: /latest draws/i }),
-    ).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: /latest draws/i })).toBeInTheDocument();
     const table = screen.getByRole("table");
     expect(within(table).getByText("101")).toBeInTheDocument();
     expect(within(table).getByText("100")).toBeInTheDocument();
     expect(within(table).getByText("5 - 12 - 22")).toBeInTheDocument();
 
-    expect(
-      screen.getByRole("heading", { name: /frequency summary/i }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /frequency summary/i })).toBeInTheDocument();
     expect(screen.getByText("Most frequent")).toBeInTheDocument();
     expect(screen.getByText("Least frequent")).toBeInTheDocument();
     expect(screen.getByText("14×")).toBeInTheDocument();
@@ -154,9 +144,7 @@ describe("Home", () => {
     server.use(http.get("*/api/v1/draws", () => env([])));
     render(<Home />);
 
-    expect(
-      await screen.findByText(/no data available for this lottery/i),
-    ).toBeInTheDocument();
+    expect(await screen.findByText(/no data available for this lottery/i)).toBeInTheDocument();
     expect(screen.queryByRole("table")).not.toBeInTheDocument();
   });
 
@@ -164,7 +152,7 @@ describe("Home", () => {
     render(<Home />);
 
     expect(
-      await screen.findAllByText(/select a lottery to see its operational summary/i),
+      await screen.findAllByText(/select a lottery to see its operational summary/i)
     ).not.toHaveLength(0);
     expect(await screen.findByText("1.0.0")).toBeInTheDocument();
   });

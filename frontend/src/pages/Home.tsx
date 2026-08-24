@@ -37,9 +37,7 @@ function topFrequencies(rows: FrequencyRow[], direction: "desc" | "asc") {
 function FrequencyList({ title, rows }: { title: string; rows: FrequencyRow[] }) {
   return (
     <div>
-      <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
-        {title}
-      </h4>
+      <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">{title}</h4>
       <ol className="space-y-1">
         {rows.map((row, index) => (
           <li
@@ -58,10 +56,7 @@ function FrequencyList({ title, rows }: { title: string; rows: FrequencyRow[] })
 
 function Section({ id, title, children }: { id: string; title: string; children: ReactNode }) {
   return (
-    <section
-      aria-labelledby={id}
-      className="rounded-md border border-gray-200 bg-white p-4"
-    >
+    <section aria-labelledby={id} className="rounded-md border border-gray-200 bg-white p-4">
       <h3 id={id} className="mb-3 text-sm font-semibold text-gray-900">
         {title}
       </h3>
@@ -77,9 +72,24 @@ function Section({ id, title, children }: { id: string; title: string; children:
  */
 export default function Home() {
   const selectedLotteryCode = useLotteryStore((s) => s.selectedLotteryCode);
-  const { data: drawRows, isLoading: drawsLoading, error: drawsError, execute: fetchDraws } = useApi(getDraws);
-  const { data: freqData, isLoading: freqLoading, error: freqError, execute: fetchFrequencies } = useApi(getFrequencies);
-  const { data: systemData, isLoading: systemLoading, error: systemError, execute: fetchSystem } = useApi(getSystemInfo);
+  const {
+    data: drawRows,
+    isLoading: drawsLoading,
+    error: drawsError,
+    execute: fetchDraws,
+  } = useApi(getDraws);
+  const {
+    data: freqData,
+    isLoading: freqLoading,
+    error: freqError,
+    execute: fetchFrequencies,
+  } = useApi(getFrequencies);
+  const {
+    data: systemData,
+    isLoading: systemLoading,
+    error: systemError,
+    execute: fetchSystem,
+  } = useApi(getSystemInfo);
 
   useEffect(() => {
     if (selectedLotteryCode) {
@@ -98,7 +108,12 @@ export default function Home() {
   const renderDraws = () => {
     if (!selectedLotteryCode) return <EmptyState message={NO_LOTTERY_MESSAGE} />;
     if (drawsError) {
-      return <ErrorState message={drawsError} onRetry={() => void fetchDraws(selectedLotteryCode, 1, LATEST_DRAWS)} />;
+      return (
+        <ErrorState
+          message={drawsError}
+          onRetry={() => void fetchDraws(selectedLotteryCode, 1, LATEST_DRAWS)}
+        />
+      );
     }
     if (drawList.length === 0 && !drawsLoading) return <EmptyState message={NO_DATA_MESSAGE} />;
     return (
@@ -116,7 +131,12 @@ export default function Home() {
   const renderFrequencies = () => {
     if (!selectedLotteryCode) return <EmptyState message={NO_LOTTERY_MESSAGE} />;
     if (freqError) {
-      return <ErrorState message={freqError} onRetry={() => void fetchFrequencies(selectedLotteryCode)} />;
+      return (
+        <ErrorState
+          message={freqError}
+          onRetry={() => void fetchFrequencies(selectedLotteryCode)}
+        />
+      );
     }
     if (freqLoading) {
       return (
@@ -164,8 +184,7 @@ export default function Home() {
       <div>
         <h2 className="text-lg font-semibold text-gray-900">Operational Summary</h2>
         <p className="text-sm text-gray-500">
-          Latest draws, frequency snapshot and API status for the selected
-          lottery.
+          Latest draws, frequency snapshot and API status for the selected lottery.
         </p>
       </div>
 

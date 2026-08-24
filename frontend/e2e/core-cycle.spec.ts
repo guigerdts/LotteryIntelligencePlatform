@@ -55,9 +55,8 @@ async function seedDraws(request: APIRequestContext, lotteryCode: string) {
   const dir = mkdtempSync(join(tmpdir(), "lip-e2e-seed-"));
   const csvPath = join(dir, "seed.csv");
   const header = "draw_number,draw_date,numbers,super_number,jackpot,winners";
-  const rows = DRAW_ROWS.map(
-    ([drawNumber, drawDate, numbers, jackpot, winners]) =>
-      [drawNumber, drawDate, `"${numbers.join(",")}"`, "", jackpot, winners].join(","),
+  const rows = DRAW_ROWS.map(([drawNumber, drawDate, numbers, jackpot, winners]) =>
+    [drawNumber, drawDate, `"${numbers.join(",")}"`, "", jackpot, winners].join(",")
   );
   writeFileSync(csvPath, [header, ...rows].join("\n") + "\n", "utf8");
   try {
@@ -94,24 +93,16 @@ test("core cycle: seed → statistics snapshot → dashboard (TEST-005, D3)", as
   // --- Statistics: generate snapshot → charts render -----------------------
   await page.goto("/estadisticas");
   await page.getByRole("button", { name: "Generate Snapshot" }).click();
-  await expect(
-    page.getByRole("img", { name: "Frequency distribution per number" }),
-  ).toBeVisible();
+  await expect(page.getByRole("img", { name: "Frequency distribution per number" })).toBeVisible();
   await expect(page.locator(".recharts-responsive-container")).toBeVisible();
   await expect(page.getByText(/Snapshot #\d+/)).toBeVisible();
 
   // --- Home: dashboard renders draws + frequencies from the snapshot --------
   await page.goto("/");
   await expect(page.locator("tbody")).toContainText("1 - 6 - 11 - 16 - 21");
-  await expect(
-    page.getByRole("heading", { name: "Frequency summary" }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole("heading", { name: "Most frequent" }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole("heading", { name: "Least frequent" }),
-  ).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Frequency summary" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Most frequent" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Least frequent" })).toBeVisible();
   // 1 and 6 each appear in two seeded draws → top frequency count is 2×.
   await expect(page.locator("ol").first()).toContainText("2×");
   // Frontend ↔ backend connectivity is proven by the System health block.

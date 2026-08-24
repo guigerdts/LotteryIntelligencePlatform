@@ -14,7 +14,16 @@ const NO_DATA_MESSAGE = "No network snapshot for this lottery yet.";
 const NO_LINKS_MESSAGE = "No co-occurrence links in this snapshot.";
 const GRAPH_HEIGHT = 480;
 const GRAPH_ARIA_LABEL = "Network graph of lottery numbers";
-const COMMUNITY_COLORS = ["#3b82f6", "#22c55e", "#f59e0b", "#ef4444", "#8b5cf6", "#06b6d4", "#ec4899", "#84cc16"];
+const COMMUNITY_COLORS = [
+  "#3b82f6",
+  "#22c55e",
+  "#f59e0b",
+  "#ef4444",
+  "#8b5cf6",
+  "#06b6d4",
+  "#ec4899",
+  "#84cc16",
+];
 
 interface GraphNode {
   id: string;
@@ -36,7 +45,9 @@ interface NetworkGraphProps {
 
 function snapshotClass(selected: boolean): string {
   return `flex flex-wrap items-center gap-x-4 gap-y-1 rounded-md border px-3 py-2 text-left text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
-    selected ? "border-blue-600 bg-blue-50 text-gray-900" : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+    selected
+      ? "border-blue-600 bg-blue-50 text-gray-900"
+      : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
   }`;
 }
 
@@ -83,8 +94,18 @@ function NetworkGraph({ nodes, links }: NetworkGraphProps) {
 /** Redes page: snapshot list + select → force-directed co-occurrence network graph. */
 export default function Networks() {
   const selectedLotteryCode = useLotteryStore((s) => s.selectedLotteryCode);
-  const { data: snapshotList, isLoading: loadingList, error: listError, execute: fetchSnapshots } = useApi(getGraphSnapshots);
-  const { data: values, isLoading: loadingValues, error: valuesError, execute: fetchValues } = useApi(getGraphValues);
+  const {
+    data: snapshotList,
+    isLoading: loadingList,
+    error: listError,
+    execute: fetchSnapshots,
+  } = useApi(getGraphSnapshots);
+  const {
+    data: values,
+    isLoading: loadingValues,
+    error: valuesError,
+    execute: fetchValues,
+  } = useApi(getGraphValues);
   const [selectedId, setSelectedId] = useState<number | null>(null);
 
   useEffect(() => {
@@ -135,16 +156,28 @@ export default function Networks() {
   const selected = snapshots.find((item) => item.snapshot_id === selectedId) ?? null;
 
   const renderVisualization = (code: string, item: GraphSnapshotInfo) => {
-    if (valuesError) return <ErrorState message={valuesError} onRetry={() => void fetchValues(code, item.snapshot_id)} />;
+    if (valuesError)
+      return (
+        <ErrorState
+          message={valuesError}
+          onRetry={() => void fetchValues(code, item.snapshot_id)}
+        />
+      );
     if (loadingValues) return <Skeleton variant="card" />;
     if (links.length === 0) return <EmptyState message={NO_LINKS_MESSAGE} />;
     return (
       <div className="space-y-4">
         <NetworkGraph nodes={nodes} links={links} />
         <p className="flex flex-wrap gap-x-6 gap-y-1 text-sm text-gray-500">
-          <span>Draws <span className="font-medium text-gray-900">{item.draw_count}</span></span>
-          <span>Nodes <span className="font-medium text-gray-900">{nodes.length}</span></span>
-          <span>Links <span className="font-medium text-gray-900">{links.length}</span></span>
+          <span>
+            Draws <span className="font-medium text-gray-900">{item.draw_count}</span>
+          </span>
+          <span>
+            Nodes <span className="font-medium text-gray-900">{nodes.length}</span>
+          </span>
+          <span>
+            Links <span className="font-medium text-gray-900">{links.length}</span>
+          </span>
         </p>
       </div>
     );
@@ -152,7 +185,13 @@ export default function Networks() {
 
   const renderContent = () => {
     if (!selectedLotteryCode) return <EmptyState message={NO_LOTTERY_MESSAGE} />;
-    if (listError) return <ErrorState message={listError} onRetry={() => void fetchSnapshots(selectedLotteryCode, "network")} />;
+    if (listError)
+      return (
+        <ErrorState
+          message={listError}
+          onRetry={() => void fetchSnapshots(selectedLotteryCode, "network")}
+        />
+      );
     if (loadingList) return <Skeleton variant="card" />;
     if (snapshots.length === 0) return <EmptyState message={NO_DATA_MESSAGE} />;
     return (
@@ -160,9 +199,17 @@ export default function Networks() {
         <ul className="flex flex-col gap-2 sm:max-w-md" aria-label="Network snapshots">
           {snapshots.map((item) => (
             <li key={item.snapshot_id}>
-              <button type="button" aria-pressed={selectedId === item.snapshot_id} onClick={() => setSelectedId(item.snapshot_id)} className={snapshotClass(selectedId === item.snapshot_id)}>
+              <button
+                type="button"
+                aria-pressed={selectedId === item.snapshot_id}
+                onClick={() => setSelectedId(item.snapshot_id)}
+                className={snapshotClass(selectedId === item.snapshot_id)}
+              >
                 <span className="font-medium">#{item.snapshot_id}</span>
-                <span>v{item.version} · {item.draw_count} draws · {item.status} · {new Date(item.created_at).toLocaleDateString()}</span>
+                <span>
+                  v{item.version} · {item.draw_count} draws · {item.status} ·{" "}
+                  {new Date(item.created_at).toLocaleDateString()}
+                </span>
               </button>
             </li>
           ))}
@@ -176,9 +223,14 @@ export default function Networks() {
     <div className="space-y-6 p-4 sm:p-6">
       <div>
         <h2 className="text-lg font-semibold text-gray-900">Networks</h2>
-        <p className="text-sm text-gray-500">Co-occurrence network between lottery numbers for the selected lottery.</p>
+        <p className="text-sm text-gray-500">
+          Co-occurrence network between lottery numbers for the selected lottery.
+        </p>
       </div>
-      <section aria-label="Network graph" className="rounded-md border border-gray-200 bg-white p-4">
+      <section
+        aria-label="Network graph"
+        className="rounded-md border border-gray-200 bg-white p-4"
+      >
         {renderContent()}
       </section>
     </div>

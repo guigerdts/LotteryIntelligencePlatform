@@ -13,11 +13,7 @@ interface NavGroupProps {
  * Navigation group: a category title plus its list of nav items.
  * When collapsed only the items' icons remain visible.
  */
-export default function NavGroup({
-  title,
-  items,
-  collapsed = false,
-}: NavGroupProps) {
+export default function NavGroup({ title, items, collapsed = false }: NavGroupProps) {
   return (
     <section aria-label={title} className="mb-4">
       <h2

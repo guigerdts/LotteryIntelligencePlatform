@@ -10,7 +10,7 @@ const env = (data: unknown) =>
 const err = (message: string, status = 500) =>
   HttpResponse.json(
     { success: false, error: { code: "INTERNAL_ERROR", message }, timestamp: "" },
-    { status },
+    { status }
   );
 
 const baseExperiment = {
@@ -68,7 +68,7 @@ const server = setupServer(
     };
     created = [fresh, ...created];
     return env(fresh);
-  }),
+  })
 );
 
 const selectLottery = () =>
@@ -122,9 +122,7 @@ describe("Experiments", () => {
 
   it("shows skeleton placeholders while data is loading", async () => {
     selectLottery();
-    server.use(
-      http.get("*/api/v1/experiment/", () => delay(50).then(() => env([]))),
-    );
+    server.use(http.get("*/api/v1/experiment/", () => delay(50).then(() => env([]))));
     const { container } = render(<Experiments />);
     expect(container.querySelector(".animate-pulse")).not.toBeNull();
     await waitFor(() => expect(container.querySelector(".animate-pulse")).toBeNull());
@@ -151,9 +149,7 @@ describe("Experiments", () => {
 
   it("prompts to select a lottery and does not call the API", async () => {
     render(<Experiments />);
-    expect(
-      await screen.findByText(/select a lottery to see experiments/i),
-    ).toBeInTheDocument();
+    expect(await screen.findByText(/select a lottery to see experiments/i)).toBeInTheDocument();
     expect(listCalls).toBe(0);
     expect(createCalls).toBe(0);
     expect(screen.getByRole("button", { name: /^create experiment$/i })).toBeDisabled();

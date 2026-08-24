@@ -124,9 +124,7 @@ export default function History() {
     <div className="space-y-6 p-4 sm:p-6">
       <div>
         <h2 className="text-lg font-semibold text-gray-900">History</h2>
-        <p className="text-sm text-gray-500">
-          Paginated draw history for the selected lottery.
-        </p>
+        <p className="text-sm text-gray-500">Paginated draw history for the selected lottery.</p>
       </div>
       {renderContent()}
     </div>

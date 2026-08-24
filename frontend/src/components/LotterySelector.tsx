@@ -58,10 +58,7 @@ export default function LotterySelector() {
 
   return (
     <div className="flex items-center gap-2">
-      <label
-        htmlFor="lottery-select"
-        className="text-sm font-medium text-gray-600"
-      >
+      <label htmlFor="lottery-select" className="text-sm font-medium text-gray-600">
         Lottery
       </label>
       <select

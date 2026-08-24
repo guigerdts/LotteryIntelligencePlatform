@@ -1,11 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import {
-  apiClient,
-  NotFoundError,
-  ConflictError,
-  ValidationError,
-  ServerError,
-} from "./api";
+import { apiClient, NotFoundError, ConflictError, ValidationError, ServerError } from "./api";
 
 describe("apiClient", () => {
   const BASE = "/api/v1";
@@ -44,9 +38,7 @@ describe("apiClient", () => {
       }),
     });
 
-    await expect(apiClient("/gen/generate")).rejects.toThrow(
-      "No active selection",
-    );
+    await expect(apiClient("/gen/generate")).rejects.toThrow("No active selection");
   });
 
   it("throws NotFoundError on 404", async () => {
@@ -60,9 +52,7 @@ describe("apiClient", () => {
       }),
     });
 
-    await expect(apiClient("/lotteries/999")).rejects.toBeInstanceOf(
-      NotFoundError,
-    );
+    await expect(apiClient("/lotteries/999")).rejects.toBeInstanceOf(NotFoundError);
   });
 
   it("throws ConflictError on 409", async () => {
@@ -90,9 +80,7 @@ describe("apiClient", () => {
       }),
     });
 
-    await expect(apiClient("/gen/generate")).rejects.toBeInstanceOf(
-      ValidationError,
-    );
+    await expect(apiClient("/gen/generate")).rejects.toBeInstanceOf(ValidationError);
   });
 
   it("throws ServerError on 500", async () => {
@@ -132,7 +120,7 @@ describe("apiClient", () => {
     expect(result).toEqual({ snapshot_id: 1 });
     expect(fetchSpy).toHaveBeenCalledWith(
       `${BASE}/statistics/generate`,
-      expect.objectContaining({ method: "POST" }),
+      expect.objectContaining({ method: "POST" })
     );
   });
 

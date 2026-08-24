@@ -10,7 +10,7 @@ const env = (data: unknown) =>
 const err = (message: string, status = 500) =>
   HttpResponse.json(
     { success: false, error: { code: "INTERNAL_ERROR", message }, timestamp: "" },
-    { status },
+    { status }
   );
 const header = (extra: Record<string, unknown>) => ({
   snapshot_id: 1,
@@ -57,7 +57,7 @@ const server = setupServer(
   http.post("*/api/v1/statistics/generate", () => {
     generateCalls += 1;
     return env(snapshot);
-  }),
+  })
 );
 
 const selectLottery = () =>
@@ -85,7 +85,7 @@ describe("Statistics", () => {
     render(<Statistics />);
     expect(await screen.findByRole("heading", { name: /statistics/i })).toBeInTheDocument();
     expect(
-      await screen.findByRole("img", { name: /frequency distribution per number/i }),
+      await screen.findByRole("img", { name: /frequency distribution per number/i })
     ).toBeInTheDocument();
     expect(screen.getByText("100")).toBeInTheDocument();
     expect(screen.getByText("1–100")).toBeInTheDocument();
@@ -97,18 +97,16 @@ describe("Statistics", () => {
     await screen.findByRole("img", { name: /frequency distribution per number/i });
     fireEvent.click(screen.getByRole("tab", { name: /gaps/i }));
     expect(
-      await screen.findByRole("img", { name: /gap analysis per number/i }),
+      await screen.findByRole("img", { name: /gap analysis per number/i })
     ).toBeInTheDocument();
     fireEvent.click(screen.getByRole("tab", { name: /averages/i }));
-    expect(
-      await screen.findByRole("img", { name: /average gap per series/i }),
-    ).toBeInTheDocument();
+    expect(await screen.findByRole("img", { name: /average gap per series/i })).toBeInTheDocument();
   });
 
   it("shows skeleton placeholders while data is loading", async () => {
     selectLottery();
     server.use(
-      http.get("*/api/v1/statistics/L1/frequencies", () => delay(50).then(() => env(frequencyList))),
+      http.get("*/api/v1/statistics/L1/frequencies", () => delay(50).then(() => env(frequencyList)))
     );
     const { container } = render(<Statistics />);
     expect(container.querySelector(".animate-pulse")).not.toBeNull();
@@ -126,8 +124,8 @@ describe("Statistics", () => {
     fireEvent.click(screen.getByRole("button", { name: /retry/i }));
     await waitFor(() =>
       expect(
-        screen.getByRole("img", { name: /frequency distribution per number/i }),
-      ).toBeInTheDocument(),
+        screen.getByRole("img", { name: /frequency distribution per number/i })
+      ).toBeInTheDocument()
     );
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
@@ -135,20 +133,18 @@ describe("Statistics", () => {
   it("shows an empty state instead of crashing when frequencies are empty", async () => {
     selectLottery();
     server.use(
-      http.get("*/api/v1/statistics/L1/frequencies", () => env(header({ frequencies: [] }))),
+      http.get("*/api/v1/statistics/L1/frequencies", () => env(header({ frequencies: [] })))
     );
     render(<Statistics />);
     expect(
-      await screen.findByText(/no statistics available for this lottery/i),
+      await screen.findByText(/no statistics available for this lottery/i)
     ).toBeInTheDocument();
     expect(screen.queryByRole("img")).not.toBeInTheDocument();
   });
 
   it("prompts to select a lottery and does not call the API", async () => {
     render(<Statistics />);
-    expect(
-      await screen.findByText(/select a lottery to see its statistics/i),
-    ).toBeInTheDocument();
+    expect(await screen.findByText(/select a lottery to see its statistics/i)).toBeInTheDocument();
     expect(fetchCalls).toBe(0);
     expect(screen.queryByRole("img")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: /generate snapshot/i })).toBeDisabled();

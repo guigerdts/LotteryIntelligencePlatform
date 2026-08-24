@@ -33,7 +33,7 @@ const textField = (
   value: string,
   onChange: (value: string) => void,
   placeholder?: string,
-  fullWidth?: boolean,
+  fullWidth?: boolean
 ): FieldConfig => ({ id, label, value, onChange, placeholder, fullWidth });
 
 const numberField = (
@@ -43,7 +43,7 @@ const numberField = (
   max: number | undefined,
   value: string,
   onChange: (value: string) => void,
-  placeholder?: string,
+  placeholder?: string
 ): FieldConfig => ({ id, label, type: "number", min, max, value, onChange, placeholder });
 
 function formatHitRate(value: number): string {
@@ -99,9 +99,7 @@ export default function Backtesting() {
   const [trainYearsInput, setTrainYearsInput] = useState(String(DEFAULT_TRAIN_YEARS));
   const [evalCountInput, setEvalCountInput] = useState(String(DEFAULT_EVAL_COUNT));
   const [stepCountInput, setStepCountInput] = useState(String(DEFAULT_STEP_COUNT));
-  const [minTrainDrawsInput, setMinTrainDrawsInput] = useState(
-    String(DEFAULT_MIN_TRAIN_DRAWS),
-  );
+  const [minTrainDrawsInput, setMinTrainDrawsInput] = useState(String(DEFAULT_MIN_TRAIN_DRAWS));
   const [seedInput, setSeedInput] = useState("");
   const [snapshot, setSnapshot] = useState<BacktestRun | null>(null);
   const {
@@ -110,20 +108,30 @@ export default function Backtesting() {
     error: resultsError,
     execute: fetchResults,
   } = useApi(getBacktestResults);
-  const {
-    isLoading: running,
-    error: runError,
-    execute: run,
-  } = useApi(runBacktest);
+  const { isLoading: running, error: runError, execute: run } = useApi(runBacktest);
 
   const fieldDisabled = !selectedLotteryId || running;
 
   const fields: FieldConfig[] = [
-    textField("bt-strategy", "Strategy ID", strategyInput, setStrategyInput, "e.g. uniform-weighted", true),
+    textField(
+      "bt-strategy",
+      "Strategy ID",
+      strategyInput,
+      setStrategyInput,
+      "e.g. uniform-weighted",
+      true
+    ),
     numberField("bt-train-years", "Train years", 1, 50, trainYearsInput, setTrainYearsInput),
     numberField("bt-eval-count", "Eval count", 1, 52, evalCountInput, setEvalCountInput),
     numberField("bt-step-count", "Step count", 1, 52, stepCountInput, setStepCountInput),
-    numberField("bt-min-draws", "Min train draws", 10, 5000, minTrainDrawsInput, setMinTrainDrawsInput),
+    numberField(
+      "bt-min-draws",
+      "Min train draws",
+      10,
+      5000,
+      minTrainDrawsInput,
+      setMinTrainDrawsInput
+    ),
     numberField("bt-seed", "Seed", 0, undefined, seedInput, setSeedInput, "Optional"),
   ];
 
@@ -132,8 +140,7 @@ export default function Backtesting() {
     const params = {
       lottery_id: selectedLotteryId,
       strategy_id: strategyInput.trim(),
-      train_years:
-        trainYearsInput === "" ? DEFAULT_TRAIN_YEARS : Number(trainYearsInput),
+      train_years: trainYearsInput === "" ? DEFAULT_TRAIN_YEARS : Number(trainYearsInput),
       eval_count: evalCountInput === "" ? DEFAULT_EVAL_COUNT : Number(evalCountInput),
       step_count: stepCountInput === "" ? DEFAULT_STEP_COUNT : Number(stepCountInput),
       min_train_draws:
@@ -183,8 +190,7 @@ export default function Backtesting() {
     }
     return (
       <p className="text-sm text-gray-500">
-        Set the parameters and click Run Backtest to evaluate a strategy on this
-        lottery.
+        Set the parameters and click Run Backtest to evaluate a strategy on this lottery.
       </p>
     );
   };
@@ -205,14 +211,8 @@ export default function Backtesting() {
       >
         <div className="grid gap-4 sm:grid-cols-3">
           {fields.map((field) => (
-            <div
-              key={field.id}
-              className={field.fullWidth ? "sm:col-span-3" : ""}
-            >
-              <label
-                htmlFor={field.id}
-                className="mb-1 block text-sm font-medium text-gray-700"
-              >
+            <div key={field.id} className={field.fullWidth ? "sm:col-span-3" : ""}>
+              <label htmlFor={field.id} className="mb-1 block text-sm font-medium text-gray-700">
                 {field.label}
               </label>
               <input

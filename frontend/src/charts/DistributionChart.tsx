@@ -1,12 +1,4 @@
-import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
+import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
 export interface DistributionRow {
   subject: string;
@@ -29,10 +21,7 @@ function parseValue(value: number | string): number | undefined {
 export default function DistributionChart({ rows }: DistributionChartProps) {
   const data: { subject: string; value: number }[] = rows
     .map((row) => ({ subject: row.subject, value: parseValue(row.value) }))
-    .filter(
-      (row): row is { subject: string; value: number } =>
-        row.value !== undefined,
-    );
+    .filter((row): row is { subject: string; value: number } => row.value !== undefined);
 
   return (
     <div

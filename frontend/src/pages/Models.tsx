@@ -9,8 +9,7 @@ import { useLotteryStore } from "../store/useLotteryStore";
 import type { MLMetrics, MLSnapshot } from "../types/ml";
 
 const NO_LOTTERY_MESSAGE = "Select a lottery to see models.";
-const NO_MODELS_MESSAGE =
-  "No models trained for this lottery yet. Click Train to generate them.";
+const NO_MODELS_MESSAGE = "No models trained for this lottery yet. Click Train to generate them.";
 const NO_METRICS_MESSAGE = "No metrics available for this lottery.";
 const BUTTON_CLASS =
   "rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500";
@@ -63,11 +62,7 @@ export default function Models() {
     error: metricsError,
     execute: fetchMetrics,
   } = useApi(getMetrics);
-  const {
-    isLoading: training,
-    error: trainError,
-    execute: train,
-  } = useApi(trainModels);
+  const { isLoading: training, error: trainError, execute: train } = useApi(trainModels);
 
   const loading = modelsLoading || metricsLoading;
   const error = modelsError ?? metricsError;

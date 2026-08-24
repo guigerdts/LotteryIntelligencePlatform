@@ -154,16 +154,20 @@ export default function Trends() {
   const hot = useMemo(() => extremeFrequencies(windowCounts, false), [windowCounts]);
   const cold = useMemo(() => extremeFrequencies(windowCounts, true), [windowCounts]);
   const trendData = useMemo(
-    () => rollingTrend(draws ?? [], hot.map((row) => row.number)),
-    [draws, hot],
+    () =>
+      rollingTrend(
+        draws ?? [],
+        hot.map((row) => row.number)
+      ),
+    [draws, hot]
   );
   const windowFrequencies = useMemo(
-    () =>
-      [...windowCounts.entries()].map(([number, count]) => ({ number, count })),
-    [windowCounts],
+    () => [...windowCounts.entries()].map(([number, count]) => ({ number, count })),
+    [windowCounts]
   );
-  const overallFrequencies =
-    freqData?.frequencies.length ? freqData.frequencies : windowFrequencies;
+  const overallFrequencies = freqData?.frequencies.length
+    ? freqData.frequencies
+    : windowFrequencies;
 
   const renderContent = () => {
     if (!selectedLotteryCode) return <EmptyState message={NO_LOTTERY_MESSAGE} />;
@@ -202,8 +206,8 @@ export default function Trends() {
       <div>
         <h2 className="text-lg font-semibold text-gray-900">Trends</h2>
         <p className="text-sm text-gray-500">
-          Rolling frequency and hot/cold numbers derived from recent draws and the
-          frequency snapshot for the selected lottery.
+          Rolling frequency and hot/cold numbers derived from recent draws and the frequency
+          snapshot for the selected lottery.
         </p>
       </div>
       {renderContent()}

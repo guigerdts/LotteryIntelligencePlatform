@@ -25,10 +25,7 @@ export async function getDlModels(lotteryId: number): Promise<DLSnapshot | null>
 }
 
 /** Get DL metrics for a lottery, optionally filtered by model family. */
-export async function getDlMetrics(
-  lotteryId: number,
-  modelId?: string,
-): Promise<DLMetric[]> {
+export async function getDlMetrics(lotteryId: number, modelId?: string): Promise<DLMetric[]> {
   const params = modelId ? `&model_id=${modelId}` : "";
   return apiClient<DLMetric[]>(`/dl/metrics?lottery_id=${lotteryId}${params}`);
 }

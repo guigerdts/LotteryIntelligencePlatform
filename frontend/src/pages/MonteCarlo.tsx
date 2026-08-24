@@ -83,10 +83,7 @@ export default function MonteCarlo() {
     }
     if (error) {
       return (
-        <ErrorState
-          message={error}
-          onRetry={() => void fetchProbabilities(selectedLotteryCode)}
-        />
+        <ErrorState message={error} onRetry={() => void fetchProbabilities(selectedLotteryCode)} />
       );
     }
     if (loading) {
@@ -122,9 +119,7 @@ export default function MonteCarlo() {
           rowKey={(row) => `${row.model_id}-${row.subject}-${row.draw_number}`}
           caption="Probability rows"
         />
-        <DistributionChart
-          rows={rows.map((row) => ({ subject: row.subject, value: row.value }))}
-        />
+        <DistributionChart rows={rows.map((row) => ({ subject: row.subject, value: row.value }))} />
       </div>
     );
   };
@@ -134,9 +129,7 @@ export default function MonteCarlo() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-lg font-semibold text-gray-900">Monte Carlo</h2>
-          <p className="text-sm text-gray-500">
-            Probability rows for the selected lottery.
-          </p>
+          <p className="text-sm text-gray-500">Probability rows for the selected lottery.</p>
         </div>
         <button
           type="button"

@@ -10,7 +10,7 @@ const env = (data: unknown) =>
 const err = (message: string, status = 500) =>
   HttpResponse.json(
     { success: false, error: { code: "INTERNAL_ERROR", message }, timestamp: "" },
-    { status },
+    { status }
   );
 
 const list = {
@@ -51,7 +51,7 @@ const server = setupServer(
   http.post("*/api/v1/probability/generate", () => {
     generateCalls += 1;
     return env(snapshot);
-  }),
+  })
 );
 
 const selectLottery = () =>
@@ -97,7 +97,7 @@ describe("MonteCarlo", () => {
   it("shows skeleton placeholders while data is loading", async () => {
     selectLottery();
     server.use(
-      http.get("*/api/v1/probability/L1/probabilities", () => delay(50).then(() => env(list))),
+      http.get("*/api/v1/probability/L1/probabilities", () => delay(50).then(() => env(list)))
     );
     const { container } = render(<MonteCarlo />);
     expect(container.querySelector(".animate-pulse")).not.toBeNull();
@@ -120,7 +120,7 @@ describe("MonteCarlo", () => {
   it("prompts to select a lottery and does not call the API", async () => {
     render(<MonteCarlo />);
     expect(
-      await screen.findByText(/select a lottery to see probability rows/i),
+      await screen.findByText(/select a lottery to see probability rows/i)
     ).toBeInTheDocument();
     expect(fetchCalls).toBe(0);
     expect(generateCalls).toBe(0);
