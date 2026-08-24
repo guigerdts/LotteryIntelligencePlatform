@@ -17,7 +17,7 @@ const ALL_ITEMS = [
   { label: "Experimentos", to: "/experimentos" },
   { label: "Backtesting", to: "/backtesting" },
   { label: "Deep Learning", to: "/dl" },
-  { label: "Generador", to: "/generador" },
+  { label: "Mis Números", to: "/numeros" },
 ];
 
 function renderSidebar(initialPath = "/") {
@@ -41,7 +41,7 @@ describe("Sidebar", () => {
       "Análisis",
       "Avanzado",
       "ML",
-      "Generador",
+      "Números",
     ];
     for (const title of headings) {
       expect(

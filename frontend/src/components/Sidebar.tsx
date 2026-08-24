@@ -43,8 +43,8 @@ const NAV_GROUPS: NavGroupDef[] = [
     ],
   },
   {
-    title: "Generador",
-    items: [{ label: "Generador", to: "/generador" }],
+    title: "Números",
+    items: [{ label: "Mis Números", to: "/numeros" }],
   },
 ];
 
