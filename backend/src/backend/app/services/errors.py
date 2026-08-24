@@ -209,6 +209,24 @@ class AssistantError(ServiceError):
     code = "assistant_error"
 
 
+class PipelineServiceError(ServiceError):
+    """Base class for numbers-pipeline orchestrator errors (R1).
+
+    A failing chain stage raises ``PIPE_STAGE_FAILED`` carrying the failed
+    stage id; remaining stages do not run and completed artifacts persist.
+    Registered in the API with HTTP 502 (D10).
+    """
+
+    code = "PIPE_ERROR"
+
+    # HTTP 502 — upstream-chain fault behind a valid request (D10)
+    PIPE_STAGE_FAILED = "PIPE_STAGE_FAILED"
+
+    def __init__(self, code: str, message: str) -> None:
+        self.code = code
+        super().__init__(message)
+
+
 class GenServiceError(ServiceError):
     """Base class for generator service errors (GEN-013)."""
 

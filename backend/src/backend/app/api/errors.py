@@ -79,6 +79,9 @@ _CODE_TO_STATUS: dict[str, int] = {
     "GEN_NO_HISTORY": 422,
     # F15 AI assistant channel (A-12): a true generation failure is 500.
     "assistant_error": 500,
+    # Numbers pipeline channel (R1/D10): a failed chain stage is an upstream
+    # fault behind a valid request → 502 Bad Gateway family.
+    "PIPE_STAGE_FAILED": 502,
 }
 
 _UNKNOWN_STATUS = 500

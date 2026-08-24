@@ -31,16 +31,22 @@ class MetaSnapshotStore:
         """Compute next monotonic version for (lottery_id, context_hash) (META-005, META-010).
 
         Returns "1" if no existing versions, else max(version) + 1 as string.
+
+        Uses an aggregate MAX over the integer-cast version so exactly one row
+        is always returned: legacy ``Query.scalar()`` carries one-row semantics
+        and raised ``MultipleResultsFound`` once a context had both an active
+        and a retired ranking version (normal lifecycle after any re-rank).
         """
+        from sqlalchemy import Integer, cast, func
+
         from backend.app.models.meta_ranking import MetaRanking
 
         result = (
-            self._session.query(MetaRanking.version)
+            self._session.query(func.max(cast(MetaRanking.version, Integer)))
             .filter(
                 MetaRanking.lottery_id == lottery_id,
                 MetaRanking.context_hash == context_hash,
             )
-            .order_by(MetaRanking.version.desc())
             .scalar()
         )
         if result is None:
