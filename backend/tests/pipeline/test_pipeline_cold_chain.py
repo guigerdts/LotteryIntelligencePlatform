@@ -1,4 +1,4 @@
-"""R1/R3 RED — cold chain: one call runs all eight stages in canonical order."""
+"""R1/R3 RED — cold chain: one call runs all three stages in canonical order."""
 
 from __future__ import annotations
 
@@ -7,16 +7,16 @@ from sqlalchemy.orm import Session
 from tests.pipeline.conftest import STAGE_ORDER
 
 
-def test_cold_chain_runs_all_eight_stages_in_canonical_order(
+def test_cold_chain_runs_all_three_stages_in_canonical_order(
     db: Session, pipeline_db: int, stage_recorder: list[tuple[str, str]], run_chain
 ) -> None:
-    """An empty store runs all eight stages exactly once in canonical order."""
+    """An empty store runs all three stages exactly once in canonical order."""
     outcome = run_chain(pipeline_db, count=2, seed=7)
 
     names = [stage.name for stage in outcome.stages]
     assert names == list(STAGE_ORDER)
 
-    # All eight completed with artifact references where produced.
+    # All three completed with artifact references where produced.
     for entry in outcome.stages:
         assert entry.status == "completed", f"{entry.name}: {entry.detail}"
         assert entry.fingerprint, f"{entry.name} missing fingerprint ref"
@@ -26,9 +26,6 @@ def test_cold_chain_runs_all_eight_stages_in_canonical_order(
     starts = [stage for stage, ev in stage_recorder if ev == "start"]
     unique_starts = list(dict.fromkeys(starts))
     assert unique_starts == list(STAGE_ORDER)
-
-    # bt strictly before rank (R1).
-    assert stage_recorder.index(("bt", "end")) < stage_recorder.index(("rank", "start"))
 
     # Final combinations returned.
     assert outcome.result is not None

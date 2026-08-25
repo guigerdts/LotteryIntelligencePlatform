@@ -18,15 +18,10 @@ def test_post_numbers_returns_success_envelope_with_stage_report(
     assert response.status_code == 200
     body = response.json()
     assert body["data"]["stages"][0]["name"] == "stats"
-    assert len(body["data"]["stages"]) == 8
+    assert len(body["data"]["stages"]) == 3
     assert [s["name"] for s in body["data"]["stages"]] == [
         "stats",
         "features",
-        "ml",
-        "dl",
-        "bt",
-        "rank",
-        "select",
         "gen",
     ]
     result = body["data"]["result"]
@@ -38,19 +33,19 @@ def test_failed_run_maps_to_502_with_stage_detail(
     client: TestClient, db: Session, pipeline_db: int, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """A failed stage maps to a 502 error envelope carrying the stage detail."""
-    from backend.app.services.meta_service import MetaService
+    from backend.app.services.feature_engine_service import FeatureEngineService
 
     def failing(*_args: object, **_kwargs: object) -> None:
-        raise RuntimeError("rank exploded")
+        raise RuntimeError("features exploded")
 
-    monkeypatch.setattr(MetaService, "rank", staticmethod(failing))
+    monkeypatch.setattr(FeatureEngineService, "generate", staticmethod(failing))
 
     response = client.post("/api/v1/pipeline/numbers", json={"lottery_id": pipeline_db})
 
     assert response.status_code == 502
     error = response.json()["error"]
     assert error["code"] == "PIPE_STAGE_FAILED"
-    assert "rank" in error["message"]
+    assert "features" in error["message"]
 
 
 def test_request_validation_rejects_missing_lottery(client: TestClient) -> None:

@@ -264,12 +264,12 @@ class TestGenerateErrors:
             _service(db).generate(lottery_id=9999)
         assert exc_info.value.code == GenServiceError.GEN_LOTTERY_NOT_FOUND
 
-    def test_no_selection_raises(self, db: Session, seed_gen_data) -> None:
-        """No active F12 selection → GEN_NO_SELECTION (GEN-003, GEN-013)."""
+    def test_no_selection_uses_fallback(self, db: Session, seed_gen_data) -> None:
+        """No active F12 selection → gen succeeds using deterministic fallback."""
         ids = seed_gen_data(selection_status="retired")
-        with pytest.raises(GenServiceError) as exc_info:
-            _service(db).generate(lottery_id=ids["lottery_id"])
-        assert exc_info.value.code == GenServiceError.GEN_NO_SELECTION
+        result = _service(db).generate(lottery_id=ids["lottery_id"])
+        assert result.selection_id == 0
+        assert result.fingerprint is not None
 
     def test_no_distribution_raises(self, db: Session, seed_gen_data) -> None:
         """No active F5 distribution → GEN_NO_DISTRIBUTION, zero combos (GEN-014)."""
