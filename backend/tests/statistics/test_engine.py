@@ -12,11 +12,15 @@ from __future__ import annotations
 from decimal import Decimal
 
 from backend.app.statistics.engine import (
+    BiasReport,
+    bias_report,
+    chi_square_gof,
     entropy_base2,
     frequency,
     gaps,
     null_aware_average,
     positional_frequency,
+    runs_test,
 )
 
 # Two draws' numbers, in ascending draw_number / position order.
@@ -90,3 +94,45 @@ def test_entropy_deterministic_and_universe_bounded() -> None:
 
 def test_entropy_empty_returns_zero() -> None:
     assert entropy_base2({}, 1, 5) == Decimal(0)
+
+
+def test_chi_square_gof_uniform_high_pvalue() -> None:
+    # Numbers 1..10 each appear equally across the draws -> no deviation.
+    draws = [[1, 2, 3, 4, 5], [6, 7, 8, 9, 10]] * 20
+    counts = frequency(draws)
+    chi2, p = chi_square_gof(counts, 1, 10)
+    assert p > 0.05
+    assert chi2 < 20  # df=9 -> ~16.9 is the 95% critical value
+
+
+def test_chi_square_gof_outlier_low_pvalue() -> None:
+    # One number dominates every draw over a wide universe -> extreme deviation.
+    draws = [[1, 2, 3, 4, 5] for _ in range(100)]
+    counts = frequency(draws)
+    chi2, p = chi_square_gof(counts, 1, 43)
+    assert p < 0.01
+    assert chi2 > 100
+
+
+def test_runs_test_alternating_extreme_z() -> None:
+    # Strict alternation between low/high is maximally non-random.
+    seq_draws = [[1 if i % 2 == 0 else 43] for i in range(200)]
+    z = runs_test(seq_draws, 1, 43)
+    assert abs(z) > 3.0
+
+
+def test_bias_report_fair_for_random_draws() -> None:
+    import random
+
+    random.seed(12345)
+    draws = [sorted(random.sample(range(1, 44), 5)) for _ in range(200)]
+    report = bias_report(frequency(draws), draws, 1, 43)
+    assert isinstance(report, BiasReport)
+    assert report.status == "fair"
+
+
+def test_bias_report_anomalous_with_hot_number() -> None:
+    draws = [[1, 2, 3, 4, 5] for _ in range(100)]
+    report = bias_report(frequency(draws), draws, 1, 43)
+    assert report.status == "anomalous"
+    assert 1 in report.outliers
