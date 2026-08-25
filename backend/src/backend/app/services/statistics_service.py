@@ -42,10 +42,14 @@ from backend.app.services.errors import (
 )
 from backend.app.statistics.checksum import stat_checksum
 from backend.app.statistics.engine import (
+    BiasReport,
     entropy_base2,
     frequency,
     null_aware_average,
     positional_frequency,
+)
+from backend.app.statistics.engine import (
+    bias_report as engine_bias_report,
 )
 from backend.app.statistics.engine import (
     gaps as engine_gaps,
@@ -217,6 +221,21 @@ class StatisticsService:
         return payload
 
     # --- resolution / validation ---------------------------------------------
+
+    def bias_report(
+        self, *, lottery_code: str | None = None, lottery_id: int | None = None
+    ) -> BiasReport:
+        """Return a fairness/bias diagnostic over the lottery's draw history (STE-14).
+
+        Recomputes frequencies and the per-draw sequence from stored draws and
+        returns a `BiasReport` (chi-square, runs z, outliers, fair/anomalous).
+        """
+        lottery = self._resolve_lottery(lottery_code=lottery_code, lottery_id=lottery_id)
+        draws: list[list[int]] = [
+            numbers for _, numbers, _, _ in self._payloads.iter_draws(lottery.id)
+        ]
+        counts = frequency(draws)
+        return engine_bias_report(counts, draws, lottery.min_number, lottery.max_number)
 
     def _persist_new(self, lottery, metric_set: str, payload: dict) -> StatSnapshot:
         """Atomically write a NEW version and its payload, retiring the old active.
