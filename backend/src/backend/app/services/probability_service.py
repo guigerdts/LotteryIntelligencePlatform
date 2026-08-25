@@ -49,6 +49,7 @@ from backend.app.services.errors import (
     SnapshotNotFoundError,
     ValidationError,
 )
+from backend.app.statistics.engine import frequency
 
 # Supported model bundles and scopes (mirrors F3/F4).
 PROB_MODEL_SET_CORE: str = "core"
@@ -215,6 +216,50 @@ class ProbabilityService:
                 f"no prob snapshot for lottery {lottery.id!r} (model_set={model_set!r})"
             )
         return snapshot
+
+    # --- coverage map (PM-08) -------------------------------------------------
+
+    def coverage_map(
+        self,
+        *,
+        lottery_code: str | None = None,
+        lottery_id: int | None = None,
+        z_threshold: float = 1.5,
+    ) -> dict[int, str]:
+        """Classify each number COLD/NORMAL/HOT from historical draw frequency.
+
+        Uses the empirical appearance count vs the binomial expectation
+        (``numbers_to_select / universe`` per draw). Cold numbers are
+        under-represented and eligible for a coverage boost by the generator.
+        """
+        lottery = self._resolve_lottery(lottery_code=lottery_code, lottery_id=lottery_id)
+        draws = [d.numbers for d in self._draw_reader.iter_draws(lottery.id)]
+        counts = frequency(draws)
+        return _classify_coverage(
+            counts,
+            lottery.min_number,
+            lottery.max_number,
+            lottery.numbers_to_select,
+            z_threshold,
+        )
+
+    def cold_boost_weights(
+        self,
+        *,
+        lottery_code: str | None = None,
+        lottery_id: int | None = None,
+        z_threshold: float = 1.5,
+        boost: Decimal | float | str = "1.5",
+    ) -> dict[int, Decimal]:
+        """Weights for the generator: cold numbers get ``boost``, others 1.0 (PM-08)."""
+        coverage = self.coverage_map(
+            lottery_code=lottery_code, lottery_id=lottery_id, z_threshold=z_threshold
+        )
+        boost_d = Decimal(str(boost))
+        return {
+            number: (boost_d if status == "cold" else Decimal(1))
+            for number, status in coverage.items()
+        }
 
     def read_values(
         self,
@@ -534,6 +579,42 @@ def _checksum(rows: Iterable[ProbValue]) -> str:
         separators=(",", ":"),
     ).encode("utf-8")
     return hashlib.sha256(canonical).hexdigest()
+
+
+def _classify_coverage(
+    counts: dict[int, int],
+    min_number: int,
+    max_number: int,
+    numbers_to_select: int,
+    z_threshold: float = 1.5,
+) -> dict[int, str]:
+    """Classify each number COLD/NORMAL/HOT from empirical vs binomial expectation.
+
+    A number appearing far less than ``total_draws * p`` (with ``p =
+    numbers_to_select / universe``) is COLD; far more is HOT; otherwise NORMAL.
+    Classification is a pure, deterministic function of the draw counts.
+    """
+    universe = max_number - min_number + 1
+    total_draws = sum(counts.values()) // numbers_to_select if counts else 0
+    if total_draws == 0 or universe == 0:
+        return {n: "normal" for n in range(min_number, max_number + 1)}
+    expected = total_draws * numbers_to_select / universe
+    p = numbers_to_select / universe
+    std = (expected * (1 - p)) ** 0.5
+    result: dict[int, str] = {}
+    for number in range(min_number, max_number + 1):
+        if std == 0:
+            result[number] = "normal"
+            continue
+        observed = counts.get(number, 0)
+        z = (observed - expected) / std
+        if z < -z_threshold:
+            result[number] = "cold"
+        elif z > z_threshold:
+            result[number] = "hot"
+        else:
+            result[number] = "normal"
+    return result
 
 
 __all__ = [
