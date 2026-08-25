@@ -16,7 +16,7 @@ const IDLE_HINT = "Click Generate numbers to run the full analysis chain and bui
 /** Owner decision: every ticket is valid for BOTH draws; no toggle exists. */
 const DUAL_DRAW_LABEL = "Un boleto, dos sorteos (Baloto + Revancha)";
 const DISCLAIMER_TEXT =
-  "Combinations are statistically informed by historical draws, but official draws remain completely random: no method improves prediction odds and no outcome is promised.";
+  "Los números se generan a partir de la frecuencia histórica (F5) y un refuerzo de números fríos para mejorar la cobertura. Los sorteos oficiales son completamente aleatorios: ningún método mejora la probabilidad de acierto y ningún resultado está garantizado.";
 /** Default combination count sent in the payload (R4/D11). */
 const DEFAULT_COUNT = 5;
 const BUTTON_CLASS =
@@ -39,8 +39,12 @@ const combinationColumns: DataColumn<CombinationRow>[] = [
   },
   {
     key: "score",
-    label: "Score",
-    render: (row) => row.score?.toFixed(2) ?? "—",
+    label: "Peso",
+    render: (row) => (
+      <span title="Peso de cobertura (media de la frecuencia F5 × refuerzo de fríos). No es probabilidad de acierto.">
+        {row.score?.toFixed(2) ?? "—"}
+      </span>
+    ),
   },
 ];
 
@@ -181,8 +185,8 @@ export default function MisNumeros() {
         <div>
           <h2 className="text-lg font-semibold text-gray-900">Mis Números</h2>
           <p className="text-sm text-gray-500">
-            One request runs stats → features → ml → dl → backtesting → rank → select → generate for
-            the selected lottery.
+            Una solicitud calcula la frecuencia histórica (estadísticas + probabilidad F5) y genera
+            combinaciones con cobertura reforzada para el sorteo seleccionado.
           </p>
         </div>
         <button
@@ -224,6 +228,28 @@ export default function MisNumeros() {
         className="rounded-md border border-gray-200 bg-white p-4"
       >
         <TierTable />
+      </section>
+
+      <section
+        aria-label="Cómo se generan los números"
+        className="rounded-md border border-gray-200 bg-white p-4"
+      >
+        <h3 className="mb-2 text-sm font-semibold text-gray-900">Transparencia del generador</h3>
+        <ul className="space-y-1 text-sm text-gray-600">
+          <li>
+            <span className="font-medium text-gray-900">Frecuencia histórica (F5):</span> cada número
+            se pondera según cuánto ha salido, normalizado sobre el universo del juego.
+          </li>
+          <li>
+            <span className="font-medium text-gray-900">Refuerzo de números fríos:</span> los números
+            sub-representados reciben un peso mayor para ampliar la cobertura.
+          </li>
+          <li>
+            <span className="font-medium text-gray-900">Ventaja esperada (EV):</span> el generador
+            optimiza la cobertura y el reparto del premio si ganas, pero la probabilidad de acierto es
+            la del juego (1 entre C) y no cambia.
+          </li>
+        </ul>
       </section>
 
       <footer className="rounded-md border border-amber-200 bg-amber-50 p-4">
