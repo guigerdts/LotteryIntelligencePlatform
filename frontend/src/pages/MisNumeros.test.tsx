@@ -12,7 +12,7 @@ const err = (message: string, status = 500, code = "INTERNAL_ERROR") =>
   HttpResponse.json({ success: false, error: { code, message }, timestamp: "" }, { status });
 
 /** Canonical stage order of POST /pipeline/numbers (R2/S2 contract). */
-const STAGE_ORDER = ["stats", "features", "ml", "dl", "bt", "rank", "select", "gen"];
+const STAGE_ORDER = ["stats", "features", "gen"];
 
 const combinations = [
   {
@@ -51,16 +51,16 @@ const okStages = () =>
     detail: "new artifact persisted",
   }));
 
-const failedRankStages = () =>
+const failedFeaturesStages = () =>
   okStages().map((stage) =>
-    stage.name === "rank"
+    stage.name === "features"
       ? {
           ...stage,
           status: "failed",
           snapshot_id: null,
           fingerprint: null,
           error_code: "PIPE_STAGE_FAILED",
-          detail: "ranking stale for backtest context after one rerank",
+          detail: "features exploded",
         }
       : stage
   );
@@ -112,7 +112,7 @@ afterAll(() => {
 describe("runNumbersPipeline client", () => {
   it("POSTs to /api/v1/pipeline/numbers and unwraps the SuccessEnvelope", async () => {
     const result = await runNumbersPipeline({ lottery_id: 1, count: 5 });
-    expect(result.stages).toHaveLength(8);
+    expect(result.stages).toHaveLength(3);
     expect(STAGE_ORDER).toEqual(result.stages.map((stage) => stage.name));
     expect(result.result?.snapshot_id).toBe(42);
     expect(lastPipelineBody).toEqual({ lottery_id: 1, count: 5 });
@@ -162,7 +162,7 @@ describe("Mis Números page", () => {
     expect(pipelineCalls).toBe(2);
   });
 
-  it("renders all eight stages in canonical order with their statuses (R2)", async () => {
+  it("renders all three stages in canonical order with their statuses (R2)", async () => {
     selectLottery();
     render(<MisNumeros />);
 
@@ -183,11 +183,11 @@ describe("Mis Números page", () => {
     expect(screen.getByRole("table", { name: /generated combinations/i })).toBeInTheDocument();
   });
 
-  it("surfaces a failed rank stage without crashing and hides combinations (R2)", async () => {
+  it("surfaces a failed features stage without crashing and hides combinations (R2)", async () => {
     selectLottery();
     server.use(
       http.post("*/api/v1/pipeline/numbers", () =>
-        env({ stages: failedRankStages(), result: null })
+        env({ stages: failedFeaturesStages(), result: null })
       )
     );
     render(<MisNumeros />);

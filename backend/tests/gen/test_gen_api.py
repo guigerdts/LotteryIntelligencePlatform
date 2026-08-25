@@ -247,12 +247,14 @@ class TestIntegration:
         assert second.status_code == 200
         assert first.json()["data"]["snapshot_id"] == second.json()["data"]["snapshot_id"]
 
-    def test_generate_no_selection_returns_404(self, client: TestClient, db, seed_gen_data) -> None:
-        """No active selection → 404 with GEN_NO_SELECTION (real service)."""
+    def test_generate_no_selection_uses_fallback(self, client: TestClient, db, seed_gen_data) -> None:
+        """No active selection → gen succeeds using deterministic fallback."""
         ids = seed_gen_data(selection_status="retired")
         resp = client.post(f"{PREFIX}/generate", json={"lottery_id": ids["lottery_id"]})
-        assert resp.status_code == 404
-        assert resp.json()["error"]["code"] == "GEN_NO_SELECTION"
+        assert resp.status_code == 200
+        data = resp.json()["data"]
+        assert data["selection_id"] == 0
+        assert data["fingerprint"] is not None
 
     def test_generate_invalid_count_returns_422(
         self, client: TestClient, db, seed_gen_data

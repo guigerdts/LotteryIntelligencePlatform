@@ -23,39 +23,16 @@ from backend.app.models.draw_number import DrawNumber
 from backend.app.models.lottery import Lottery
 from backend.app.models.super_number import SuperNumber
 
-# Single-threaded numeric kernels BEFORE numpy/torch import: small-tensor
-# training is dominated by thread-pool contention on many-core hosts.
-os.environ.setdefault("OMP_NUM_THREADS", "1")
-os.environ.setdefault("MKL_NUM_THREADS", "1")
-
-try:  # torch is imported lazily by dl.engine; pin its intra-op pool too.
-    import torch
-
-    torch.set_num_threads(1)
-except ImportError:  # pragma: no cover - torch is a hard dep of dl extras
-    pass
-
 # Canonical chain order under test (spec R1/R3).
 STAGE_ORDER: tuple[str, ...] = (
     "stats",
     "features",
-    "ml",
-    "dl",
-    "bt",
-    "rank",
-    "select",
     "gen",
 )
-
-# bt enforces >=100 imported draws (BTE-07); stay just above the floor.
-_NUM_DRAWS = 105
 
 
 def _seed_lottery_with_draws(db: Session) -> int:
     """Insert one lottery plus deterministic draw history; return its id."""
-    # A compact 1..8/choose-3 space: ML fits one model per number per family,
-    # so shrinking the number pool keeps the 5-family × N-number training
-    # matrix cheap while bt's >=100-draw coverage minimum still holds.
     lottery = Lottery(
         code="PIPE",
         name="Pipeline Fixture",
@@ -75,7 +52,7 @@ def _seed_lottery_with_draws(db: Session) -> int:
     base = datetime(2020, 1, 1, 12, 0, 0)
     # Stride coprime with len(combos) spreads every number evenly across the
     # history so per-number ML targets never collapse to a single class.
-    for i in range(_NUM_DRAWS):
+    for i in range(105):
         draw = Draw(
             lottery_id=lottery.id,
             draw_number=i + 1,
@@ -139,11 +116,6 @@ def stage_recorder(monkeypatch: pytest.MonkeyPatch) -> list[tuple[str, str]]:
             "features",
         ),
         ("backend.app.services.probability_service", "ProbabilityService", "generate", "features"),
-        ("backend.app.services.ml_service", "MlService", "train", "ml"),
-        ("backend.app.services.dl_service", "DlService", "train", "dl"),
-        ("backend.app.services.bt_service", "BtService", "run", "bt"),
-        ("backend.app.services.meta_service", "MetaService", "rank", "rank"),
-        ("backend.app.services.meta_service", "MetaService", "select", "select"),
         ("backend.app.services.gen_service", "GenService", "generate", "gen"),
     ]
     for module_name, class_name, method_name, stage in targets:
@@ -173,34 +145,6 @@ def clear_stages(db: Session, lottery_id: int, keep: set[str]) -> None:
             "gen",
             [(_import_model("gen_combination", "GenCombination"), "snapshot_id")],
             [_import_model("gen_snapshot", "GenSnapshot")],
-        ),
-        (
-            "select",
-            [(_import_model("meta_selection_entry", "MetaSelectionEntry"), "selection_id")],
-            [_import_model("meta_selection", "MetaSelection")],
-        ),
-        (
-            "rank",
-            [(_import_model("meta_ranking_entry", "MetaRankingEntry"), "ranking_id")],
-            [_import_model("meta_ranking", "MetaRanking")],
-        ),
-        (
-            "bt",
-            [(_import_model("bt_result", "BtResult"), "snapshot_id")],
-            [_import_model("bt_snapshot", "BtSnapshot")],
-        ),
-        (
-            "dl",
-            [
-                (_import_model("dl_weight", "DlWeight"), "snapshot_id"),
-                (_import_model("dl_metric", "DlMetric"), "snapshot_id"),
-            ],
-            [_import_model("dl_snapshot", "DlSnapshot")],
-        ),
-        (
-            "ml",
-            [(_import_model("ml_metric", "MlMetric"), "snapshot_id")],
-            [_import_model("ml_snapshot", "MlSnapshot")],
         ),
         (
             "features",
@@ -252,11 +196,6 @@ def artifact_versions(db: Session, lottery_id: int) -> dict[str, int]:
         ("stats", _import_model("stat_snapshot", "StatSnapshot")),
         ("features", _import_model("feature_snapshot", "FeatureSnapshot")),
         ("prob", _import_model("prob_snapshot", "ProbSnapshot")),
-        ("ml", _import_model("ml_snapshot", "MlSnapshot")),
-        ("dl", _import_model("dl_snapshot", "DlSnapshot")),
-        ("bt", _import_model("bt_snapshot", "BtSnapshot")),
-        ("rank", _import_model("meta_ranking", "MetaRanking")),
-        ("select", _import_model("meta_selection", "MetaSelection")),
         ("gen", _import_model("gen_snapshot", "GenSnapshot")),
     ]
     counts: dict[str, int] = {}
@@ -264,47 +203,6 @@ def artifact_versions(db: Session, lottery_id: int) -> dict[str, int]:
         stmt = select(func.count()).select_from(model).where(model.lottery_id == lottery_id)
         counts[name] = int(db.execute(stmt).scalar())
     return counts
-
-
-@pytest.fixture(autouse=True)
-def fast_dl_training(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Shrink DL epochs to 1 inside this test package only.
-
-    Production keeps registry defaults (D12); the orchestrator contract under
-    test (auto-train fires, order mlp→lstm, artifacts persist) does not depend
-    on epoch count. The patched registry stays consistent within the process,
-    so fingerprints computed across runs remain comparable (R4).
-    """
-    from backend.app.services import dl_service
-
-    real_build = dl_service.build_dl_registry
-
-    def fast_build() -> Any:
-        fast = {slug: dict(params) for slug, params in real_build().items()}
-        for params in fast.values():
-            params["epochs"] = 1
-        return fast
-
-    monkeypatch.setattr(dl_service, "build_dl_registry", fast_build)
-
-
-@pytest.fixture(autouse=True)
-def fast_ml_training(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Force serial ML fitting inside this test package only.
-
-    ``MlEngine`` guarantees byte-identical results between the serial loop and
-    the ProcessPoolExecutor path (GF-1); pool worker warm-up costs ~30s per
-    chain run on this fixture, which no pipeline assertion depends on.
-    """
-    from backend.app.ml.engine import MlEngine
-
-    real_train = MlEngine.train
-
-    def serial_train(self: Any, *args: Any, **kwargs: Any) -> Any:
-        kwargs["parallel"] = False
-        return real_train(self, *args, **kwargs)
-
-    monkeypatch.setattr(MlEngine, "train", serial_train)
 
 
 @pytest.fixture
