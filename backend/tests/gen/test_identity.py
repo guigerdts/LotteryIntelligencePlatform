@@ -37,9 +37,9 @@ GOLDEN_INPUT_FINGERPRINT = "a7b7e0c02d515212ae9ac621887d46e1ce504ebb07786760b0f6
 PRE_CHANGE_SEED = 297872213468358109463619875798332175481
 PRE_CHANGE_SNAPSHOT_FINGERPRINT = "ddd2dbe5c6c8002067c2191e118caf1902c9c2e9b9ee2616136119bda3feb42c"
 
-# Regenerated v2.0.0 golden vectors (D6) — locked atomically with the bump.
-GOLDEN_SEED_V2 = 275000497823893291003335902595522194545
-GOLDEN_SNAPSHOT_FINGERPRINT_V2 = "3a767d0a41419b566bc718e64821d59a698321355b4d0da533b0435b22b48373"
+# Regenerated v3.0.0 golden vectors (GEN-009 remix) — locked atomically with the bump.
+GOLDEN_SEED_V3 = 198708973693754007559308447754739185303
+GOLDEN_SNAPSHOT_FINGERPRINT_V3 = "570bb8de864fb28b85027badc4552ebaa2e4c3bf6504b4cef649b1c056542ae7"
 
 
 class TestGenerationSeed:
@@ -68,13 +68,13 @@ class TestGenerationSeed:
         )
         assert seed == PRE_CHANGE_SEED
 
-    def test_locked_v2_golden_vector(self) -> None:
-        """Regenerated golden under the bumped identity (D6)."""
-        assert GENERATOR_VERSION == "2.0.0"
+    def test_locked_v3_golden_vector(self) -> None:
+        """Regenerated golden under the bumped identity (GEN-009 remix)."""
+        assert GENERATOR_VERSION == "3.0.0"
         seed = generation_seed(
             GOLDEN_SELECTION_FINGERPRINT, GOLDEN_LOTTERY_ID, GOLDEN_COUNT, GENERATOR_VERSION
         )
-        assert seed == GOLDEN_SEED_V2
+        assert seed == GOLDEN_SEED_V3
 
     @pytest.mark.parametrize(
         ("selection_fingerprint", "lottery_id", "count", "version"),
@@ -157,16 +157,16 @@ class TestSnapshotFingerprint:
         )
         assert fp == PRE_CHANGE_SNAPSHOT_FINGERPRINT
 
-    def test_locked_v2_golden_vector(self) -> None:
-        """Regenerated fingerprint under the bumped identity (D6)."""
-        assert GENERATOR_VERSION == "2.0.0"
-        seed_v2 = generation_seed(
+    def test_locked_v3_golden_vector(self) -> None:
+        """Regenerated fingerprint under the bumped identity (GEN-009 remix)."""
+        assert GENERATOR_VERSION == "3.0.0"
+        seed_v3 = generation_seed(
             GOLDEN_SELECTION_FINGERPRINT, GOLDEN_LOTTERY_ID, GOLDEN_COUNT, GENERATOR_VERSION
         )
         fp = snapshot_fingerprint(
-            GOLDEN_LOTTERY_ID, GOLDEN_SELECTION_ID, GOLDEN_COUNT, seed_v2, GENERATOR_VERSION
+            GOLDEN_LOTTERY_ID, GOLDEN_SELECTION_ID, GOLDEN_COUNT, seed_v3, GENERATOR_VERSION
         )
-        assert fp == GOLDEN_SNAPSHOT_FINGERPRINT_V2
+        assert fp == GOLDEN_SNAPSHOT_FINGERPRINT_V3
 
     @pytest.mark.parametrize(
         ("lottery_id", "selection_id", "count", "seed", "version"),
@@ -228,9 +228,9 @@ class TestSnapshotFingerprint:
 class TestVersionBumpAliasingGuard:
     """D6/R2 — v2 outputs MUST NOT alias any pre-change fixture fingerprint."""
 
-    def test_v2_fingerprint_differs_from_pre_change(self) -> None:
+    def test_v3_fingerprint_differs_from_pre_change(self) -> None:
         """Same canonical inputs → bump moves the fingerprint away from legacy."""
-        assert GENERATOR_VERSION == "2.0.0"
+        assert GENERATOR_VERSION == "3.0.0"
         seed_v2 = generation_seed(
             GOLDEN_SELECTION_FINGERPRINT, GOLDEN_LOTTERY_ID, GOLDEN_COUNT, GENERATOR_VERSION
         )
