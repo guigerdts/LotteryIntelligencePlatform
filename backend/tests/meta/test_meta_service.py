@@ -336,3 +336,45 @@ class TestGetHappyPath:
 
         snapshot = svc.get_selection(1)
         assert snapshot.context_hash == "ctx-hash"
+
+
+def test_rank_refreshes_created_at_on_idempotent_return(db, seeded_lottery, service):
+    """Regression (D8 healing): a second rank() for an unchanged context must
+    refresh the ranking created_at so it is not perpetually 'stale' vs a newer
+    bt_snapshot. Previously the idempotent return kept the old timestamp, which
+    made pipeline_service._ranking_stale report stale forever after bt re-ran
+    (PIPE_STAGE_FAILED: ranking stale for backtest context after one rerank)."""
+    from datetime import datetime
+
+    from backend.app.models.bt_snapshot import BtSnapshot
+    from backend.app.models.meta_ranking import MetaRanking
+
+    _seed_bt(
+        db,
+        "s1",
+        {"sharpe": 1.2, "win_rate": 0.5, "max_drawdown": 0.1, "profit_factor": 1.5},
+    )
+    r1 = service.rank(lottery_id=seeded_lottery.id)
+    ranking_id = r1.ranking_id
+
+    # Simulate a newer bt_snapshot (the exact condition that previously broke):
+    # bt "re-ran" and produced a snapshot with a later created_at but identical
+    # data, so the ranking fingerprint is unchanged (idempotent return path).
+    mid = datetime.now()
+    snap1 = db.query(BtSnapshot).filter_by(lottery_id=1).first()
+    snap1.created_at = mid
+    db.commit()
+
+    # Force the existing ranking into the past to reproduce staleness.
+    row = db.get(MetaRanking, ranking_id)
+    row.created_at = datetime(2000, 1, 1)
+    db.commit()
+
+    r2 = service.rank(lottery_id=seeded_lottery.id)
+    assert r2.ranking_id == ranking_id
+    db.refresh(row)
+    # The idempotent return must refresh created_at so it is no longer stale
+    # vs the newer bt_snapshot (row.created_at is now, which is >= mid).
+    assert row.created_at >= mid, (
+        "rank() must refresh created_at so the ranking is not stale vs newest bt"
+    )

@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass, field
+from datetime import UTC, datetime
 from typing import Any
 
 from sqlalchemy.orm import Session
@@ -136,6 +137,13 @@ class MetaService:
         # 5. Idempotency check
         existing = self._store.find_by_fingerprint(fp)
         if existing is not None:
+            # D8 healing: refresh created_at so a rerank against a newer
+            # bt_snapshot is not blocked by a stale timestamp. The ranking
+            # content (fingerprint) is identical, so it stays valid for the
+            # current backtest context.
+            existing.created_at = datetime.now(UTC)
+            self._session.add(existing)
+            self._session.commit()
             return RankingResult(
                 ranking_id=existing.id,
                 lottery_id=lottery_id,
