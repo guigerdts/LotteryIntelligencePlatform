@@ -153,17 +153,17 @@ class TestSuperBalotaAndScore:
         assert pairs_a == pairs_b
 
     def test_score_formula_selection_weighted(self, db: Session, seed_gen_data) -> None:
-        """score == round(entry_score × mean(P(n)), 6) with uniform P=0.05 (D3)."""
+        """score == round(mean(weights), 6); uniform P=0.05 → score 0.05 (GEN-009)."""
         ids = seed_gen_data(scores=(0.7, 0.3))
         result = _service(db).generate(lottery_id=ids["lottery_id"], count=1)
-        expected = round(0.7 * ((0.05 * 6) / 6), 6)
+        expected = round(0.05, 6)
         assert result.combinations[0].score == expected
 
-    def test_score_reflects_both_entry_weights(self, db: Session, seed_gen_data) -> None:
-        """count=10 spans both entries → scores ∈ {0.7×0.05, 0.3×0.05} rounded (D3)."""
+    def test_score_reflects_weights_not_entries(self, db: Session, seed_gen_data) -> None:
+        """count=10 → all scores equal the mean F5 weight (0.05), entry scores ignored (GEN-009)."""
         ids = seed_gen_data(scores=(0.7, 0.3))
         result = _service(db).generate(lottery_id=ids["lottery_id"], count=10)
-        allowed = {round(0.7 * 0.05, 6), round(0.3 * 0.05, 6)}
+        allowed = {round(0.05, 6)}
         for row in result.combinations:
             assert row.score in allowed
 

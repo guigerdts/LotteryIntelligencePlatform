@@ -42,10 +42,7 @@ class TestSampleCombinations:
 
     def _make_pool(self, n: int = 49, weight: float = 1.0) -> WeightedPool:
         """Create a uniform distribution over numbers 1..n."""
-        return WeightedPool(
-            probabilities={i: weight for i in range(1, n + 1)},
-            score=1.0,
-        )
+        return WeightedPool(weights={i: weight for i in range(1, n + 1)})
 
     def test_determinism(self, cfg: LotteryConfig) -> None:
         """Same seed → identical output (GEN-005, NFR-GEN-01)."""
@@ -91,13 +88,13 @@ class TestSampleCombinations:
         consume SB draws (post-acceptance draw). White-box replay of the documented
         algorithm with a single random.Random(seed) instance.
         """
-        pool = WeightedPool(probabilities={i: 1.0 for i in range(1, 50)}, score=1.0)
+        pool = WeightedPool(weights={i: 1.0 for i in range(1, 50)})
         count = 4
         result = sample_combinations(1234, [pool], count, cfg)
 
         rng = random.Random(1234)
-        numbers = sorted(pool.probabilities)
-        weights = [pool.probabilities[n] * pool.score for n in numbers]
+        numbers = sorted(pool.weights)
+        weights = [pool.weights[n] for n in numbers]
         sb_numbers = list(range(cfg.super_number_min, cfg.super_number_max + 1))
         sb_weights = [1.0 / len(sb_numbers)] * len(sb_numbers)
         generated: set[frozenset[int]] = set()
@@ -140,10 +137,7 @@ class TestSampleCombinations:
             super_number_min=1,
             super_number_max=9,
         )
-        pool = WeightedPool(
-            probabilities={i: 1.0 for i in range(1, 7)},
-            score=1.0,
-        )
+        pool = WeightedPool(weights={i: 1.0 for i in range(1, 7)})
         with pytest.raises(GenServiceError) as exc_info:
             sample_combinations(42, [pool], 5, tiny_cfg, max_attempts=3)
         assert exc_info.value.code == "GEN_SPACE_EXHAUSTED"
@@ -157,15 +151,9 @@ class TestSampleCombinations:
 
     def test_multiple_pools(self, cfg: LotteryConfig) -> None:
         """Multiple weighted pools produce combinations from each."""
-        pool1 = WeightedPool(
-            probabilities={i: 1.0 for i in range(1, 50)},
-            score=0.7,
-        )
-        pool2 = WeightedPool(
-            probabilities={i: 1.0 for i in range(1, 50)},
-            score=0.3,
-        )
-        # 3 from pool1, 2 from pool2 = 5 total
+        pool1 = WeightedPool(weights={i: 0.7 for i in range(1, 50)})
+        pool2 = WeightedPool(weights={i: 0.3 for i in range(1, 50)})
+        # The first pool satisfies the full count; pool2 is unused.
         results = sample_combinations(42, [pool1, pool2], 5, cfg)
         assert len(results) == 5
 
@@ -173,8 +161,7 @@ class TestSampleCombinations:
         """Higher score weight biases number selection."""
         # Pool with strong weight on low numbers
         pool_low = WeightedPool(
-            probabilities={i: (10.0 if i <= 10 else 0.1) for i in range(1, 50)},
-            score=1.0,
+            weights={i: (10.0 if i <= 10 else 0.1) for i in range(1, 50)}
         )
         cfg = LotteryConfig(
             numbers_to_select=3,

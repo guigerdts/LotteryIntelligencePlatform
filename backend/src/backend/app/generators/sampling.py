@@ -40,10 +40,9 @@ class LotteryConfig(Protocol):
 
 @dataclass(frozen=True)
 class WeightedPool:
-    """A number→probability distribution weighted by an entry score."""
+    """A number→weight distribution used for weighted sampling (GEN-009)."""
 
-    probabilities: dict[int, float]
-    score: float
+    weights: dict[int, float]
 
 
 def sample_combinations(
@@ -56,12 +55,13 @@ def sample_combinations(
 ) -> list[tuple[list[int], int]]:
     """Generate ``count`` unique valid ``(combination, super_balota)`` pairs.
 
-    For each pool, weighted sampling uses ``rng.choices`` with weights derived
-    from the pool's probability map × entry score. Invalid or duplicate combos
-    trigger resampling. On each ACCEPTED combination the Superbalota is drawn
-    ONCE from the same ``isolated_rng(seed)`` stream over ``sb_marginal``
-    (D1: post-acceptance draw keeps stream consumption independent of rejection
-    counts), and the full pair is legality-gated pre-append (D5/R1).
+    For each pool, weighted sampling uses ``rng.choices`` with the pool's
+    precomputed ``weights`` map (F5 × cold boost, GEN-009). Invalid or
+    duplicate combos trigger resampling. On each ACCEPTED combination the
+    Superbalota is drawn ONCE from the same ``isolated_rng(seed)`` stream over
+    ``sb_marginal`` (D1: post-acceptance draw keeps stream consumption
+    independent of rejection counts), and the full pair is legality-gated
+    pre-append (D5/R1).
 
     ``sb_marginal`` maps candidate SB values to relative weights; when ``None``
     a uniform distribution over the configured SB range is used. On
@@ -83,9 +83,9 @@ def sample_combinations(
     results: list[tuple[list[int], int]] = []
 
     for pool in pools:
-        # Build weighted pool: number → (probability × score)
-        numbers = sorted(pool.probabilities.keys())
-        weights = [pool.probabilities[n] * pool.score for n in numbers]
+        # Build weighted pool directly from the precomputed weights map.
+        numbers = sorted(pool.weights.keys())
+        weights = [float(pool.weights[n]) for n in numbers]
 
         needed = count - len(results)
         for _ in range(needed):
