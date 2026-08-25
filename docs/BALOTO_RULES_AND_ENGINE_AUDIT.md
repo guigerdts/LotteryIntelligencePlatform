@@ -6,6 +6,12 @@
 > remix decision, and (4) the direction for statistically-grounded number
 > generation.
 
+> **Status — number-generation-remix: IMPLEMENTED (2026-08-25).** The dead
+> prediction chain (`features → ml → dl → bt → rank → select → opt`) was removed
+> from generation. `gen` now samples `F5 (probability) × cold-coverage boost`; the
+> meta `entry.score` is no longer used. Stacked PRs #71 / #72 / #73 are merged into
+> `fix/rank-stale-healing`. Final shape in §7.
+
 Language note: this document is English for cross-agent readability. Lottery
 terms keep their Spanish names (Baloto, Revancha, Superbalota, etc.).
 
@@ -97,7 +103,12 @@ reusable part of her method is *frequency/gap tracking*, which maps to lever **C
 
 ---
 
-## 3. Verified Engine Audit (current code)
+## 3. Verified Engine Audit (pre-remix, historical)
+
+> Run on the live repo **before** the number-generation-remix. Its conclusion —
+> the prediction chain had zero effect on the numbers `gen` outputs — is exactly
+> what motivated the change in §4/§7. Read it as the diagnosis, not the current
+> code.
 
 Run on the live repo. Conclusion: **the entire prediction chain has zero effect
 on the numbers that `gen` outputs.**
@@ -179,3 +190,40 @@ design, and tasks. Implementation waits until requirements are clear and approve
 - Commit discipline in this repo: ruff clean + tests green, then commit; the
   external "Gentleman Guardian Angel" pre-commit hook may time out — use
   `--no-verify` only after local checks pass.
+
+---
+
+## 7. Implementation — number-generation-remix (DONE)
+
+The refactor is implemented and merged. Generation no longer depends on the meta
+prediction chain; the 5 options are built only on `stats` (F5) and `probability`
+(coverage) — legitimate statistical levers — and the UI is honest about odds.
+
+### Quick path (review)
+
+1. Read `GenService.generate` — weights come from `build_weights(probabilities, coverage)`.
+2. Confirm `score` is the transparent **mean sampling weight**, not a win probability.
+3. Confirm the UI (`Mis Números`) states odds are unchanged and labels `Score` → `Peso`.
+
+### What changed
+
+| Area | Before | After |
+|------|--------|-------|
+| Generation weights | F5 sampled by `entry.score` (uniform inside a pool → no effect) | F5 × cold-coverage boost (`build_weights`) |
+| Meta chain (`ml`/`dl`/`bt`/`rank`/`select`/`opt`) | present but inert in `gen` | removed from the generation path |
+| Bias diagnostic | absent | `chi_square_gof`, `runs_test` (per-draw **sum** series), `bias_report` (STE-14) |
+| EV (lever A) | absent | `ev_service` (`combinations_count`, `combination_ev`, `estimate_ticket_ev`, `is_high_ev_window`) |
+| Coverage (lever C/D) | absent | `coverage_map` + `cold_boost_weights` (PM-08) |
+| UI | implied meta pipeline | honest disclaimer + Transparencia panel; `Score` → `Peso` |
+
+### Honesty checklist
+
+- [x] UI states no method raises win probability.
+- [x] `score` column labeled as coverage weight, not prediction.
+- [x] `GENERATOR_VERSION` bumped 2.0.0 → 3.0.0; golden vectors regenerated.
+- [x] Engines `ml`/`dl`/`bt`/`opt`/`feature` retained (consumed by backtesting/experiment UIs); only `gen` was decoupled.
+
+### Next step
+
+- Land `fix/rank-stale-healing` → `main` when the release window opens.
+- If sales/popularity data is ever imported, revisit lever B (unpopularity weights).
