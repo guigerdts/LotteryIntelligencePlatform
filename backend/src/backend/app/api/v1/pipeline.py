@@ -29,10 +29,10 @@ DbSession = Annotated[Session, Depends(get_db)]
     summary="Run the canonical numbers chain and return the per-stage report",
 )
 def run_numbers(payload: PipelineRunRequest, db: DbSession) -> SuccessEnvelope[PipelineRunResult]:
-    """Heal-and-run stats→features→ml→dl→bt→rank→select→gen in one call (R1).
+    """Heal-and-run stats→features→gen in one call (R1).
 
     Missing/stale prerequisites are repaired by running exactly the deficient
-    stages (R2); every response carries the ordered eight-stage report (R3);
+    stages (R2); every response carries the ordered three-stage report (R3);
     unchanged inputs reuse stored fingerprints with zero side effects (R4).
     """
     outcome = PipelineService(db).run(

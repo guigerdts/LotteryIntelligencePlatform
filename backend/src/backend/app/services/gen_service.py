@@ -33,9 +33,9 @@ from backend.app.generators.validation import validate_combination
 from backend.app.generators.version import GENERATOR_VERSION
 from backend.app.generators.weighting import build_weights
 from backend.app.models.gen_snapshot import GenSnapshot
-from backend.app.services.probability_service import _classify_coverage
 from backend.app.repositories.stat_payload_repository import StatPayloadRepository
 from backend.app.services.errors import GenServiceError
+from backend.app.services.probability_service import _classify_coverage
 from backend.app.statistics.engine import frequency
 
 DEFAULT_COUNT: int = 10
@@ -316,8 +316,14 @@ class GenService:
         """Resolve the selection to weight from; ``GEN_NO_SELECTION`` when absent.
 
         Without an override the active selection is used; an override must belong
-        to the target lottery (GEN-003).
+        to the target lottery (GEN-003). When no active MetaSelection exists,
+        returns a lightweight fallback object with id=0 and a deterministic
+        fingerprint derived from the probability snapshot checksum + lottery_id.
         """
+        import hashlib
+        import json as _json
+        from types import SimpleNamespace
+
         from backend.app.models.meta_selection import MetaSelection
 
         if selection_id is not None:
@@ -341,10 +347,29 @@ class GenService:
         )
         selection = self._session.execute(stmt).scalar_one_or_none()
         if selection is None:
-            raise GenServiceError(
-                GenServiceError.GEN_NO_SELECTION,
-                f"no active selection for lottery {lottery_id}",
+            # Fallback: build lightweight selection-like object (no MetaSelection needed)
+            from backend.app.models.prob_snapshot import ProbSnapshot
+
+            prob_stmt = (
+                select(ProbSnapshot)
+                .where(ProbSnapshot.lottery_id == lottery_id, ProbSnapshot.status == "active")
+                .order_by(ProbSnapshot.version.desc())
+                .limit(1)
             )
+            prob = self._session.execute(prob_stmt).scalar_one_or_none()
+            if prob is None:
+                raise GenServiceError(
+                    GenServiceError.GEN_NO_DISTRIBUTION,
+                    f"no active probability distribution for lottery {lottery_id}",
+                )
+            # Deterministic fingerprint from prob snapshot checksum + lottery_id
+            canonical = _json.dumps(
+                {"checksum": prob.checksum, "lottery_id": lottery_id},
+                sort_keys=True,
+                separators=(",", ":"),
+            )
+            fp = hashlib.sha256(canonical.encode()).hexdigest()
+            return SimpleNamespace(id=0, fingerprint=fp)
         return selection
 
     def _load_distribution(self, lottery_id: int) -> dict[int, float]:
