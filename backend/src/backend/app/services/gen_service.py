@@ -31,8 +31,12 @@ from backend.app.generators.sampling import WeightedPool, sample_combinations
 from backend.app.generators.snapshot_store import GenSnapshotStore
 from backend.app.generators.validation import validate_combination
 from backend.app.generators.version import GENERATOR_VERSION
+from backend.app.generators.weighting import build_weights
 from backend.app.models.gen_snapshot import GenSnapshot
+from backend.app.services.probability_service import _classify_coverage
+from backend.app.repositories.stat_payload_repository import StatPayloadRepository
 from backend.app.services.errors import GenServiceError
+from backend.app.statistics.engine import frequency
 
 DEFAULT_COUNT: int = 10
 """Default combination count when not provided (GEN-002)."""
@@ -120,22 +124,23 @@ class GenService:
     ) -> GenerationResult:
         """Generate (or idempotently return) a lottery combination snapshot.
 
-        Pipeline (GEN-001): resolve the F12 selection → validate count →
-        allocate via the micro-unit rule (GEN-004) → load the F5 distribution →
-        load the SB historical marginal (R2/D2) → sample ``(combo, sb)`` pairs
-        with ``isolated_rng`` (GEN-005, D1) → compute the selection-weighted
-        score (R3/D3) → gate legality pre-persist (R1/D5) → fingerprint →
-        persist a NEW active version atomically. Same inputs reproduce the
-        identical snapshot including Superbalotas and scores (GEN-008); a
-        duplicate non-active fingerprint is a conflict (GEN-013).
+        Pipeline (GEN-001, GEN-009 remix): resolve the selection scope → validate
+        count → load the F5 distribution → derive per-number weights from F5 ×
+        cold-coverage boost (PM-08) → sample ``(combo, sb)`` pairs with
+        ``isolated_rng`` (GEN-005, D1) → score each combo with its transparent
+        mean sampling weight (R3/D3) → gate legality pre-persist (R1/D5) →
+        fingerprint → persist a NEW active version atomically. The meta
+        prediction-chain scores are NOT used (audit-proven zero effect). Same
+        inputs reproduce the identical snapshot including Superbalotas and scores
+        (GEN-008); a duplicate non-active fingerprint is a conflict (GEN-013).
         """
         lottery = self._resolve_lottery(lottery_id)
         effective_count = DEFAULT_COUNT if count is None else count
         self._validate_count(effective_count)
         selection = self._resolve_selection(lottery_id, selection_id)
-        entry_rows = self._read_selection_entries(selection.id)
-        entries = [SelectionEntry(score=row.score, rank=row.rank) for row in entry_rows]
-        allocations = allocate_count(entries, effective_count)
+        # GEN-09 remix: a single allocation unit carries the whole count; the
+        # per-number weights (not a meta entry score) drive sampling below.
+        allocations = allocate_count([SelectionEntry(score=1.0, rank=0)], effective_count)
 
         effective_seed = (
             generation_seed(selection.fingerprint, lottery_id, effective_count, GENERATOR_VERSION)
@@ -161,28 +166,29 @@ class GenService:
             )
 
         probabilities = self._load_distribution(lottery_id)
-        sb_marginal = self._load_sb_marginal(lottery)
-        pools = [
-            WeightedPool(probabilities=probabilities, score=entries[i].score)
-            for i, allocated in allocations
-            if allocated > 0
+        # Coverage (COLD/NORMAL/HOT) from draw history; only COLD numbers get a
+        # boost (PM-08). With no imported draw numbers this map is all "normal".
+        draws = [
+            numbers
+            for _dn, numbers, _j, _w in StatPayloadRepository(self._session).iter_draws(lottery.id)
         ]
+        coverage = _classify_coverage(
+            frequency(draws),
+            lottery.min_number,
+            lottery.max_number,
+            lottery.numbers_to_select,
+        )
+        weights = build_weights(probabilities, coverage)
+        sb_marginal = self._load_sb_marginal(lottery)
+        pools = [WeightedPool(weights=weights) for _i, allocated in allocations if allocated > 0]
         sampled = sample_combinations(effective_seed, pools, effective_count, lottery, sb_marginal)
 
-        # D3: score = entry_score × mean(P(n)) computed where pools carry both
-        # inputs. Pools consume the sample sequentially in allocation order, so
-        # each pair's provenance (entry score) is recovered positionally.
+        # D3/R3: score is the transparent mean sampling weight of the combo's
+        # numbers (F5 × cold boost) — no meta entry score involved.
         scored: list[tuple[list[int], int, float]] = []
-        idx = 0
-        for entry_index, allocated in allocations:
-            if allocated <= 0:
-                continue
-            entry_score = float(entries[entry_index].score)
-            for _ in range(allocated):
-                combo, sb = sampled[idx]
-                idx += 1
-                mean_p = sum(probabilities.get(n, 0.0) for n in combo) / len(combo)
-                scored.append((combo, sb, round(entry_score * mean_p, 6)))
+        for combo, sb in sampled:
+            mean_w = sum(weights.get(n, 0.0) for n in combo) / len(combo)
+            scored.append((combo, sb, round(mean_w, 6)))
 
         # R1/D5: legality assert before anything is persisted.
         for combo, sb, _score in scored:
@@ -340,23 +346,6 @@ class GenService:
                 f"no active selection for lottery {lottery_id}",
             )
         return selection
-
-    def _read_selection_entries(self, selection_id: int) -> list[Any]:
-        """Read the scored entries of a selection; ``GEN_NO_SELECTION`` when empty."""
-        from backend.app.models.meta_selection_entry import MetaSelectionEntry
-
-        stmt = (
-            select(MetaSelectionEntry)
-            .where(MetaSelectionEntry.selection_id == selection_id)
-            .order_by(MetaSelectionEntry.rank)
-        )
-        rows = list(self._session.execute(stmt).scalars().all())
-        if not rows:
-            raise GenServiceError(
-                GenServiceError.GEN_NO_SELECTION,
-                f"selection {selection_id} has no entries",
-            )
-        return rows
 
     def _load_distribution(self, lottery_id: int) -> dict[int, float]:
         """Read the active F5 number→probability map; ``GEN_NO_DISTRIBUTION`` absent.

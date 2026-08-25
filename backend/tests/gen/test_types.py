@@ -94,10 +94,10 @@ class TestAllocation:
 class TestGeneratorVersion:
     """GENERATOR_VERSION constant — GEN-009 determinism + D6 major bump."""
 
-    def test_version_is_2_0_0(self) -> None:
-        # D6: stream-consumption change (SB on the shared stream) is a breaking
-        # output-identity change → GENERATOR_VERSION "2.0.0".
-        assert GENERATOR_VERSION == "2.0.0"
+    def test_version_is_3_0_0(self) -> None:
+        # GEN-009 remix: dropping meta entry.score is a breaking output-identity
+        # change → GENERATOR_VERSION "3.0.0".
+        assert GENERATOR_VERSION == "3.0.0"
 
     def test_version_is_string(self) -> None:
         assert isinstance(GENERATOR_VERSION, str)

@@ -204,7 +204,7 @@ describe("Mis Números page", () => {
     ).not.toBeInTheDocument();
     // Page stays interactive: CTA re-enabled and disclaimer still visible.
     expect(screen.getByRole("button", { name: /generate numbers/i })).toBeEnabled();
-    expect(screen.getByText(/remain/i)).toBeInTheDocument();
+    expect(screen.getByText(/completamente aleatorios/i)).toBeInTheDocument();
   });
 
   it("labels every ticket as valid for both draws and offers no toggle (R3)", async () => {
@@ -255,13 +255,13 @@ describe("Mis Números page", () => {
     selectLottery();
     render(<MisNumeros />);
 
-    expect(screen.getByText(/statistically informed/i)).toBeInTheDocument();
+    expect(screen.getByText(/completamente aleatorios/i)).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: /generate numbers/i }));
     await screen.findByRole("table", { name: /generated combinations/i });
 
-    expect(screen.getByText(/statistically informed/i)).toBeInTheDocument();
-    expect(screen.getByText(/random/i)).toBeInTheDocument();
+    expect(screen.getByText(/completamente aleatorios/i)).toBeInTheDocument();
+    expect(screen.getByText(/aleatorios/i)).toBeInTheDocument();
   });
 
   it("prompts to select a lottery with a disabled CTA when none is chosen", async () => {
