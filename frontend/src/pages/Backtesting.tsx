@@ -7,7 +7,7 @@ import { getBacktestResults, runBacktest } from "../services/backtesting";
 import { useLotteryStore } from "../store/useLotteryStore";
 import type { BacktestMetrics, BacktestRun } from "../types/backtesting";
 
-const NO_LOTTERY_MESSAGE = "Select a lottery to run a backtest.";
+const NO_LOTTERY_MESSAGE = "Selecciona una lotería para ejecutar una prueba histórica.";
 const DEFAULT_TRAIN_YEARS = 5;
 const DEFAULT_EVAL_COUNT = 100;
 const DEFAULT_STEP_COUNT = 10;
@@ -52,10 +52,10 @@ function formatHitRate(value: number): string {
 
 function MetricsGrid({ metrics }: { metrics: BacktestMetrics }) {
   const rows = [
-    { label: "Hit rate", value: formatHitRate(metrics.hit_rate) },
-    { label: "Average matches", value: metrics.average_matches.toFixed(2) },
-    { label: "Consistency score", value: metrics.consistency_score.toFixed(2) },
-    { label: "Draws evaluated", value: String(metrics.total_draws_evaluated) },
+    { label: "Tasa de aciertos", value: formatHitRate(metrics.hit_rate) },
+    { label: "Aciertos promedio", value: metrics.average_matches.toFixed(2) },
+    { label: "Puntuación de consistencia", value: metrics.consistency_score.toFixed(2) },
+    { label: "Sorteos evaluados", value: String(metrics.total_draws_evaluated) },
   ];
   return (
     <dl className="grid grid-cols-2 gap-4 sm:grid-cols-4">
@@ -121,18 +121,18 @@ export default function Backtesting() {
       "e.g. uniform-weighted",
       true
     ),
-    numberField("bt-train-years", "Train years", 1, 50, trainYearsInput, setTrainYearsInput),
-    numberField("bt-eval-count", "Eval count", 1, 52, evalCountInput, setEvalCountInput),
-    numberField("bt-step-count", "Step count", 1, 52, stepCountInput, setStepCountInput),
+    numberField("bt-train-years", "Años de entrenamiento", 1, 50, trainYearsInput, setTrainYearsInput),
+    numberField("bt-eval-count", "Evaluaciones", 1, 52, evalCountInput, setEvalCountInput),
+    numberField("bt-step-count", "Pasos", 1, 52, stepCountInput, setStepCountInput),
     numberField(
-      "bt-min-draws",
-      "Min train draws",
+      "bt-min-train-draws",
+      "Sorteos mínimos de entrenamiento",
       10,
       5000,
       minTrainDrawsInput,
       setMinTrainDrawsInput
     ),
-    numberField("bt-seed", "Seed", 0, undefined, seedInput, setSeedInput, "Optional"),
+    numberField("bt-seed", "Semilla", 0, undefined, seedInput, setSeedInput, "Opcional"),
   ];
 
   const handleRun = async () => {
@@ -235,12 +235,12 @@ export default function Backtesting() {
           aria-busy={running}
           className="mt-4 rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
         >
-          {running ? "Running…" : "Run Backtest"}
+          {running ? "Ejecutando…" : "Ejecutar prueba histórica"}
         </button>
       </form>
 
       <section
-        aria-label="Backtest result"
+        aria-label="Resultado de la prueba histórica"
         className="rounded-md border border-gray-200 bg-white p-4"
       >
         {renderResult()}

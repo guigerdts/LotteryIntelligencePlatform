@@ -112,7 +112,7 @@ describe("Experiments", () => {
     fireEvent.change(screen.getByLabelText("Description"), {
       target: { value: "New run" },
     });
-    fireEvent.click(screen.getByRole("button", { name: /^create experiment$/i }));
+    fireEvent.click(screen.getByRole("button", { name: /^crear experimento$/i }));
     await waitFor(() => expect(createCalls).toBe(1));
     await waitFor(() => expect(listCalls).toBeGreaterThanOrEqual(2));
     expect(await screen.findByRole("table")).toBeInTheDocument();
@@ -133,9 +133,9 @@ describe("Experiments", () => {
     server.use(http.get("*/api/v1/experiment/", () => err("Server error")));
     render(<Experiments />);
     expect(await screen.findByRole("alert")).toHaveTextContent(/server error/i);
-    expect(screen.getByRole("button", { name: /retry/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /reintentar/i })).toBeInTheDocument();
     server.use(http.get("*/api/v1/experiment/", () => env([experimentA])));
-    fireEvent.click(screen.getByRole("button", { name: /retry/i }));
+    fireEvent.click(screen.getByRole("button", { name: /reintentar/i }));
     await waitFor(() => expect(screen.getByRole("table")).toBeInTheDocument());
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
@@ -144,14 +144,14 @@ describe("Experiments", () => {
     selectLottery();
     server.use(http.get("*/api/v1/experiment/", () => env([])));
     render(<Experiments />);
-    expect(await screen.findByText(/no experiments yet/i)).toBeInTheDocument();
+    expect(await screen.findByText(/aún no hay experimentos/i)).toBeInTheDocument();
   });
 
   it("prompts to select a lottery and does not call the API", async () => {
     render(<Experiments />);
-    expect(await screen.findByText(/select a lottery to see experiments/i)).toBeInTheDocument();
+    expect(await screen.findByText(/selecciona una lotería para ver los experimentos/i)).toBeInTheDocument();
     expect(listCalls).toBe(0);
     expect(createCalls).toBe(0);
-    expect(screen.getByRole("button", { name: /^create experiment$/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /^crear experimento$/i })).toBeDisabled();
   });
 });

@@ -35,8 +35,8 @@ function PageFallback() {
 function NotFound() {
   return (
     <div className="space-y-6 p-4 sm:p-6">
-      <h2 className="text-lg font-semibold text-gray-900">Page not found</h2>
-      <EmptyState message="The requested route does not exist." />
+      <h2 className="text-lg font-semibold text-ink">Página no encontrada</h2>
+      <EmptyState message="La ruta solicitada no existe." />
     </div>
   );
 }

@@ -150,9 +150,9 @@ describe("Heatmaps", () => {
     server.use(http.get("*/api/v1/graph/L1/snapshots", () => err("Server error")));
     render(<Heatmaps />);
     expect(await screen.findByRole("alert")).toHaveTextContent(/server error/i);
-    expect(screen.getByRole("button", { name: /retry/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /reintentar/i })).toBeInTheDocument();
     server.use(http.get("*/api/v1/graph/L1/snapshots", () => env(snapList())));
-    fireEvent.click(screen.getByRole("button", { name: /retry/i }));
+    fireEvent.click(screen.getByRole("button", { name: /reintentar/i }));
     await waitFor(() =>
       expect(screen.getByRole("img", { name: /co-occurrence heatmap/i })).toBeInTheDocument()
     );
@@ -162,7 +162,7 @@ describe("Heatmaps", () => {
   it("prompts to select a lottery and does not call the API", async () => {
     render(<Heatmaps />);
     expect(
-      await screen.findByText(/select a lottery to see co-occurrence heatmaps/i)
+      await screen.findByText(/selecciona una loter/i)
     ).toBeInTheDocument();
     expect(snapshotCalls).toBe(0);
     expect(computeCalls).toBe(0);

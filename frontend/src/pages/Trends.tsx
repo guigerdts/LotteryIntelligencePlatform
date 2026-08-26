@@ -22,8 +22,8 @@ import type { FrequencyRow } from "../types/statistics";
 const DRAW_WINDOW = 100;
 const TREND_DRAWS = 20;
 const HOT_COLD_COUNT = 5;
-const NO_LOTTERY_MESSAGE = "Select a lottery to see its trends.";
-const NO_DATA_MESSAGE = "No draws available for this lottery.";
+const NO_LOTTERY_MESSAGE = "Selecciona una lotería para ver sus tendencias.";
+const NO_DATA_MESSAGE = "No hay sorteos disponibles para esta lotería.";
 const SERIES_COLORS = ["#2563eb", "#7c3aed", "#db2777", "#d97706", "#059669"];
 
 /** Count occurrences of each number across the given draws. */
@@ -104,7 +104,7 @@ function TrendChart({ data, numbers }: { data: Record<string, number>[]; numbers
       className="w-full"
       style={{ minHeight: 240 }}
       role="img"
-      aria-label="Rolling frequency trend of hot numbers over recent draws"
+      aria-label="Tendencia de frecuencia móvil de números calientes en sorteos recientes"
     >
       <ResponsiveContainer width="100%" height={240}>
         <LineChart data={data} margin={{ top: 8, right: 8, bottom: 8, left: 8 }}>
@@ -183,18 +183,18 @@ export default function Trends() {
     if ((draws ?? []).length === 0) return <EmptyState message={NO_DATA_MESSAGE} />;
     return (
       <div className="space-y-6">
-        <Section id="trends-trend-title" title="Recent trend">
+        <Section id="trends-trend-title" title="Tendencia reciente">
           <TrendChart data={trendData} numbers={hot.map((row) => row.number)} />
         </Section>
         <div className="grid gap-6 lg:grid-cols-2">
-          <Section id="trends-hot-title" title="Hot numbers">
-            <FrequencyList title="Most frequent" rows={hot} />
+          <Section id="trends-hot-title" title="Números calientes">
+            <FrequencyList title="Más frecuentes" rows={hot} />
           </Section>
-          <Section id="trends-cold-title" title="Cold numbers">
-            <FrequencyList title="Least frequent" rows={cold} />
+          <Section id="trends-cold-title" title="Números fríos">
+            <FrequencyList title="Menos frecuentes" rows={cold} />
           </Section>
         </div>
-        <Section id="trends-frequency-title" title="Overall frequency">
+        <Section id="trends-frequency-title" title="Frecuencia general">
           <FrequencyChart rows={overallFrequencies} />
         </Section>
       </div>

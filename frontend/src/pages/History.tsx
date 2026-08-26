@@ -8,20 +8,20 @@ import { useLotteryStore } from "../store/useLotteryStore";
 import type { Draw } from "../types/draw";
 
 const PAGE_SIZE = 50;
-const NO_LOTTERY_MESSAGE = "Select a lottery to see its draw history.";
-const NO_DATA_MESSAGE = "No draws available for this lottery.";
+const NO_LOTTERY_MESSAGE = "Selecciona una lotería para ver el historial de sorteos.";
+const NO_DATA_MESSAGE = "No hay sorteos disponibles para esta lotería.";
 
 const drawColumns: DataColumn<Draw>[] = [
-  { key: "draw_number", label: "Draw", sortable: true },
-  { key: "draw_date", label: "Date", sortable: true },
+  { key: "draw_number", label: "Sorteo", sortable: true },
+  { key: "draw_date", label: "Fecha", sortable: true },
   {
     key: "numbers",
-    label: "Numbers",
+    label: "Números",
     render: (row) => row.numbers.map((n) => n.number).join(" - "),
   },
   {
     key: "super_number",
-    label: "Super",
+    label: "Superbalota",
     render: (row) => row.super_number ?? "—",
   },
 ];
@@ -109,7 +109,7 @@ export default function History() {
           columns={drawColumns}
           rows={rows}
           rowKey={(row) => String(row.id)}
-          caption="Draw history"
+          caption="Historial de sorteos"
           loading={isLoading}
           loadingRows={PAGE_SIZE}
         />

@@ -11,7 +11,7 @@ const ALL_ITEMS = [
   { label: "Heatmaps", to: "/heatmaps" },
   { label: "Tendencias", to: "/tendencias" },
   { label: "Monte Carlo", to: "/monte-carlo" },
-  { label: "Redes", to: "/redes" },
+  { label: "Networks", to: "/redes" },
   { label: "IA", to: "/ia" },
   { label: "Modelos", to: "/modelos" },
   { label: "Experimentos", to: "/experimentos" },
@@ -54,7 +54,7 @@ describe("Sidebar", () => {
   it("exposes a navigation landmark", () => {
     renderSidebar();
 
-    expect(screen.getByRole("navigation", { name: "Main navigation" })).toBeInTheDocument();
+    expect(screen.getByRole("navigation", { name: "Navegación principal" })).toBeInTheDocument();
   });
 
   it("marks the active route with aria-current=page", () => {
@@ -77,8 +77,8 @@ describe("Sidebar", () => {
   it("collapses and re-expands through the toggle", () => {
     renderSidebar();
 
-    const aside = screen.getByRole("complementary", { name: "Sidebar" });
-    const toggle = screen.getByRole("button", { name: "Toggle sidebar" });
+    const aside = screen.getByRole("complementary", { name: "Barra lateral" });
+    const toggle = screen.getByRole("button", { name: "Alternar barra lateral" });
 
     expect(aside).toHaveClass("w-64");
     expect(toggle).toHaveAttribute("aria-expanded", "true");
@@ -92,7 +92,7 @@ describe("Sidebar", () => {
   it("keeps labels in the accessibility tree when collapsed", () => {
     renderSidebar();
 
-    fireEvent.click(screen.getByRole("button", { name: "Toggle sidebar" }));
+    fireEvent.click(screen.getByRole("button", { name: "Alternar barra lateral" }));
 
     for (const { label } of ALL_ITEMS) {
       expect(screen.getByRole("link", { name: label })).toBeInTheDocument();

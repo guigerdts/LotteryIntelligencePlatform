@@ -8,19 +8,19 @@ import { createExperiment, listExperiments } from "../services/experiments";
 import { useLotteryStore } from "../store/useLotteryStore";
 import type { Experiment } from "../types/experiment";
 
-const NO_LOTTERY_MESSAGE = "Select a lottery to see experiments.";
-const NO_EXPERIMENTS_MESSAGE = "No experiments yet.";
+const NO_LOTTERY_MESSAGE = "Selecciona una lotería para ver los experimentos.";
+const NO_EXPERIMENTS_MESSAGE = "Aún no hay experimentos.";
 const BUTTON_CLASS =
   "rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500";
 const INPUT_CLASS =
   "rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500";
 
 const columns: DataColumn<Experiment>[] = [
-  { key: "name", label: "Name", sortable: true },
-  { key: "status", label: "Status", sortable: true },
-  { key: "version", label: "Version", sortable: true },
-  { key: "created_at", label: "Created", sortable: true, sortValue: (row) => row.created_at },
-  { key: "description", label: "Description" },
+  { key: "name", label: "Nombre", sortable: true },
+  { key: "status", label: "Estado", sortable: true },
+  { key: "version", label: "Versión", sortable: true },
+  { key: "created_at", label: "Creado", sortable: true, sortValue: (row) => row.created_at },
+  { key: "description", label: "Descripción" },
 ];
 
 /**
@@ -86,7 +86,7 @@ export default function Experiments() {
         columns={columns}
         rows={rows}
         rowKey={(row) => String(row.experiment_id)}
-        caption="Experiments"
+        caption="Experimentos"
       />
     );
   };
@@ -98,11 +98,11 @@ export default function Experiments() {
         <p className="text-sm text-gray-500">Experiment tracking for the selected lottery.</p>
       </div>
       <section
-        aria-label="Create experiment"
+        aria-label="Crear experimento"
         className="rounded-md border border-gray-200 bg-white p-4"
       >
         <form onSubmit={(event) => void handleCreate(event)} className="space-y-4">
-          <h3 className="text-sm font-semibold text-gray-900">Create experiment</h3>
+          <h3 className="text-sm font-semibold text-gray-900">Crear experimento</h3>
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
               <label
@@ -149,12 +149,12 @@ export default function Experiments() {
             aria-busy={creating}
             className={BUTTON_CLASS}
           >
-            {creating ? "Creating…" : "Create experiment"}
+            {creating ? "Creando…" : "Crear experimento"}
           </button>
         </form>
       </section>
       <section
-        aria-label="Experiment list"
+        aria-label="Lista de experimentos"
         className="rounded-md border border-gray-200 bg-white p-4"
       >
         {renderContent()}

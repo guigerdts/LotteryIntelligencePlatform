@@ -20,7 +20,7 @@ export default function NavGroup({ title, items, collapsed = false }: NavGroupPr
         className={
           collapsed
             ? "sr-only"
-            : "px-3 pb-1 text-xs font-semibold uppercase tracking-wider text-gray-400"
+            : "px-3 pb-1 text-xs font-semibold uppercase tracking-wider text-ink-3"
         }
       >
         {title}

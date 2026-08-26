@@ -85,14 +85,14 @@ describe("LotterySelector", () => {
 
     render(<LotterySelector />);
 
-    expect(screen.getByText(/loading lotteries/i)).toBeInTheDocument();
+    expect(screen.getByText(/cargando loter/i)).toBeInTheDocument();
     expect(await screen.findByRole("option", { name: /Quini 6/ })).toBeInTheDocument();
   });
 
   it("calls setSelected with id and code when an option is chosen", async () => {
     render(<LotterySelector />);
 
-    const select = await screen.findByRole("combobox", { name: /lottery/i });
+    const select = await screen.findByRole("combobox", { name: /lotería/i });
     fireEvent.change(select, { target: { value: "2" } });
 
     await waitFor(() => {
@@ -117,8 +117,8 @@ describe("LotterySelector", () => {
 
     render(<LotterySelector />);
 
-    expect(await screen.findByText(/failed to load lotteries/i)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /retry/i })).toBeInTheDocument();
+    expect(await screen.findByText(/no se pudieron cargar las loter/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /reintentar/i })).toBeInTheDocument();
   });
 
   it("retries loading lotteries when the retry button is clicked", async () => {
@@ -136,7 +136,7 @@ describe("LotterySelector", () => {
     );
 
     render(<LotterySelector />);
-    await screen.findByText(/failed to load lotteries/i);
+    await screen.findByText(/no se pudieron cargar las loter/i);
 
     server.use(
       http.get("*/api/v1/lotteries", () =>
@@ -147,7 +147,7 @@ describe("LotterySelector", () => {
         })
       )
     );
-    fireEvent.click(screen.getByRole("button", { name: /retry/i }));
+    fireEvent.click(screen.getByRole("button", { name: /reintentar/i }));
 
     expect(await screen.findByRole("option", { name: /Quini 6/ })).toBeInTheDocument();
   });
@@ -165,8 +165,8 @@ describe("LotterySelector", () => {
 
     render(<LotterySelector />);
 
-    const select = await screen.findByRole("combobox", { name: /lottery/i });
+    const select = await screen.findByRole("combobox", { name: /lotería/i });
     expect(select).toBeDisabled();
-    expect(screen.getByRole("option", { name: /no lotteries available/i })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: /no hay loterías disponibles/i })).toBeInTheDocument();
   });
 });

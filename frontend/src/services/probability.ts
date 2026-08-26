@@ -4,12 +4,17 @@ import { apiClient } from "./api";
 /** Trigger probability generation for a lottery. */
 export async function generateProbability(
   lotteryCode: string,
-  scope: "incremental" | "full" = "incremental"
+  scope: "incremental" | "full" = "incremental",
+  signal?: AbortSignal
 ): Promise<ProbabilitySnapshot> {
-  return apiClient<ProbabilitySnapshot>("/probability/generate", {
-    method: "POST",
-    body: JSON.stringify({ lottery_code: lotteryCode, scope }),
-  });
+  return apiClient<ProbabilitySnapshot>(
+    "/probability/generate",
+    {
+      method: "POST",
+      body: JSON.stringify({ lottery_code: lotteryCode, scope }),
+    },
+    signal
+  );
 }
 
 /** Fetch probability rows for a lottery. */

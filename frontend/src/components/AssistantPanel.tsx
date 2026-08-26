@@ -17,7 +17,7 @@ interface AssistantPanelProps {
 
 type PanelAction = () => Promise<AssistantResponse>;
 
-const NO_LOTTERY_MESSAGE = "Select a lottery to ask the AI assistant.";
+const NO_LOTTERY_MESSAGE = "Selecciona una lotería para consultar al asistente IA.";
 const FIELD_CLASS =
   "w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500";
 const BUTTON_CLASS =
@@ -69,7 +69,7 @@ export default function AssistantPanel({ lotteryCode }: AssistantPanelProps) {
         className="rounded-md border border-gray-200 bg-white p-4"
       >
         <h3 id="ia-assistant-title" className="mb-3 text-sm font-semibold text-gray-900">
-          Assistant
+          Asistente IA
         </h3>
         <EmptyState message={NO_LOTTERY_MESSAGE} />
       </section>
@@ -77,12 +77,12 @@ export default function AssistantPanel({ lotteryCode }: AssistantPanelProps) {
   }
 
   const actions = [
-    { label: "Explain", onRun: () => run(() => explainAssistant(lotteryCode)) },
+     { label: "Explicar", onRun: () => run(() => explainAssistant(lotteryCode)) },
     {
-      label: "Interpret",
+      label: "Interpretar",
       onRun: () => run(() => interpretAssistant(lotteryCode)),
     },
-    { label: "Report", onRun: () => run(() => reportAssistant(lotteryCode)) },
+     { label: "Informe", onRun: () => run(() => reportAssistant(lotteryCode)) },
   ];
 
   const renderResult = () => {
@@ -112,16 +112,16 @@ export default function AssistantPanel({ lotteryCode }: AssistantPanelProps) {
       aria-labelledby="ia-assistant-title"
       className="rounded-md border border-gray-200 bg-white p-4"
     >
-      <h3 id="ia-assistant-title" className="mb-3 text-sm font-semibold text-gray-900">
-        Assistant
-      </h3>
-      <div className="space-y-4">
+        <h3 id="ia-assistant-title" className="mb-3 text-sm font-semibold text-gray-900">
+          Asistente IA
+        </h3>
+        <div className="space-y-4">
         <form onSubmit={handleAssist} className="space-y-2">
           <label
             htmlFor="assistant-question"
             className="mb-1 block text-sm font-medium text-gray-700"
           >
-            Ask a question about this lottery
+            Haz una pregunta sobre esta lotería
           </label>
           <textarea
             id="assistant-question"
@@ -132,7 +132,7 @@ export default function AssistantPanel({ lotteryCode }: AssistantPanelProps) {
             className={FIELD_CLASS}
           />
           <button type="submit" disabled={question.trim() === ""} className={BUTTON_CLASS}>
-            Ask
+            Preguntar
           </button>
         </form>
         <div className="flex flex-wrap items-end gap-3">
@@ -146,7 +146,7 @@ export default function AssistantPanel({ lotteryCode }: AssistantPanelProps) {
               htmlFor="assistant-experiment-id"
               className="mb-1 block text-sm font-medium text-gray-700"
             >
-              Experiment ID
+              ID del experimento
             </label>
             <div className="flex gap-2">
               <input
@@ -167,7 +167,7 @@ export default function AssistantPanel({ lotteryCode }: AssistantPanelProps) {
                 disabled={!hasExperimentId}
                 className={BUTTON_CLASS}
               >
-                Summarize
+                 Resumir
               </button>
             </div>
           </div>

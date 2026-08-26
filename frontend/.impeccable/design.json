@@ -1,0 +1,194 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-08-25T00:00:00Z",
+  "title": "Design System: Esmeralda Fortuna",
+  "extensions": {
+    "colorMeta": {
+      "lucido-emerald": {
+        "role": "primary",
+        "displayName": "Lucido Emerald",
+        "canonical": "#0E8A5F",
+        "tonalRamp": ["#06281C", "#0A4233", "#0A6E4A", "#0E8A5F", "#36A178", "#6FB893", "#A9D2BE", "#E5F3EC"]
+      },
+      "fortune-gold": {
+        "role": "secondary",
+        "displayName": "Fortune Gold",
+        "canonical": "#C8922B",
+        "tonalRamp": ["#3D2C0B", "#6B4E16", "#8C671E", "#C8922B", "#D7A853", "#E4BF7C", "#EFD6A8", "#F8EFD9"]
+      },
+      "warm-paper": {
+        "role": "neutral",
+        "displayName": "Warm Paper",
+        "canonical": "#FAF8F3",
+        "tonalRamp": ["#4A4640", "#6E685E", "#928B7E", "#B6AE9F", "#D2CABB", "#E5DFD2", "#F2EEE6", "#FAF8F3"]
+      },
+      "pure-surface": {
+        "role": "neutral",
+        "displayName": "Pure Surface",
+        "canonical": "#FFFFFF",
+        "tonalRamp": ["#1A1A1A", "#3A3A3A", "#5C5C5C", "#7E7E7E", "#A2A2A2", "#C6C6C6", "#E4E4E4", "#FFFFFF"]
+      },
+      "warm-panel": {
+        "role": "neutral",
+        "displayName": "Warm Panel",
+        "canonical": "#F1ECE3",
+        "tonalRamp": ["#2E2A24", "#524B40", "#756C5D", "#988D7B", "#BBB1A0", "#D8D0C2", "#ECE6DB", "#F1ECE3"]
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Ink",
+        "canonical": "#1B2320",
+        "tonalRamp": ["#0C0F0D", "#1B2320", "#2C3631", "#3E4A44", "#5E6B64", "#818C84", "#A6AFA8", "#C9CFCB"]
+      },
+      "growth-green": {
+        "role": "success",
+        "displayName": "Growth Green",
+        "canonical": "#1F9D57",
+        "tonalRamp": ["#07321C", "#0E5733", "#127A45", "#1F9D57", "#45B474", "#79C99B", "#AADCBE", "#E5F3EC"]
+      },
+      "amber-warning": {
+        "role": "warning",
+        "displayName": "Amber Warning",
+        "canonical": "#B7791F",
+        "tonalRamp": ["#3D2909", "#6B4A13", "#8C631A", "#B7791F", "#CA9445", "#D9AF6E", "#E8CB97", "#FBF1DD"]
+      },
+      "clay-red": {
+        "role": "error",
+        "displayName": "Clay Red",
+        "canonical": "#C0392B",
+        "tonalRamp": ["#3D120D", "#6B211A", "#8C2A20", "#C0392B", "#D25E50", "#E0857A", "#EFB1A9", "#FAE9E6"]
+      },
+      "info-blue": {
+        "role": "info",
+        "displayName": "Info Blue",
+        "canonical": "#2563EB",
+        "tonalRamp": ["#0C2556", "#143A85", "#1B4FB0", "#2563EB", "#547FEF", "#84A0F3", "#B3C4F8", "#E8EEFB"]
+      }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display", "purpose": "Page and section headings (semibold, ~18px)." },
+      "body": { "displayName": "Body", "purpose": "Default UI text, table cells, descriptions (14px)." },
+      "label": { "displayName": "Label", "purpose": "Uppercase, tracked eyebrows and column headers (12px)." }
+    },
+    "shadows": [
+      { "name": "shadow-sm", "value": "0 1px 2px rgba(27,35,32,0.06)", "purpose": "Resting card and input." },
+      { "name": "shadow-md", "value": "0 4px 12px rgba(27,35,32,0.08)", "purpose": "Hover / interactive elevation." },
+      { "name": "shadow-lg", "value": "0 12px 32px rgba(27,35,32,0.12)", "purpose": "Transient overlays or prominent surfaces." }
+    ],
+    "motion": [
+      { "name": "ease-standard", "value": "cubic-bezier(0.4, 0, 0.2, 1)", "purpose": "Default easing for state transitions (150-250ms)." }
+    ],
+    "breakpoints": [
+      { "name": "sm", "value": "640px" },
+      { "name": "md", "value": "768px" },
+      { "name": "lg", "value": "1024px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Primary action (generate, compute) — the only solid emerald button.",
+      "html": "<button class=\"ds-btn-primary\">Generate numbers</button>",
+      "css": ".ds-btn-primary { display:inline-flex; align-items:center; justify-content:center; gap:8px; background:#0E8A5F; color:#FFFFFF; font-family:Inter,system-ui,sans-serif; font-weight:500; font-size:14px; padding:8px 12px; border:none; border-radius:10px; cursor:pointer; transition:background .15s ease; } .ds-btn-primary:hover { background:#0A6E4A; } .ds-btn-primary:focus-visible { outline:none; box-shadow:0 0 0 2px #0E8A5F; } .ds-btn-primary:disabled { opacity:.5; cursor:not-allowed; }"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Featured / lucky highlight only — Fortune Gold, never competes with primary.",
+      "html": "<button class=\"ds-btn-secondary\">Featured</button>",
+      "css": ".ds-btn-secondary { display:inline-flex; align-items:center; justify-content:center; gap:8px; background:#C8922B; color:#FFFFFF; font-family:Inter,system-ui,sans-serif; font-weight:500; font-size:14px; padding:8px 12px; border:none; border-radius:10px; cursor:pointer; transition:opacity .15s ease; } .ds-btn-secondary:hover { opacity:.9; } .ds-btn-secondary:focus-visible { outline:none; box-shadow:0 0 0 2px #C8922B; } .ds-btn-secondary:disabled { opacity:.5; cursor:not-allowed; }"
+    },
+    {
+      "name": "Ghost Button",
+      "kind": "button",
+      "refersTo": "button-ghost",
+      "description": "Low-emphasis action; ink-muted text, warm-panel hover.",
+      "html": "<button class=\"ds-btn-ghost\">Cancel</button>",
+      "css": ".ds-btn-ghost { display:inline-flex; align-items:center; justify-content:center; gap:8px; background:transparent; color:#4C5550; font-family:Inter,system-ui,sans-serif; font-weight:500; font-size:14px; padding:8px 12px; border:none; border-radius:10px; cursor:pointer; transition:background .15s ease,color .15s ease; } .ds-btn-ghost:hover { background:#F1ECE3; color:#1B2320; } .ds-btn-ghost:focus-visible { outline:none; box-shadow:0 0 0 2px #D6CEC0; } .ds-btn-ghost:disabled { opacity:.5; cursor:not-allowed; }"
+    },
+    {
+      "name": "Outline Button",
+      "kind": "button",
+      "refersTo": "button-outline",
+      "description": "Bordered neutral action; warm-panel hover.",
+      "html": "<button class=\"ds-btn-outline\">Details</button>",
+      "css": ".ds-btn-outline { display:inline-flex; align-items:center; justify-content:center; gap:8px; background:#FFFFFF; color:#1B2320; font-family:Inter,system-ui,sans-serif; font-weight:500; font-size:14px; padding:8px 12px; border:1px solid #E4DED3; border-radius:10px; cursor:pointer; transition:background .15s ease; } .ds-btn-outline:hover { background:#F1ECE3; } .ds-btn-outline:focus-visible { outline:none; box-shadow:0 0 0 2px #D6CEC0; } .ds-btn-outline:disabled { opacity:.5; cursor:not-allowed; }"
+    },
+    {
+      "name": "Input",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Text field on pure surface; emerald focus border + ring.",
+      "html": "<input class=\"ds-input\" placeholder=\"Count\" />",
+      "css": ".ds-input { width:100%; background:#FFFFFF; color:#1B2320; border:1px solid #E4DED3; border-radius:10px; padding:8px 12px; font-family:Inter,system-ui,sans-serif; font-size:14px; } .ds-input::placeholder { color:#6B736E; } .ds-input:focus { outline:none; border-color:#0E8A5F; box-shadow:0 0 0 2px #0E8A5F; } .ds-input:disabled { background:#F1ECE3; cursor:not-allowed; opacity:.5; }"
+    },
+    {
+      "name": "Chip (selected)",
+      "kind": "chip",
+      "refersTo": "chip-selected",
+      "description": "Selected / filtered snapshot — emerald mist fill (selection, not action).",
+      "html": "<button class=\"ds-chip-selected\" aria-pressed=\"true\">#12 · v3</button>",
+      "css": ".ds-chip-selected { display:inline-flex; align-items:center; gap:6px; background:#E5F3EC; color:#0E8A5F; border:1px solid #0E8A5F; border-radius:10px; padding:8px 12px; font-family:Inter,system-ui,sans-serif; font-size:14px; font-weight:500; cursor:pointer; } .ds-chip-selected:hover { background:#D8EBE0; }"
+    },
+    {
+      "name": "Chip (default)",
+      "kind": "chip",
+      "refersTo": "chip-default",
+      "description": "Unselected filter; neutral, warm-panel hover.",
+      "html": "<button class=\"ds-chip-default\" aria-pressed=\"false\">#11 · v2</button>",
+      "css": ".ds-chip-default { display:inline-flex; align-items:center; gap:6px; background:#FFFFFF; color:#4C5550; border:1px solid #E4DED3; border-radius:10px; padding:8px 12px; font-family:Inter,system-ui,sans-serif; font-size:14px; font-weight:500; cursor:pointer; } .ds-chip-default:hover { background:#F1ECE3; }"
+    },
+    {
+      "name": "Card",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "Elevated white surface with hairline warm border and soft shadow.",
+      "html": "<div class=\"ds-card\"><h3 class=\"ds-card-title\">Latest draws</h3></div>",
+      "css": ".ds-card { background:#FFFFFF; border:1px solid #E4DED3; border-radius:10px; box-shadow:0 1px 2px rgba(27,35,32,0.06); padding:16px; } .ds-card--interactive { transition:box-shadow .15s ease; } .ds-card--interactive:hover { box-shadow:0 4px 12px rgba(27,35,32,0.08); } .ds-card-title { margin:0 0 12px; font-size:14px; font-weight:600; color:#1B2320; }"
+    },
+    {
+      "name": "Nav Item",
+      "kind": "nav",
+      "refersTo": "nav-active",
+      "description": "Sidebar link; active uses warm-panel + ink (never collides with primary button).",
+      "html": "<a class=\"ds-nav-item\" aria-current=\"page\">Inicio</a>",
+      "css": ".ds-nav-item { display:flex; align-items:center; gap:12px; width:100%; background:transparent; color:#4C5550; border:none; border-radius:10px; padding:8px 12px; font-family:Inter,system-ui,sans-serif; font-size:14px; font-weight:500; text-align:left; cursor:pointer; transition:background .15s ease,color .15s ease; } .ds-nav-item:hover { background:#F1ECE3; color:#1B2320; } .ds-nav-item:focus-visible { outline:none; box-shadow:0 0 0 2px #0E8A5F; } .ds-nav-item[aria-current=\"page\"] { background:#F1ECE3; color:#1B2320; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Lucid Garden of Odds",
+    "overview": "Esmeralda Fortuna is a Colombian lottery-intelligence platform with a deliberate, slightly warm personality: trust and luck, led by a confident green. The product never sells a win — it explains the odds with calm clarity. The interface feels like a well-tended garden: ordered, legible, quietly optimistic, where the accent earns its presence rather than shouting. Surfaces carry a warm paper tint rather than clinical white-on-gray, which keeps long analysis sessions comfortable. The single green accent owns primary actions and current selection; a sparing gold appears only for lucky or featured moments. Status is always communicated with color and icon and text, because honesty about odds demands that nothing rides on color alone.",
+    "keyCharacteristics": [
+      "Green-led, warm-neutral, trust-forward operate-mode product UI.",
+      "One confident accent (Lucido Emerald) used with discipline; gold reserved for featured/lucky.",
+      "Every surface is warm-tinted; pure white appears only as an elevated card.",
+      "Status is multi-coded (color + icon + text), never color-only.",
+      "Familiar component vocabulary; consistency across screens is the virtue."
+    ],
+    "rules": [
+      { "name": "The One Accent Rule", "body": "Lucido Emerald owns ≤10% of any screen and is used for primary actions and current selection only. Its rarity is the point; scattering it dilutes trust.", "section": "colors" },
+      { "name": "The Honest Status Rule", "body": "Every status uses color + icon + text, never color alone. A red error with no label, or a green success with no words, is not allowed.", "section": "colors" },
+      { "name": "The Warm Neutral Rule", "body": "All surfaces carry a warm paper tint (Warm Paper / Warm Panel); pure white appears only as an elevated card, never as a page background.", "section": "colors" },
+      { "name": "The One Family Rule", "body": "A single sans (Inter) serves display, body, and label. Do not introduce a second typeface for product UI.", "section": "typography" },
+      { "name": "The Readable Secondary Rule", "body": "Secondary text is Ink Muted on light surfaces. Ink Faint is for non-essential text on white only; on Warm Panel it falls below 4.5:1, so promote it to Ink Muted there.", "section": "typography" },
+      { "name": "The Flat-By-Default Rule", "body": "Surfaces are flat at rest. Shadows appear only as a response to state (hover, elevation, focus ring), never as constant decoration.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do use Lucido Emerald for primary actions and current selection only (The One Accent Rule).",
+      "Do communicate every status with color + icon + text (The Honest Status Rule).",
+      "Do keep all surfaces warm-tinted; use pure white only for elevated cards.",
+      "Do use Warm Panel for the active nav item, not emerald.",
+      "Do promote secondary text on Warm Panel to Ink Muted to stay ≥4.5:1."
+    ],
+    "donts": [
+      "Don't use blue (the legacy accent) for actions or selection — emerald owns those roles now.",
+      "Don't turn a selected/filter chip into a solid emerald button; selection uses Emerald Mist, action uses solid emerald.",
+      "Don't put Ink Faint (#6B736E) on Warm Panel — it fails WCAG AA body contrast.",
+      "Don't overload Fortune Gold; it is a rare featured/lucky highlight, not a second action color.",
+      "Don't invent radii outside the 6/10/16px scale."
+    ]
+  }
+}

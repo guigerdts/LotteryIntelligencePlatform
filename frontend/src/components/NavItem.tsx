@@ -27,11 +27,11 @@ export default function NavItem({ label, to, end, showLabel = true }: NavItemPro
       end={end}
       className={({ isActive }) =>
         [
-          "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
-          "focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500",
+          "flex items-center gap-3 rounded-md border-l-2 border-transparent px-3 py-2 text-sm font-medium transition-colors",
+          "focus:outline-none focus-visible:ring-2 focus-visible:ring-primary",
           isActive
-            ? "bg-blue-50 text-blue-700"
-            : "text-gray-600 hover:bg-gray-100 hover:text-gray-900",
+            ? "border-primary bg-surface-2 text-ink"
+            : "text-ink-2 hover:bg-surface-2 hover:text-ink",
         ].join(" ")
       }
     >

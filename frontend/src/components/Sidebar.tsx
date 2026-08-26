@@ -29,7 +29,7 @@ const NAV_GROUPS: NavGroupDef[] = [
     title: "Avanzado",
     items: [
       { label: "Monte Carlo", to: "/monte-carlo" },
-      { label: "Redes", to: "/redes" },
+      { label: "Networks", to: "/redes" },
       { label: "IA", to: "/ia" },
     ],
   },
@@ -73,18 +73,18 @@ export default function Sidebar() {
 
   return (
     <aside
-      aria-label="Sidebar"
-      className={`flex h-full shrink-0 flex-col border-r border-gray-200 bg-white transition-[width] duration-200 ${
+      aria-label="Barra lateral"
+      className={`flex h-full shrink-0 flex-col border-r border-border bg-surface transition-[width] duration-200 ${
         collapsed ? "w-16" : "w-64"
       }`}
     >
-      <div className="flex h-16 shrink-0 items-center border-b border-gray-200 px-3">
+      <div className="flex h-16 shrink-0 items-center border-b border-border px-3">
         <button
           type="button"
           onClick={toggleSidebar}
-          aria-label="Toggle sidebar"
+          aria-label="Alternar barra lateral"
           aria-expanded={!collapsed}
-          className="rounded-md p-2 text-gray-500 hover:bg-gray-100 hover:text-gray-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+          className="rounded-md p-2 text-ink-3 hover:bg-surface-2 hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
         >
           <svg
             aria-hidden="true"
@@ -98,7 +98,7 @@ export default function Sidebar() {
           </svg>
         </button>
       </div>
-      <nav id="main-navigation" aria-label="Main navigation" className="flex-1 overflow-y-auto p-3">
+      <nav id="main-navigation" aria-label="Navegación principal" className="flex-1 overflow-y-auto p-3">
         {NAV_GROUPS.map((group) => (
           <NavGroup
             key={group.title}

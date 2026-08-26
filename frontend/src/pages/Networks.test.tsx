@@ -167,9 +167,9 @@ describe("Networks", () => {
     server.use(http.get("*/api/v1/graph/L1/snapshots", () => err("Server error")));
     render(<Networks />);
     expect(await screen.findByRole("alert")).toHaveTextContent(/server error/i);
-    expect(screen.getByRole("button", { name: /retry/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /reintentar/i })).toBeInTheDocument();
     server.use(http.get("*/api/v1/graph/L1/snapshots", () => env(snapList())));
-    fireEvent.click(screen.getByRole("button", { name: /retry/i }));
+    fireEvent.click(screen.getByRole("button", { name: /reintentar/i }));
     await waitFor(
       () => expect(screen.getByTestId("network-graph")).toBeInTheDocument(),
       ASYNC_TIMEOUT
@@ -180,7 +180,7 @@ describe("Networks", () => {
   it("prompts to select a lottery and does not call the API", async () => {
     render(<Networks />);
     expect(
-      await screen.findByText(/select a lottery to see the network graph/i)
+      await screen.findByText(/selecciona una loter/i)
     ).toBeInTheDocument();
     expect(snapshotCalls).toBe(0);
   });

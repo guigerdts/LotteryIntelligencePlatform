@@ -95,11 +95,11 @@ describe("Statistics", () => {
     selectLottery();
     render(<Statistics />);
     await screen.findByRole("img", { name: /frequency distribution per number/i });
-    fireEvent.click(screen.getByRole("tab", { name: /gaps/i }));
+    fireEvent.click(screen.getByRole("tab", { name: /huecos/i }));
     expect(
       await screen.findByRole("img", { name: /gap analysis per number/i })
     ).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("tab", { name: /averages/i }));
+    fireEvent.click(screen.getByRole("tab", { name: /promedios/i }));
     expect(await screen.findByRole("img", { name: /average gap per series/i })).toBeInTheDocument();
   });
 
@@ -119,9 +119,9 @@ describe("Statistics", () => {
     server.use(http.get("*/api/v1/statistics/L1/frequencies", () => err("Server error")));
     render(<Statistics />);
     expect(await screen.findByRole("alert")).toHaveTextContent(/server error/i);
-    expect(screen.getByRole("button", { name: /retry/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /reintentar/i })).toBeInTheDocument();
     server.use(http.get("*/api/v1/statistics/L1/frequencies", () => env(frequencyList)));
-    fireEvent.click(screen.getByRole("button", { name: /retry/i }));
+    fireEvent.click(screen.getByRole("button", { name: /reintentar/i }));
     await waitFor(() =>
       expect(
         screen.getByRole("img", { name: /frequency distribution per number/i })
@@ -137,14 +137,14 @@ describe("Statistics", () => {
     );
     render(<Statistics />);
     expect(
-      await screen.findByText(/no statistics available for this lottery/i)
+      await screen.findByText(/no hay estadísticas disponibles para esta lotería/i)
     ).toBeInTheDocument();
     expect(screen.queryByRole("img")).not.toBeInTheDocument();
   });
 
   it("prompts to select a lottery and does not call the API", async () => {
     render(<Statistics />);
-    expect(await screen.findByText(/select a lottery to see its statistics/i)).toBeInTheDocument();
+    expect(await screen.findByText(/selecciona una lotería para ver sus estadísticas/i)).toBeInTheDocument();
     expect(fetchCalls).toBe(0);
     expect(screen.queryByRole("img")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: /generate snapshot/i })).toBeDisabled();

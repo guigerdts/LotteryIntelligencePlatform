@@ -77,12 +77,12 @@ describe("Backtesting", () => {
     render(<Backtesting />);
     expect(await screen.findByRole("heading", { name: /backtesting/i })).toBeInTheDocument();
     expect(screen.getByLabelText(/strategy id/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/train years/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/eval count/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/step count/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/min train draws/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/^seed$/i)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /^run backtest$/i })).toBeInTheDocument();
+    expect(screen.getByLabelText(/años de entrenamiento/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/evaluaciones/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/pasos/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/sorteos mínimos de entrenamiento/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/semilla/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^ejecutar prueba histórica$/i })).toBeInTheDocument();
   });
 
   it("runs a backtest and renders the aggregate metrics", async () => {
@@ -92,8 +92,8 @@ describe("Backtesting", () => {
     fireEvent.change(screen.getByLabelText(/strategy id/i), {
       target: { value: "uniform-weighted" },
     });
-    fireEvent.click(screen.getByRole("button", { name: /^run backtest$/i }));
-    const resultSection = await screen.findByLabelText(/backtest result/i);
+    fireEvent.click(screen.getByRole("button", { name: /^ejecutar prueba histórica$/i }));
+    const resultSection = await screen.findByLabelText(/resultado de la prueba histórica/i);
     expect(within(resultSection).getByText("#9")).toBeInTheDocument();
     expect(within(resultSection).getByText("uniform-weighted")).toBeInTheDocument();
     expect(within(resultSection).getByText("fp-bt-123")).toBeInTheDocument();
@@ -113,8 +113,8 @@ describe("Backtesting", () => {
     fireEvent.change(screen.getByLabelText(/strategy id/i), {
       target: { value: "uniform-weighted" },
     });
-    fireEvent.click(screen.getByRole("button", { name: /^run backtest$/i }));
-    const button = screen.getByRole("button", { name: /running/i });
+    fireEvent.click(screen.getByRole("button", { name: /^ejecutar prueba histórica$/i }));
+    const button = screen.getByRole("button", { name: /ejecutando/i });
     expect(button).toBeDisabled();
     expect(button).toHaveAttribute("aria-busy", "true");
     expect(await screen.findByText("#9")).toBeInTheDocument();
@@ -128,19 +128,19 @@ describe("Backtesting", () => {
     fireEvent.change(screen.getByLabelText(/strategy id/i), {
       target: { value: "uniform-weighted" },
     });
-    fireEvent.click(screen.getByRole("button", { name: /^run backtest$/i }));
+    fireEvent.click(screen.getByRole("button", { name: /^ejecutar prueba histórica$/i }));
     expect(await screen.findByRole("alert")).toHaveTextContent(/server error/i);
-    expect(screen.getByRole("button", { name: /retry/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /reintentar/i })).toBeInTheDocument();
     server.use(http.post("*/api/v1/backtesting/run", () => env(runResult)));
-    fireEvent.click(screen.getByRole("button", { name: /retry/i }));
+    fireEvent.click(screen.getByRole("button", { name: /reintentar/i }));
     await waitFor(() => expect(screen.getByText("42.0%")).toBeInTheDocument());
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
   it("prompts to select a lottery and does not call the API", async () => {
     render(<Backtesting />);
-    expect(await screen.findByText(/select a lottery to run a backtest/i)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /^run backtest$/i })).toBeDisabled();
+    expect(await screen.findByText(/selecciona una lotería para ejecutar una prueba histórica/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^ejecutar prueba histórica$/i })).toBeDisabled();
     expect(runCalls).toBe(0);
     expect(resultsCalls).toBe(0);
   });

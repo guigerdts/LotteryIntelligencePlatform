@@ -111,7 +111,11 @@ function throwByStatus(status: number, message: string, code?: string): never {
  * Reads VITE_API_BASE_URL from env (defaults to /api/v1).
  * Parses SuccessEnvelope / ErrorEnvelope and maps HTTP errors to typed classes.
  */
-export async function apiClient<T>(path: string, init?: RequestInit): Promise<T> {
+export async function apiClient<T>(
+  path: string,
+  init?: RequestInit,
+  signal?: AbortSignal
+): Promise<T> {
   const url = `${BASE_URL}${path}`;
   const response = await fetch(url, {
     headers: {
@@ -119,6 +123,7 @@ export async function apiClient<T>(path: string, init?: RequestInit): Promise<T>
       ...init?.headers,
     },
     ...init,
+    signal: signal ?? init?.signal,
   });
   return parseResponse<T>(response);
 }

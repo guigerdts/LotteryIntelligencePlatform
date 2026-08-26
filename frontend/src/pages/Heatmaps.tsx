@@ -1,25 +1,27 @@
 import { useEffect, useState } from "react";
+import Button from "../components/Button";
+import Card from "../components/Card";
 import HeatmapChart from "../charts/HeatmapChart";
 import EmptyState from "../components/EmptyState";
 import ErrorState from "../components/ErrorState";
+import LongOperationStatus from "../components/LongOperationStatus";
 import Skeleton from "../components/Skeleton";
-import { useApi } from "../hooks/useApi";
+import { useApi, abortable } from "../hooks/useApi";
+import { useElapsedTime } from "../hooks/useElapsedTime";
 import { computeGraph, getGraphSnapshots, getGraphValues } from "../services/graph";
 import { useLotteryStore } from "../store/useLotteryStore";
 import type { GraphSnapshotInfo } from "../types/graph";
 
-const NO_LOTTERY_MESSAGE = "Select a lottery to see co-occurrence heatmaps.";
+const NO_LOTTERY_MESSAGE = "Selecciona una lotería para ver los mapas de calor de co-ocurrencia.";
 const NO_DATA_MESSAGE =
-  "No co-occurrence snapshot for this lottery. Click Compute to generate one.";
-const NO_PAIRS_MESSAGE = "No co-occurrence pairs in this snapshot.";
-const BUTTON_CLASS =
-  "rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500";
+  "No hay instantánea de co-ocurrencia para esta lotería. Haz clic en Calcular para generar una.";
+const NO_PAIRS_MESSAGE = "No hay pares de co-ocurrencia en esta instantánea.";
 
 function snapshotClass(selected: boolean): string {
-  return `flex flex-wrap items-center gap-x-4 gap-y-1 rounded-md border px-3 py-2 text-left text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
+  return `flex flex-wrap items-center gap-x-4 gap-y-1 rounded-md border px-3 py-2 text-left text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
     selected
-      ? "border-blue-600 bg-blue-50 text-gray-900"
-      : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+      ? "border-primary bg-primary-soft text-primary-deep"
+      : "border-border bg-surface text-ink-2 hover:bg-surface-2"
   }`;
 }
 
@@ -38,8 +40,15 @@ export default function Heatmaps() {
     error: valuesError,
     execute: fetchValues,
   } = useApi(getGraphValues);
-  const { isLoading: computing, error: computeError, execute: compute } = useApi(computeGraph);
+  const {
+    isLoading: computing,
+    error: computeError,
+    execute: compute,
+    abort: abortCompute,
+    isCancelled: computeCancelled,
+  } = useApi(abortable((code: string, signal: AbortSignal) => computeGraph(code, "cooccurrence", signal)));
   const [selectedId, setSelectedId] = useState<number | null>(null);
+  const elapsed = useElapsedTime(computing);
 
   useEffect(() => {
     if (!selectedLotteryCode) return;
@@ -65,9 +74,14 @@ export default function Heatmaps() {
 
   const handleCompute = async () => {
     if (!selectedLotteryCode || computing) return;
-    await compute(selectedLotteryCode, "cooccurrence");
+    await compute(selectedLotteryCode);
     setSelectedId(null);
     void fetchSnapshots(selectedLotteryCode, "cooccurrence");
+  };
+
+  const handleCancel = () => {
+    if (!computing) return;
+    abortCompute();
   };
 
   const renderVisualization = (code: string, item: GraphSnapshotInfo) => {
@@ -83,12 +97,12 @@ export default function Heatmaps() {
     return (
       <div className="space-y-4">
         <HeatmapChart rows={heatmapRows} />
-        <p className="flex flex-wrap gap-x-6 gap-y-1 text-sm text-gray-500">
+        <p className="flex flex-wrap gap-x-6 gap-y-1 text-sm text-ink-3">
           <span>
-            Draws <span className="font-medium text-gray-900">{item.draw_count}</span>
+             Sorteos <span className="font-medium text-ink">{item.draw_count}</span>
           </span>
           <span>
-            Pairs <span className="font-medium text-gray-900">{cooccurrenceRows.length}</span>
+             Pares <span className="font-medium text-ink">{cooccurrenceRows.length}</span>
           </span>
         </p>
       </div>
@@ -107,26 +121,37 @@ export default function Heatmaps() {
         />
       );
     if (loadingList) return <Skeleton variant="card" />;
+    if (computing || computeCancelled) {
+      return (
+        <LongOperationStatus
+          elapsed={elapsed}
+          onCancel={handleCancel}
+          cancelled={computeCancelled && !computing}
+          message="Calculando el mapa de calor; puede tardar varios minutos."
+          responsibleNote="Recordá: los sorteos son aleatorios; ningún método mejora tus probabilidades."
+        />
+      );
+    }
     if (snapshots.length === 0) {
       return (
         <EmptyState
           message={NO_DATA_MESSAGE}
           action={
-            <button
-              type="button"
+            <Button
+              variant="primary"
               onClick={() => void handleCompute()}
               disabled={computing}
-              className={BUTTON_CLASS}
+              loading={computing}
             >
-              {computing ? "Computing…" : "Compute"}
-            </button>
+              Calcular
+            </Button>
           }
         />
       );
     }
     return (
       <div className="space-y-5">
-        <ul className="flex flex-col gap-2 sm:max-w-md" aria-label="Co-occurrence snapshots">
+          <ul className="flex flex-col gap-2 sm:max-w-md" aria-label="Instantáneas de co-ocurrencia">
           {snapshots.map((item) => (
             <li key={item.snapshot_id}>
               <button
@@ -137,7 +162,7 @@ export default function Heatmaps() {
               >
                 <span className="font-medium">#{item.snapshot_id}</span>
                 <span>
-                  v{item.version} · {item.draw_count} draws · {item.status} ·{" "}
+                  v{item.version} · {item.draw_count} sorteos · {item.status} ·{" "}
                   {new Date(item.created_at).toLocaleDateString()}
                 </span>
               </button>
@@ -153,27 +178,23 @@ export default function Heatmaps() {
     <div className="space-y-6 p-4 sm:p-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-lg font-semibold text-gray-900">Heatmaps</h2>
-          <p className="text-sm text-gray-500">
-            Co-occurrence strength between number pairs for the selected lottery.
+          <h2 className="text-lg font-semibold text-ink">Heatmaps</h2>
+          <p className="text-sm text-ink-3">
+            Fuerza de co-ocurrencia entre pares de números para la lotería seleccionada.
           </p>
         </div>
-        <button
-          type="button"
+        <Button
+          variant="primary"
           onClick={() => void handleCompute()}
           disabled={!selectedLotteryCode || computing}
-          aria-busy={computing}
-          className={BUTTON_CLASS}
+          loading={computing}
         >
-          {computing ? "Computing…" : "Compute"}
-        </button>
+          Compute
+        </Button>
       </div>
-      <section
-        aria-label="Co-occurrence heatmaps"
-        className="rounded-md border border-gray-200 bg-white p-4"
-      >
+        <Card role="region" aria-label="Mapas de calor de co-ocurrencia">
         {renderContent()}
-      </section>
+      </Card>
     </div>
   );
 }

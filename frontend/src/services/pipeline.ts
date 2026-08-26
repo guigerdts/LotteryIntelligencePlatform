@@ -6,9 +6,16 @@ import { apiClient } from "./api";
  * call may take minutes; the response carries the ordered per-stage report and
  * the generation echo (null when a stage failed).
  */
-export async function runNumbersPipeline(params: PipelineRunParams): Promise<PipelineRunResult> {
-  return apiClient<PipelineRunResult>("/pipeline/numbers", {
-    method: "POST",
-    body: JSON.stringify(params),
-  });
+export async function runNumbersPipeline(
+  params: PipelineRunParams,
+  signal?: AbortSignal
+): Promise<PipelineRunResult> {
+  return apiClient<PipelineRunResult>(
+    "/pipeline/numbers",
+    {
+      method: "POST",
+      body: JSON.stringify(params),
+    },
+    signal
+  );
 }

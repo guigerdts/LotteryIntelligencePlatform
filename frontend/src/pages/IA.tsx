@@ -1,5 +1,6 @@
 import { useEffect, useMemo, type ReactNode } from "react";
 import AssistantPanel from "../components/AssistantPanel";
+import Card from "../components/Card";
 import DataTable, { type DataColumn } from "../components/DataTable";
 import EmptyState from "../components/EmptyState";
 import ErrorState from "../components/ErrorState";
@@ -14,26 +15,26 @@ import type { ProbRow } from "../types/probability";
 
 const RECENT_ROWS = 5;
 const TOP_METRICS = 3;
-const NO_LOTTERY_MESSAGE = "Select a lottery to see the AI assistant status.";
-const NO_MODELS_MESSAGE = "No ML models trained for this lottery yet.";
-const NO_METRICS_MESSAGE = "No model metrics available for this lottery.";
-const NO_PROBABILITY_MESSAGE = "No probability rows available for this lottery yet.";
+const NO_LOTTERY_MESSAGE = "Selecciona una lotería para ver el estado del asistente IA.";
+const NO_MODELS_MESSAGE = "Aún no hay modelos de ML entrenados para esta lotería.";
+const NO_METRICS_MESSAGE = "No hay métricas del modelo disponibles para esta lotería.";
+const NO_PROBABILITY_MESSAGE = "Aún no hay filas de probabilidad disponibles para esta lotería.";
 
 const probabilityColumns: DataColumn<ProbRow>[] = [
-  { key: "model_id", label: "Model", sortable: true },
-  { key: "subject", label: "Subject", sortable: true },
-  { key: "draw_number", label: "Draw", sortable: true },
-  { key: "value", label: "Probability", sortable: true, sortValue: (row) => Number(row.value) },
+  { key: "model_id", label: "Modelo", sortable: true },
+  { key: "subject", label: "Sujeto", sortable: true },
+  { key: "draw_number", label: "Sorteo", sortable: true },
+  { key: "value", label: "Probabilidad", sortable: true, sortValue: (row) => Number(row.value) },
 ];
 
 function Section({ id, title, children }: { id: string; title: string; children: ReactNode }) {
   return (
-    <section aria-labelledby={id} className="rounded-md border border-gray-200 bg-white p-4">
-      <h3 id={id} className="mb-3 text-sm font-semibold text-gray-900">
+    <Card role="region" aria-labelledby={id}>
+      <h3 id={id} className="mb-3 text-sm font-semibold text-ink">
         {title}
       </h3>
       {children}
-    </section>
+    </Card>
   );
 }
 
@@ -41,18 +42,18 @@ function SnapshotSummary({ snapshot }: { snapshot: MLSnapshot }) {
   const checksum =
     snapshot.checksum.length > 8 ? `${snapshot.checksum.slice(0, 8)}…` : snapshot.checksum;
   return (
-    <p className="flex flex-wrap gap-x-6 gap-y-1 text-sm text-gray-500">
+    <p className="flex flex-wrap gap-x-6 gap-y-1 text-sm text-ink-3">
       <span>
-        Model set <span className="font-medium text-gray-900">{snapshot.model_set}</span>
+        Conjunto de modelos <span className="font-medium text-ink">{snapshot.model_set}</span>
       </span>
       <span>
-        Version <span className="font-medium text-gray-900">{snapshot.version}</span>
+        Versión <span className="font-medium text-ink">{snapshot.version}</span>
       </span>
       <span>
-        Status <span className="font-medium text-gray-900">{snapshot.status}</span>
+        Estado <span className="font-medium text-ink">{snapshot.status}</span>
       </span>
       <span>
-        Checksum <span className="font-mono text-xs text-gray-900">{checksum}</span>
+        Suma de verificación <span className="font-mono text-xs text-ink">{checksum}</span>
       </span>
     </p>
   );
@@ -127,18 +128,18 @@ export default function IA() {
     return (
       <dl className="grid gap-3 text-sm sm:grid-cols-2">
         <div className="flex items-center gap-2">
-          <dt className="text-gray-600">API status</dt>
-          <dd className="flex items-center gap-1.5 font-medium text-gray-900">
+          <dt className="text-ink-2">Estado de la API</dt>
+          <dd className="flex items-center gap-1.5 font-medium text-ink">
             <span
               aria-hidden="true"
-              className={`h-2 w-2 rounded-full ${health.status === "ok" ? "bg-emerald-500" : "bg-amber-500"}`}
+              className={`h-2 w-2 rounded-full ${health.status === "ok" ? "bg-success" : "bg-warning"}`}
             />
             {health.status}
           </dd>
         </div>
         <div className="flex items-center gap-2">
-          <dt className="text-gray-600">Version</dt>
-          <dd className="font-medium text-gray-900">{version.version}</dd>
+          <dt className="text-ink-2">Versión</dt>
+          <dd className="font-medium text-ink">{version.version}</dd>
         </div>
       </dl>
     );
@@ -164,17 +165,17 @@ export default function IA() {
       <div className="space-y-3">
         {snapshot ? <SnapshotSummary snapshot={snapshot} /> : null}
         {topMetrics.length === 0 ? (
-          <p className="text-sm text-gray-500">{NO_METRICS_MESSAGE}</p>
+          <p className="text-sm text-ink-3">{NO_METRICS_MESSAGE}</p>
         ) : (
           <ol className="space-y-1">
             {topMetrics.map((row) => (
               <li
                 key={`${row.model_id}-${row.number}-${row.metric_name}`}
-                className="flex items-center justify-between rounded px-2 py-1 text-sm odd:bg-gray-50"
+                className="flex items-center justify-between rounded px-2 py-1 text-sm odd:bg-surface-2"
               >
-                <span className="font-medium text-gray-900">{row.model_id}</span>
-                <span className="text-gray-500">{row.metric_name}</span>
-                <span className="text-gray-900">{row.value.toFixed(4)}</span>
+                <span className="font-medium text-ink">{row.model_id}</span>
+                <span className="text-ink-2">{row.metric_name}</span>
+                <span className="text-ink">{row.value.toFixed(4)}</span>
               </li>
             ))}
           </ol>
@@ -201,7 +202,7 @@ export default function IA() {
         columns={probabilityColumns}
         rows={rows}
         rowKey={(row) => `${row.model_id}-${row.subject}-${row.draw_number}`}
-        caption="Recent probability rows"
+        caption="Filas de probabilidad recientes"
       />
     );
   };
@@ -209,19 +210,19 @@ export default function IA() {
   return (
     <div className="space-y-6 p-4 sm:p-6">
       <div>
-        <h2 className="text-lg font-semibold text-gray-900">AI Assistant</h2>
-        <p className="text-sm text-gray-500">
-          Intelligence status derived from the live system, the active ML model and the latest
-          probability rows for the selected lottery.
+        <h2 className="text-lg font-semibold text-ink">Asistente IA</h2>
+        <p className="text-sm text-ink-3">
+          Estado de inteligencia derivado del sistema en vivo, el modelo de ML activo y las últimas
+          filas de probabilidad para la lotería seleccionada.
         </p>
       </div>
-      <Section id="ia-system-title" title="System status">
+      <Section id="ia-system-title" title="Estado del sistema">
         {renderSystem()}
       </Section>
-      <Section id="ia-model-title" title="Model status">
+      <Section id="ia-model-title" title="Estado del modelo">
         {renderModel()}
       </Section>
-      <Section id="ia-probability-title" title="Recent probabilities">
+      <Section id="ia-probability-title" title="Probabilidades recientes">
         {renderProbabilities()}
       </Section>
       <AssistantPanel lotteryCode={selectedLotteryCode} />

@@ -1,4 +1,5 @@
 import { Suspense, lazy, useEffect, useMemo, useRef, useState } from "react";
+import Card from "../components/Card";
 import EmptyState from "../components/EmptyState";
 import ErrorState from "../components/ErrorState";
 import Skeleton from "../components/Skeleton";
@@ -9,11 +10,11 @@ import type { GraphSnapshotInfo } from "../types/graph";
 
 const ForceGraph2D = lazy(() => import("react-force-graph-2d"));
 
-const NO_LOTTERY_MESSAGE = "Select a lottery to see the network graph.";
-const NO_DATA_MESSAGE = "No network snapshot for this lottery yet.";
-const NO_LINKS_MESSAGE = "No co-occurrence links in this snapshot.";
+const NO_LOTTERY_MESSAGE = "Selecciona una lotería para ver la red de números.";
+const NO_DATA_MESSAGE = "Aún no hay instantánea de red para esta lotería.";
+const NO_LINKS_MESSAGE = "No hay enlaces de co-ocurrencia en esta instantánea.";
 const GRAPH_HEIGHT = 480;
-const GRAPH_ARIA_LABEL = "Network graph of lottery numbers";
+const GRAPH_ARIA_LABEL = "Red de números de lotería";
 const COMMUNITY_COLORS = [
   "#3b82f6",
   "#22c55e",
@@ -44,10 +45,10 @@ interface NetworkGraphProps {
 }
 
 function snapshotClass(selected: boolean): string {
-  return `flex flex-wrap items-center gap-x-4 gap-y-1 rounded-md border px-3 py-2 text-left text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
+  return `flex flex-wrap items-center gap-x-4 gap-y-1 rounded-md border px-3 py-2 text-left text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
     selected
-      ? "border-blue-600 bg-blue-50 text-gray-900"
-      : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+      ? "border-primary bg-primary-soft text-primary-deep"
+      : "border-border bg-surface text-ink-2 hover:bg-surface-2"
   }`;
 }
 
@@ -75,7 +76,7 @@ function NetworkGraph({ nodes, links }: NetworkGraphProps) {
       data-testid="network-graph"
       role="img"
       aria-label={GRAPH_ARIA_LABEL}
-      className="overflow-hidden rounded-md border border-gray-200"
+      className="overflow-hidden rounded-md border border-border"
     >
       <Suspense fallback={<Skeleton variant="card" />}>
         <ForceGraph2D
@@ -168,15 +169,15 @@ export default function Networks() {
     return (
       <div className="space-y-4">
         <NetworkGraph nodes={nodes} links={links} />
-        <p className="flex flex-wrap gap-x-6 gap-y-1 text-sm text-gray-500">
+        <p className="flex flex-wrap gap-x-6 gap-y-1 text-sm text-ink-3">
           <span>
-            Draws <span className="font-medium text-gray-900">{item.draw_count}</span>
+             Sorteos <span className="font-medium text-ink">{item.draw_count}</span>
           </span>
           <span>
-            Nodes <span className="font-medium text-gray-900">{nodes.length}</span>
+             Nodos <span className="font-medium text-ink">{nodes.length}</span>
           </span>
           <span>
-            Links <span className="font-medium text-gray-900">{links.length}</span>
+             Enlaces <span className="font-medium text-ink">{links.length}</span>
           </span>
         </p>
       </div>
@@ -196,7 +197,7 @@ export default function Networks() {
     if (snapshots.length === 0) return <EmptyState message={NO_DATA_MESSAGE} />;
     return (
       <div className="space-y-5">
-        <ul className="flex flex-col gap-2 sm:max-w-md" aria-label="Network snapshots">
+          <ul className="flex flex-col gap-2 sm:max-w-md" aria-label="Instantáneas de red">
           {snapshots.map((item) => (
             <li key={item.snapshot_id}>
               <button
@@ -207,7 +208,7 @@ export default function Networks() {
               >
                 <span className="font-medium">#{item.snapshot_id}</span>
                 <span>
-                  v{item.version} · {item.draw_count} draws · {item.status} ·{" "}
+                  v{item.version} · {item.draw_count} sorteos · {item.status} ·{" "}
                   {new Date(item.created_at).toLocaleDateString()}
                 </span>
               </button>
@@ -222,17 +223,14 @@ export default function Networks() {
   return (
     <div className="space-y-6 p-4 sm:p-6">
       <div>
-        <h2 className="text-lg font-semibold text-gray-900">Networks</h2>
-        <p className="text-sm text-gray-500">
-          Co-occurrence network between lottery numbers for the selected lottery.
+        <h2 className="text-lg font-semibold text-ink">Networks</h2>
+        <p className="text-sm text-ink-3">
+          Red de co-ocurrencia entre números de lotería para la lotería seleccionada.
         </p>
       </div>
-      <section
-        aria-label="Network graph"
-        className="rounded-md border border-gray-200 bg-white p-4"
-      >
+        <Card role="region" aria-label="Red de números">
         {renderContent()}
-      </section>
+      </Card>
     </div>
   );
 }

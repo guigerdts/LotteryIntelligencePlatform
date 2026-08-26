@@ -13,7 +13,7 @@ interface DashboardLayoutProps {
  */
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
   return (
-    <div className="flex h-screen flex-col bg-gray-50">
+    <div className="flex h-screen flex-col bg-canvas">
       <Header />
       <div className="flex flex-1 overflow-hidden">
         <Sidebar />

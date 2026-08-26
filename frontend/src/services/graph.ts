@@ -9,12 +9,17 @@ import { apiClient } from "./api";
 /** Trigger graph computation for a lottery. */
 export async function computeGraph(
   lotteryCode: string,
-  graphType: GraphType = "cooccurrence"
+  graphType: GraphType = "cooccurrence",
+  signal?: AbortSignal
 ): Promise<ComputeSnapshot> {
-  return apiClient<ComputeSnapshot>("/graph/compute", {
-    method: "POST",
-    body: JSON.stringify({ lottery_code: lotteryCode, graph_type: graphType }),
-  });
+  return apiClient<ComputeSnapshot>(
+    "/graph/compute",
+    {
+      method: "POST",
+      body: JSON.stringify({ lottery_code: lotteryCode, graph_type: graphType }),
+    },
+    signal
+  );
 }
 
 /** List graph snapshots for a lottery. */

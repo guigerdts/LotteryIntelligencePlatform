@@ -91,15 +91,15 @@ describe("Trends", () => {
     expect(await screen.findByRole("heading", { name: /trends/i })).toBeInTheDocument();
     expect(
       screen.getByRole("img", {
-        name: "Rolling frequency trend of hot numbers over recent draws",
+        name: "Tendencia de frecuencia móvil de números calientes en sorteos recientes",
       })
     ).toBeInTheDocument();
     expect(
       screen.getByRole("img", { name: "Frequency distribution per number" })
     ).toBeInTheDocument();
-    const hot = screen.getByRole("region", { name: "Hot numbers" });
+    const hot = screen.getByRole("region", { name: "Números calientes" });
     expect(within(hot).getAllByText("25×").length).toBeGreaterThan(0);
-    const cold = screen.getByRole("region", { name: "Cold numbers" });
+    const cold = screen.getByRole("region", { name: "Números fríos" });
     expect(within(cold).getByText("10")).toBeInTheDocument();
   });
 
@@ -120,7 +120,7 @@ describe("Trends", () => {
     render(<Trends />);
     expect(
       await screen.findByRole("img", {
-        name: "Rolling frequency trend of hot numbers over recent draws",
+        name: "Tendencia de frecuencia móvil de números calientes en sorteos recientes",
       })
     ).toBeInTheDocument();
     expect(
@@ -137,7 +137,7 @@ describe("Trends", () => {
     await waitFor(() => expect(container.querySelector(".animate-pulse")).toBeNull());
     expect(
       screen.getByRole("img", {
-        name: "Rolling frequency trend of hot numbers over recent draws",
+        name: "Tendencia de frecuencia móvil de números calientes en sorteos recientes",
       })
     ).toBeInTheDocument();
   });
@@ -147,13 +147,13 @@ describe("Trends", () => {
     server.use(http.get("*/api/v1/draws", () => err("Server error")));
     render(<Trends />);
     expect(await screen.findByRole("alert")).toHaveTextContent(/server error/i);
-    expect(screen.getByRole("button", { name: /retry/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /reintentar/i })).toBeInTheDocument();
     server.use(http.get("*/api/v1/draws", () => env(drawRange(25))));
-    fireEvent.click(screen.getByRole("button", { name: /retry/i }));
+    fireEvent.click(screen.getByRole("button", { name: /reintentar/i }));
     await waitFor(() =>
       expect(
         screen.getByRole("img", {
-          name: "Rolling frequency trend of hot numbers over recent draws",
+          name: "Tendencia de frecuencia móvil de números calientes en sorteos recientes",
         })
       ).toBeInTheDocument()
     );
@@ -162,7 +162,7 @@ describe("Trends", () => {
 
   it("prompts to select a lottery and does not call the API", async () => {
     render(<Trends />);
-    expect(await screen.findByText(/select a lottery to see its trends/i)).toBeInTheDocument();
+    expect(await screen.findByText(/selecciona una lotería para ver sus tendencias/i)).toBeInTheDocument();
     expect(fetchCalls).toBe(0);
     expect(screen.queryByRole("img")).not.toBeInTheDocument();
   });

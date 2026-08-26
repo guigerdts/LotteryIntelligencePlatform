@@ -1,44 +1,46 @@
 import { useEffect, useState } from "react";
+import Button from "../components/Button";
+import Card from "../components/Card";
 import DistributionChart from "../charts/DistributionChart";
 import DataTable, { type DataColumn } from "../components/DataTable";
 import EmptyState from "../components/EmptyState";
 import ErrorState from "../components/ErrorState";
+import LongOperationStatus from "../components/LongOperationStatus";
 import Skeleton from "../components/Skeleton";
-import { useApi } from "../hooks/useApi";
+import { useApi, abortable } from "../hooks/useApi";
+import { useElapsedTime } from "../hooks/useElapsedTime";
 import { generateProbability, getProbabilities } from "../services/probability";
 import { useLotteryStore } from "../store/useLotteryStore";
 import type { ProbabilitySnapshot, ProbRow } from "../types/probability";
 
-const NO_LOTTERY_MESSAGE = "Select a lottery to see probability rows.";
+const NO_LOTTERY_MESSAGE = "Selecciona una lotería para ver las filas de probabilidad.";
 const NO_DATA_MESSAGE =
-  "No probabilities available for this lottery. Click Generate to compute them.";
-const BUTTON_CLASS =
-  "rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500";
+  "No hay probabilidades disponibles para esta lotería. Haz clic en Generar para calcularlas.";
 
 const probabilityColumns: DataColumn<ProbRow>[] = [
-  { key: "model_id", label: "Model", sortable: true },
-  { key: "subject", label: "Subject", sortable: true },
-  { key: "draw_number", label: "Draw", sortable: true },
-  { key: "value", label: "Probability", sortable: true },
+  { key: "model_id", label: "Modelo", sortable: true },
+  { key: "subject", label: "Sujeto", sortable: true },
+  { key: "draw_number", label: "Sorteo", sortable: true },
+  { key: "value", label: "Probabilidad", sortable: true },
 ];
 
 function SnapshotSummary({ snapshot }: { snapshot: ProbabilitySnapshot }) {
   return (
-    <p className="flex flex-wrap gap-x-6 gap-y-1 text-sm text-gray-500">
+    <p className="flex flex-wrap gap-x-6 gap-y-1 text-sm text-ink-3">
       <span>
-        Snapshot <span className="font-medium text-gray-900">#{snapshot.snapshot_id}</span>
+        Instantánea <span className="font-medium text-ink">#{snapshot.snapshot_id}</span>
       </span>
       <span>
-        Range{" "}
-        <span className="font-medium text-gray-900">
+        Rango{" "}
+        <span className="font-medium text-ink">
           {snapshot.draws_from}–{snapshot.draws_to}
         </span>
       </span>
       <span>
-        Draws <span className="font-medium text-gray-900">{snapshot.draw_count}</span>
+        Sorteos <span className="font-medium text-ink">{snapshot.draw_count}</span>
       </span>
       <span>
-        Models <span className="font-medium text-gray-900">{snapshot.model_set}</span>
+        Modelos <span className="font-medium text-ink">{snapshot.model_set}</span>
       </span>
     </p>
   );
@@ -61,8 +63,11 @@ export default function MonteCarlo() {
     isLoading: generating,
     error: generateError,
     execute: generate,
-  } = useApi(generateProbability);
+    abort: abortGenerate,
+    isCancelled: generateCancelled,
+  } = useApi(abortable((code: string, signal: AbortSignal) => generateProbability(code, "incremental", signal)));
   const [snapshot, setSnapshot] = useState<ProbabilitySnapshot | null>(null);
+  const elapsed = useElapsedTime(generating);
 
   useEffect(() => {
     if (!selectedLotteryCode) return;
@@ -77,6 +82,11 @@ export default function MonteCarlo() {
     void fetchProbabilities(selectedLotteryCode);
   };
 
+  const handleCancel = () => {
+    if (!generating) return;
+    abortGenerate();
+  };
+
   const renderContent = () => {
     if (!selectedLotteryCode) {
       return <EmptyState message={NO_LOTTERY_MESSAGE} />;
@@ -89,6 +99,17 @@ export default function MonteCarlo() {
     if (loading) {
       return <Skeleton variant="card" />;
     }
+    if (generating || generateCancelled) {
+      return (
+        <LongOperationStatus
+          elapsed={elapsed}
+          onCancel={handleCancel}
+          cancelled={generateCancelled && !generating}
+          message="Ejecutando la simulación de Monte Carlo; puede tardar varios minutos."
+          responsibleNote="Recordá: los sorteos son aleatorios; ningún método mejora tus probabilidades."
+        />
+      );
+    }
     if (generateError) {
       return <ErrorState message={generateError} onRetry={() => void handleGenerate()} />;
     }
@@ -98,14 +119,14 @@ export default function MonteCarlo() {
         <EmptyState
           message={NO_DATA_MESSAGE}
           action={
-            <button
-              type="button"
+            <Button
+              variant="primary"
               onClick={() => void handleGenerate()}
               disabled={generating}
-              className={BUTTON_CLASS}
+              loading={generating}
             >
-              {generating ? "Generating…" : "Generate"}
-            </button>
+              Generar
+            </Button>
           }
         />
       );
@@ -117,7 +138,7 @@ export default function MonteCarlo() {
           columns={probabilityColumns}
           rows={rows}
           rowKey={(row) => `${row.model_id}-${row.subject}-${row.draw_number}`}
-          caption="Probability rows"
+          caption="Filas de probabilidad"
         />
         <DistributionChart rows={rows.map((row) => ({ subject: row.subject, value: row.value }))} />
       </div>
@@ -128,25 +149,21 @@ export default function MonteCarlo() {
     <div className="space-y-6 p-4 sm:p-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-lg font-semibold text-gray-900">Monte Carlo</h2>
-          <p className="text-sm text-gray-500">Probability rows for the selected lottery.</p>
+          <h2 className="text-lg font-semibold text-ink">Monte Carlo</h2>
+          <p className="text-sm text-ink-3">          Filas de probabilidad para la lotería seleccionada.</p>
         </div>
-        <button
-          type="button"
+        <Button
+          variant="primary"
           onClick={() => void handleGenerate()}
           disabled={!selectedLotteryCode || generating}
-          aria-busy={generating}
-          className={BUTTON_CLASS}
+          loading={generating}
         >
-          {generating ? "Generating…" : "Generate"}
-        </button>
+          Generate
+        </Button>
       </div>
-      <section
-        aria-label="Probability results"
-        className="rounded-md border border-gray-200 bg-white p-4"
-      >
+        <Card role="region" aria-label="Resultados de probabilidad">
         {renderContent()}
-      </section>
+      </Card>
     </div>
   );
 }

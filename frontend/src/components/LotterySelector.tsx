@@ -34,45 +34,45 @@ export default function LotterySelector() {
   };
 
   if (isLoading && lotteries.length === 0) {
-    return (
-      <div role="status" aria-live="polite" className="text-sm text-gray-500">
-        Loading lotteries...
-      </div>
-    );
-  }
+      return (
+        <div role="status" aria-live="polite" className="text-sm text-ink-3">
+          Cargando loterías...
+        </div>
+      );
+    }
 
-  if (error && lotteries.length === 0) {
+    if (error && lotteries.length === 0) {
+      return (
+        <div role="alert" className="flex items-center gap-3 text-sm text-error">
+           <span>No se pudieron cargar las loterías. {error}</span>
+          <button
+            type="button"
+            onClick={() => void loadLotteries()}
+            className="font-medium underline focus:outline-none focus-visible:ring-2 focus-visible:ring-error"
+          >
+            Reintentar
+          </button>
+        </div>
+      );
+    }
+
     return (
-      <div role="alert" className="flex items-center gap-3 text-sm text-red-600">
-        <span>Failed to load lotteries. {error}</span>
-        <button
-          type="button"
-          onClick={() => void loadLotteries()}
-          className="font-medium underline focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+      <div className="flex items-center gap-2">
+        <label htmlFor="lottery-select" className="text-sm font-medium text-ink-2">
+          Lotería
+        </label>
+        <select
+          id="lottery-select"
+          value={selectedLotteryId ?? ""}
+          onChange={handleChange}
+          disabled={lotteries.length === 0}
+          className="rounded-md border border-border bg-surface px-2 py-1.5 text-sm text-ink focus:border-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-50 disabled:bg-surface-2"
         >
-          Retry
-        </button>
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex items-center gap-2">
-      <label htmlFor="lottery-select" className="text-sm font-medium text-gray-600">
-        Lottery
-      </label>
-      <select
-        id="lottery-select"
-        value={selectedLotteryId ?? ""}
-        onChange={handleChange}
-        disabled={lotteries.length === 0}
-        className="rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
-      >
         {lotteries.length === 0 ? (
-          <option value="">No lotteries available</option>
+          <option value="">No hay loterías disponibles</option>
         ) : (
           <>
-            <option value="">Select a lottery</option>
+             <option value="">Selecciona una lotería</option>
             {lotteries.map((lottery) => (
               <option key={lottery.id} value={lottery.id}>
                 {lottery.name} ({lottery.code})

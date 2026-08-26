@@ -106,14 +106,14 @@ const selectLottery = () =>
   useLotteryStore.setState({ selectedLotteryId: 1, selectedLotteryCode: "L1" });
 
 const ask = (question: string) => {
-  fireEvent.change(screen.getByLabelText(/ask a question about this lottery/i), {
+  fireEvent.change(screen.getByLabelText(/haz una pregunta sobre esta lotería/i), {
     target: { value: question },
   });
-  fireEvent.click(screen.getByRole("button", { name: "Ask" }));
+  fireEvent.click(screen.getByRole("button", { name: "Preguntar" }));
 };
 
 const setExperiment = (id: string) =>
-  fireEvent.change(screen.getByLabelText(/experiment id/i), {
+  fireEvent.change(screen.getByLabelText(/id del experimento/i), {
     target: { value: id },
   });
 
@@ -144,10 +144,12 @@ describe("IA", () => {
   it("renders system, model and probability status on mount", async () => {
     selectLottery();
     render(<IA />);
-    expect(await screen.findByRole("heading", { name: /ai assistant/i })).toBeInTheDocument();
-    expect(screen.getByRole("region", { name: "System status" })).toBeInTheDocument();
-    expect(screen.getByRole("region", { name: "Model status" })).toBeInTheDocument();
-    expect(screen.getByRole("region", { name: "Recent probabilities" })).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { name: /asistente ia/i, level: 2 })
+    ).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Estado del sistema" })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Estado del modelo" })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Probabilidades recientes" })).toBeInTheDocument();
     expect(await screen.findByText("ok")).toBeInTheDocument();
     expect(screen.getByText("1.0.0")).toBeInTheDocument();
     expect(await screen.findByText("core-5")).toBeInTheDocument();
@@ -162,9 +164,9 @@ describe("IA", () => {
     server.use(http.get("*/api/v1/ml/models", () => err("Server error")));
     render(<IA />);
     expect(await screen.findByRole("alert")).toHaveTextContent(/server error/i);
-    expect(screen.getByRole("button", { name: /retry/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /reintentar/i })).toBeInTheDocument();
     server.use(http.get("*/api/v1/ml/models", () => env(snapshot)));
-    fireEvent.click(screen.getByRole("button", { name: /retry/i }));
+    fireEvent.click(screen.getByRole("button", { name: /reintentar/i }));
     await waitFor(() => expect(screen.getByText("core-5")).toBeInTheDocument());
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
@@ -185,7 +187,7 @@ describe("IA", () => {
   it("prompts to select a lottery and does not call lottery-scoped endpoints", async () => {
     render(<IA />);
     expect(
-      (await screen.findAllByText(/select a lottery to see the ai assistant/i)).length
+      (await screen.findAllByText(/selecciona una loter/i)).length
     ).toBeGreaterThan(0);
     expect(modelsCalls).toBe(0);
     expect(metricsCalls).toBe(0);
@@ -236,7 +238,7 @@ describe("IA", () => {
         env({ ...assistantResponse, text: "Recuperado." })
       )
     );
-    fireEvent.click(screen.getByRole("button", { name: /retry/i }));
+    fireEvent.click(screen.getByRole("button", { name: /reintentar/i }));
     await waitFor(() => expect(screen.getByText("Recuperado.")).toBeInTheDocument());
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
@@ -278,11 +280,11 @@ describe("IA", () => {
     try {
       render(<IA />);
       await screen.findByText("ok");
-      fireEvent.click(screen.getByRole("button", { name: "Explain" }));
-      fireEvent.click(screen.getByRole("button", { name: "Interpret" }));
-      fireEvent.click(screen.getByRole("button", { name: "Report" }));
+      fireEvent.click(screen.getByRole("button", { name: "Explicar" }));
+      fireEvent.click(screen.getByRole("button", { name: "Interpretar" }));
+      fireEvent.click(screen.getByRole("button", { name: "Informe" }));
       setExperiment("2");
-      fireEvent.click(screen.getByRole("button", { name: "Summarize" }));
+      fireEvent.click(screen.getByRole("button", { name: "Resumir" }));
       ask("Hola");
       await waitFor(() => {
         expect([explainCalls, interpretCalls, reportCalls, summarizeCalls, assistCalls]).toEqual([

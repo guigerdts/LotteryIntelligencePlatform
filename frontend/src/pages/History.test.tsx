@@ -126,10 +126,10 @@ describe("History", () => {
     render(<History />);
 
     expect(await screen.findByRole("alert")).toHaveTextContent(/server error/i);
-    expect(screen.getByRole("button", { name: /retry/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /reintentar/i })).toBeInTheDocument();
 
     server.use(http.get("*/api/v1/draws", () => env(drawRange(200, 200, PAGE_SIZE))));
-    fireEvent.click(screen.getByRole("button", { name: /retry/i }));
+    fireEvent.click(screen.getByRole("button", { name: /reintentar/i }));
 
     await waitFor(() => {
       expect(screen.getByRole("table")).toHaveTextContent("200");
@@ -142,7 +142,7 @@ describe("History", () => {
     server.use(http.get("*/api/v1/draws", () => env([])));
     render(<History />);
 
-    expect(await screen.findByText(/no draws available for this lottery/i)).toBeInTheDocument();
+    expect(      await screen.findByText(/no hay sorteos disponibles para esta lotería/i)).toBeInTheDocument();
     expect(screen.queryByRole("table")).not.toBeInTheDocument();
   });
 
@@ -150,7 +150,7 @@ describe("History", () => {
     render(<History />);
 
     expect(
-      await screen.findByText(/select a lottery to see its draw history/i)
+      await screen.findByText(/selecciona una lotería para ver el historial de sorteos/i)
     ).toBeInTheDocument();
     expect(drawsCalls).toBe(0);
     expect(screen.queryByRole("table")).not.toBeInTheDocument();

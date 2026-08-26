@@ -124,9 +124,9 @@ describe("Mis Números page", () => {
     selectLottery();
     render(<MisNumeros />);
 
-    fireEvent.click(screen.getByRole("button", { name: /generate numbers/i }));
+    fireEvent.click(screen.getByRole("button", { name: /generar números/i }));
 
-    await screen.findByRole("table", { name: /generated combinations/i });
+    await screen.findByText(/un boleto, dos sorteos/i);
     await waitFor(() => expect(pipelineCalls).toBe(1));
     expect(otherApiCalls).toBe(0);
   });
@@ -142,9 +142,9 @@ describe("Mis Números page", () => {
     );
     render(<MisNumeros />);
 
-    fireEvent.click(screen.getByRole("button", { name: /generate numbers/i }));
+    fireEvent.click(screen.getByRole("button", { name: /generar números/i }));
 
-    const busyButton = await screen.findByRole("button", { name: /running/i });
+    const busyButton = await screen.findByRole("button", { name: /generar números/i });
     expect(busyButton).toBeDisabled();
     expect(busyButton).toHaveAttribute("aria-busy", "true");
 
@@ -157,8 +157,8 @@ describe("Mis Números page", () => {
         return env({ stages: okStages(), result: generationResult });
       })
     );
-    fireEvent.click(screen.getByRole("button", { name: /retry/i }));
-    await screen.findByRole("table", { name: /generated combinations/i });
+    fireEvent.click(screen.getByRole("button", { name: /reintentar/i }));
+    await screen.findByText(/un boleto, dos sorteos/i);
     expect(pipelineCalls).toBe(2);
   });
 
@@ -166,10 +166,10 @@ describe("Mis Números page", () => {
     selectLottery();
     render(<MisNumeros />);
 
-    fireEvent.click(screen.getByRole("button", { name: /generate numbers/i }));
+    fireEvent.click(screen.getByRole("button", { name: /generar números/i }));
 
     const report = await screen.findByRole("list", {
-      name: /pipeline stages/i,
+      name: /etapas del pipeline/i,
     });
     const text = report.textContent ?? "";
     for (let i = 0; i < STAGE_ORDER.length - 1; i++) {
@@ -180,7 +180,7 @@ describe("Mis Números page", () => {
     for (const name of STAGE_ORDER) {
       expect(text).toContain(name);
     }
-    expect(screen.getByRole("table", { name: /generated combinations/i })).toBeInTheDocument();
+    expect(screen.getByText(/un boleto, dos sorteos/i)).toBeInTheDocument();
   });
 
   it("surfaces a failed features stage without crashing and hides combinations (R2)", async () => {
@@ -192,18 +192,18 @@ describe("Mis Números page", () => {
     );
     render(<MisNumeros />);
 
-    fireEvent.click(screen.getByRole("button", { name: /generate numbers/i }));
+    fireEvent.click(screen.getByRole("button", { name: /generar números/i }));
 
     const report = await screen.findByRole("list", {
-      name: /pipeline stages/i,
+      name: /etapas del pipeline/i,
     });
-    expect(report.textContent).toContain("failed");
+    expect(report.textContent).toContain("fallido");
     expect(screen.getByText(/PIPE_STAGE_FAILED/)).toBeInTheDocument();
     expect(
-      screen.queryByRole("table", { name: /generated combinations/i })
+      screen.queryByText(/un boleto, dos sorteos/i)
     ).not.toBeInTheDocument();
     // Page stays interactive: CTA re-enabled and disclaimer still visible.
-    expect(screen.getByRole("button", { name: /generate numbers/i })).toBeEnabled();
+    expect(screen.getByRole("button", { name: /generar números/i })).toBeEnabled();
     expect(screen.getByText(/completamente aleatorios/i)).toBeInTheDocument();
   });
 
@@ -211,8 +211,8 @@ describe("Mis Números page", () => {
     selectLottery();
     render(<MisNumeros />);
 
-    fireEvent.click(screen.getByRole("button", { name: /generate numbers/i }));
-    await screen.findByRole("table", { name: /generated combinations/i });
+    fireEvent.click(screen.getByRole("button", { name: /generar números/i }));
+    await screen.findByText(/un boleto, dos sorteos/i);
 
     expect(screen.getAllByText(/un boleto, dos sorteos/i)).not.toHaveLength(0);
     expect(screen.queryByRole("radio")).not.toBeInTheDocument();
@@ -225,15 +225,15 @@ describe("Mis Números page", () => {
     selectLottery();
     render(<MisNumeros />);
 
-    fireEvent.click(screen.getByRole("button", { name: /generate numbers/i }));
-    await screen.findByRole("table", { name: /generated combinations/i });
+    fireEvent.click(screen.getByRole("button", { name: /generar números/i }));
+    await screen.findByText(/un boleto, dos sorteos/i);
     await waitFor(() => expect(pipelineCalls).toBe(1));
     expect(lastPipelineBody?.count).toBe(5);
 
-    fireEvent.change(screen.getByLabelText(/count/i), {
+    fireEvent.change(screen.getByLabelText("Cantidad"), {
       target: { value: "3" },
     });
-    fireEvent.click(screen.getByRole("button", { name: /generate numbers/i }));
+    fireEvent.click(screen.getByRole("button", { name: /generar números/i }));
     await waitFor(() => expect(pipelineCalls).toBe(2));
     expect(lastPipelineBody?.count).toBe(3);
   });
@@ -242,13 +242,13 @@ describe("Mis Números page", () => {
     selectLottery();
     render(<MisNumeros />);
 
-    const table = await screen.findByRole("table", { name: /prize tiers/i });
+    const table = await screen.findByRole("table", { name: /categorías de premios/i });
     const rows = table.querySelectorAll("tbody tr");
     expect(rows).toHaveLength(8);
     expect(table.textContent).toMatch(/5\s*\+\s*superbalota/i);
     expect(table.textContent).toMatch(/jackpot/i);
-    expect(table.textContent).toMatch(/paramutual/i);
-    expect(table.textContent).toMatch(/bet refund|refund/i);
+    expect(table.textContent).toMatch(/pari-mutuel/i);
+    expect(table.textContent).toMatch(/reembolso/i);
   });
 
   it("keeps the randomness disclaimer visible idle and after generation (R6)", async () => {
@@ -257,8 +257,8 @@ describe("Mis Números page", () => {
 
     expect(screen.getByText(/completamente aleatorios/i)).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: /generate numbers/i }));
-    await screen.findByRole("table", { name: /generated combinations/i });
+    fireEvent.click(screen.getByRole("button", { name: /generar números/i }));
+    await screen.findByText(/un boleto, dos sorteos/i);
 
     expect(screen.getByText(/completamente aleatorios/i)).toBeInTheDocument();
     expect(screen.getByText(/aleatorios/i)).toBeInTheDocument();
@@ -267,8 +267,8 @@ describe("Mis Números page", () => {
   it("prompts to select a lottery with a disabled CTA when none is chosen", async () => {
     render(<MisNumeros />);
 
-    expect(await screen.findByText(/select a lottery/i)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /generate numbers/i })).toBeDisabled();
+    expect(await screen.findByText(/selecciona una loter/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /generar números/i })).toBeDisabled();
     expect(pipelineCalls).toBe(0);
   });
 });

@@ -13,12 +13,12 @@ import type { AverageList, FrequencyList, GapList } from "../types/statistics";
 type StatTab = "frequencies" | "gaps" | "averages";
 type StatList = FrequencyList | GapList | AverageList;
 
-const NO_LOTTERY_MESSAGE = "Select a lottery to see its statistics.";
-const NO_DATA_MESSAGE = "No statistics available for this lottery.";
+const NO_LOTTERY_MESSAGE = "Selecciona una lotería para ver sus estadísticas.";
+const NO_DATA_MESSAGE = "No hay estadísticas disponibles para esta lotería.";
 const TABS: { id: StatTab; label: string }[] = [
-  { id: "frequencies", label: "Frequencies" },
-  { id: "gaps", label: "Gaps" },
-  { id: "averages", label: "Averages" },
+    { id: "frequencies", label: "Frecuencias" },
+    { id: "gaps", label: "Huecos" },
+    { id: "averages", label: "Promedios" },
 ];
 
 function SnapshotHeader({ list }: { list: StatList }) {
@@ -174,7 +174,7 @@ export default function Statistics() {
           {generating ? "Generating…" : "Generate Snapshot"}
         </button>
       </div>
-      <div role="tablist" aria-label="Statistics views" className="flex gap-2">
+      <div role="tablist" aria-label="Vistas de estadísticas" className="flex gap-2">
         {TABS.map((tab) => (
           <button
             key={tab.id}

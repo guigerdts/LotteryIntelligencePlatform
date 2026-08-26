@@ -98,7 +98,7 @@ describe("Models", () => {
     selectLottery();
     render(<Models />);
     await screen.findByRole("table");
-    fireEvent.click(screen.getByRole("button", { name: /^train$/i }));
+    fireEvent.click(screen.getByRole("button", { name: /^entrenar$/i }));
     await waitFor(() => expect(trainCalls).toBe(1));
     await waitFor(() => expect(modelsCalls).toBeGreaterThanOrEqual(2));
     await waitFor(() => expect(metricsCalls).toBeGreaterThanOrEqual(2));
@@ -118,19 +118,19 @@ describe("Models", () => {
     server.use(http.get("*/api/v1/ml/models", () => err("Server error")));
     render(<Models />);
     expect(await screen.findByRole("alert")).toHaveTextContent(/server error/i);
-    expect(screen.getByRole("button", { name: /retry/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /reintentar/i })).toBeInTheDocument();
     server.use(http.get("*/api/v1/ml/models", () => env(snapshot)));
-    fireEvent.click(screen.getByRole("button", { name: /retry/i }));
+    fireEvent.click(screen.getByRole("button", { name: /reintentar/i }));
     await waitFor(() => expect(screen.getByRole("table")).toBeInTheDocument());
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
   it("prompts to select a lottery and does not call the API", async () => {
     render(<Models />);
-    expect(await screen.findByText(/select a lottery to see models/i)).toBeInTheDocument();
+    expect(await screen.findByText(/selecciona una lotería para ver los modelos/i)).toBeInTheDocument();
     expect(modelsCalls).toBe(0);
     expect(metricsCalls).toBe(0);
     expect(trainCalls).toBe(0);
-    expect(screen.getByRole("button", { name: /^train$/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /^entrenar$/i })).toBeDisabled();
   });
 });

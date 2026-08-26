@@ -64,14 +64,14 @@ describe("DataTable", () => {
   it("renders an empty message when there are no rows", () => {
     renderTable({ rows: [] });
 
-    expect(screen.getByText(/no data available/i)).toBeInTheDocument();
+    expect(screen.getByText(/no hay datos disponibles/i)).toBeInTheDocument();
   });
 
   it("renders skeleton rows while loading", () => {
     renderTable({ loading: true, loadingRows: 3 });
 
     expect(screen.getAllByRole("row")).toHaveLength(4);
-    expect(screen.queryByText(/no data available/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/no hay datos disponibles/i)).not.toBeInTheDocument();
   });
 
   it("uses the render prop for custom cell content", () => {
@@ -164,7 +164,7 @@ describe("ErrorState", () => {
     const onRetry = vi.fn();
     render(<ErrorState message="Failed to load" onRetry={onRetry} />);
 
-    fireEvent.click(screen.getByRole("button", { name: /retry/i }));
+    fireEvent.click(screen.getByRole("button", { name: /reintentar/i }));
     expect(onRetry).toHaveBeenCalledTimes(1);
   });
 

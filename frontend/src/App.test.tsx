@@ -108,7 +108,7 @@ describe("App router", () => {
 
     expect(container.querySelector("[aria-busy='true']")).not.toBeNull();
     expect(
-      await screen.findByRole("heading", { name: /operational summary/i }, ASYNC_TIMEOUT)
+      await screen.findByRole("heading", { name: /resumen operativo/i }, ASYNC_TIMEOUT)
     ).toBeInTheDocument();
   }, 20000);
 
@@ -117,17 +117,17 @@ describe("App router", () => {
     renderAt("/");
 
     expect(
-      await screen.findByRole("heading", { name: /operational summary/i }, ASYNC_TIMEOUT)
+      await screen.findByRole("heading", { name: /resumen operativo/i }, ASYNC_TIMEOUT)
     ).toBeInTheDocument();
-    expect(screen.getByRole("navigation", { name: "Main navigation" })).toBeInTheDocument();
-    expect(screen.getByRole("complementary", { name: "Sidebar" })).toBeInTheDocument();
+    expect(screen.getByRole("navigation", { name: "Navegación principal" })).toBeInTheDocument();
+    expect(screen.getByRole("complementary", { name: "Barra lateral" })).toBeInTheDocument();
   }, 20000);
 
   it("navigates between routes through the sidebar links", async () => {
     useLotteryStore.setState({ selectedLotteryId: 1, selectedLotteryCode: "L1" });
     renderAt("/");
 
-    await screen.findByRole("heading", { name: /operational summary/i }, ASYNC_TIMEOUT);
+    await screen.findByRole("heading", { name: /resumen operativo/i }, ASYNC_TIMEOUT);
     fireEvent.click(screen.getByRole("link", { name: "Mis Números" }));
 
     expect(
@@ -139,7 +139,7 @@ describe("App router", () => {
     renderAt("/unknown");
 
     expect(
-      await screen.findByRole("heading", { name: /page not found/i }, ASYNC_TIMEOUT)
+      await screen.findByRole("heading", { name: /página no encontrada/i }, ASYNC_TIMEOUT)
     ).toBeInTheDocument();
   });
 
@@ -148,9 +148,9 @@ describe("App router", () => {
     renderAt("/ia");
 
     expect(
-      await screen.findByRole("heading", { name: /ai assistant/i }, ASYNC_TIMEOUT)
+      await screen.findByRole("heading", { name: /asistente ia/i, level: 2 }, ASYNC_TIMEOUT)
     ).toBeInTheDocument();
-    expect(screen.getByRole("region", { name: "System status" })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Estado del sistema" })).toBeInTheDocument();
   }, 20000);
 
   it("deep-links to the Deep Learning page at /dl through its lazy chunk", async () => {
@@ -160,7 +160,7 @@ describe("App router", () => {
     expect(
       await screen.findByRole("heading", { name: /deep learning/i }, ASYNC_TIMEOUT)
     ).toBeInTheDocument();
-    expect(screen.getByRole("region", { name: "Deep learning results" })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Resultados de Deep Learning" })).toBeInTheDocument();
   }, 20000);
 
   it("deep-links to the Mis Números page at /numeros through its lazy chunk", async () => {

@@ -8,17 +8,17 @@ import { getDlMetrics, getDlModels, trainDlModels } from "../services/dl";
 import { useLotteryStore } from "../store/useLotteryStore";
 import type { DLMetric, DLSnapshot, DLTrainResult } from "../types/dl";
 
-const NO_LOTTERY_MESSAGE = "Select a lottery to see deep learning models.";
-const NO_MODELS_MESSAGE = "No models trained yet for this lottery. Click Train to generate them.";
-const NO_METRICS_MESSAGE = "No metrics available for this lottery.";
+const NO_LOTTERY_MESSAGE = "Selecciona una lotería para ver los modelos de Deep Learning.";
+const NO_MODELS_MESSAGE = "Aún no hay modelos entrenados para esta lotería. Haz clic en Entrenar para generarlos.";
+const NO_METRICS_MESSAGE = "No hay métricas disponibles para esta lotería.";
 const BUTTON_CLASS =
   "rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500";
 
 const metricColumns: DataColumn<DLMetric>[] = [
-  { key: "model_id", label: "Model", sortable: true },
-  { key: "number", label: "Number", sortable: true },
-  { key: "metric_name", label: "Metric", sortable: true },
-  { key: "value", label: "Value", sortable: true, sortValue: (row) => row.value },
+  { key: "model_id", label: "Modelo", sortable: true },
+  { key: "number", label: "Número", sortable: true },
+  { key: "metric_name", label: "Métrica", sortable: true },
+  { key: "value", label: "Valor", sortable: true, sortValue: (row) => row.value },
 ];
 
 /** Presentation order of metric families: mlp rows group before lstm rows (R2). */
@@ -37,7 +37,7 @@ function SnapshotSummary({ snapshot }: { snapshot: DLSnapshot }) {
         Version <span className="font-medium text-gray-900">{snapshot.version}</span>
       </span>
       <span>
-        Status <span className="font-medium text-gray-900">{snapshot.status}</span>
+        Estado <span className="font-medium text-gray-900">{snapshot.status}</span>
       </span>
       <span>
         Checksum <span className="font-mono text-xs text-gray-900">{snapshot.checksum}</span>
@@ -131,7 +131,7 @@ export default function DL() {
               disabled={training}
               className={BUTTON_CLASS}
             >
-              {training ? "Training…" : "Train"}
+              {training ? "Entrenando…" : "Entrenar"}
             </button>
           }
         />
@@ -147,15 +147,15 @@ export default function DL() {
             columns={metricColumns}
             rows={rows}
             rowKey={(row) => `${row.model_id}-${row.number}-${row.metric_name}`}
-            caption="Deep learning metrics"
+            caption="Métricas de Deep Learning"
           />
         )}
         {trainOutcome?.results.some((row) => row.status === "failed") ? (
-          <div aria-label="Training results" className="space-y-1 text-sm text-red-600">
+          <div aria-label="Resultados de entrenamiento" className="space-y-1 text-sm text-red-600">
             {trainOutcome.results
               .filter((row) => row.status === "failed")
               .map((row) => (
-                <p key={row.family}>{`${row.family}: ${row.error ?? "unknown error"}`}</p>
+                <p key={row.family}>{`${row.family}: ${row.error ?? "error desconocido"}`}</p>
               ))}
           </div>
         ) : null}
@@ -179,11 +179,11 @@ export default function DL() {
           aria-busy={training}
           className={BUTTON_CLASS}
         >
-          {training ? "Training…" : "Train"}
+          {training ? "Entrenando…" : "Entrenar"}
         </button>
       </div>
       <section
-        aria-label="Deep learning results"
+        aria-label="Resultados de Deep Learning"
         className="rounded-md border border-gray-200 bg-white p-4"
       >
         {renderContent()}

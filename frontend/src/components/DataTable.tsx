@@ -25,7 +25,7 @@ interface DataTableProps<T> {
   emptyMessage?: string;
 }
 
-const DEFAULT_EMPTY_MESSAGE = "No data available for this lottery.";
+const DEFAULT_EMPTY_MESSAGE = "No hay datos disponibles para esta lotería.";
 
 const DEFAULT_EMPTY_CELL = "—";
 
@@ -105,7 +105,7 @@ export default function DataTable<T>({
   return (
     <table className="w-full border-collapse text-left text-sm">
       <caption className="sr-only">{caption}</caption>
-      <thead className="border-b border-gray-200 bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
+      <thead className="border-b border-border bg-surface-2 text-xs uppercase tracking-wide text-ink-2">
         <tr>
           {columns.map((column) => {
             const isSorted = sortKey === column.key;
@@ -120,7 +120,7 @@ export default function DataTable<T>({
                   <button
                     type="button"
                     onClick={() => handleSort(column.key)}
-                    className="inline-flex items-center gap-1 rounded font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                    className="inline-flex items-center gap-1 rounded font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                   >
                     {column.label}
                     <span aria-hidden="true">
@@ -138,7 +138,7 @@ export default function DataTable<T>({
       <tbody>
         {loading ? (
           Array.from({ length: loadingRows }, (_, index) => (
-            <tr key={index} className="border-b border-gray-100">
+            <tr key={index} className="border-b border-border">
               {columns.map((column) => (
                 <td key={column.key} className="px-3 py-2">
                   <Skeleton variant="text" />
@@ -148,15 +148,15 @@ export default function DataTable<T>({
           ))
         ) : sortedRows.length === 0 ? (
           <tr>
-            <td colSpan={columns.length} className="px-3 py-8 text-center text-gray-500">
+              <td colSpan={columns.length} className="px-3 py-8 text-center text-ink-3">
               {emptyMessage}
             </td>
           </tr>
         ) : (
           sortedRows.map((row) => (
-            <tr key={rowKey(row)} className="border-b border-gray-100">
+            <tr key={rowKey(row)} className="border-b border-border transition-colors hover:bg-surface-2">
               {columns.map((column) => (
-                <td key={column.key} className="px-3 py-2 text-gray-900">
+                <td key={column.key} className="px-3 py-2 text-ink">
                   {renderCell(row, column)}
                 </td>
               ))}

@@ -155,11 +155,11 @@ describe("DL page", () => {
 
   it("prompts to select a lottery with zero API calls and a disabled Train button (parity bonus)", async () => {
     render(<DL />);
-    expect(await screen.findByText(/select a lottery/i)).toBeInTheDocument();
+    expect(await screen.findByText(/selecciona una lotería/i)).toBeInTheDocument();
     expect(modelsCalls).toBe(0);
     expect(metricsCalls).toBe(0);
     expect(trainCalls).toBe(0);
-    expect(screen.getByRole("button", { name: /^train$/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /^entrenar$/i })).toBeDisabled();
   });
 
   it("renders the empty-state Train CTA on 404 SNAPSHOT_NOT_FOUND, not an error (R3-S1)", async () => {
@@ -170,8 +170,8 @@ describe("DL page", () => {
     );
     render(<DL />);
 
-    expect(await screen.findByText(/no models trained yet/i)).toBeInTheDocument();
-    const trainButtons = screen.getAllByRole("button", { name: /^train$/i });
+    expect(await screen.findByText(/aún no hay modelos entrenados/i)).toBeInTheDocument();
+    const trainButtons = screen.getAllByRole("button", { name: /^entrenar$/i });
     expect(trainButtons.length).toBeGreaterThan(0);
     for (const button of trainButtons) {
       expect(button).toBeEnabled();
@@ -187,7 +187,7 @@ describe("DL page", () => {
     render(<DL />);
 
     expect(await screen.findByRole("alert")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /retry/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /reintentar/i })).toBeInTheDocument();
   });
 
   it("shows the skeleton while models load, then the table replaces it (R6-S1)", async () => {
@@ -215,7 +215,7 @@ describe("DL page", () => {
 
     expect(await screen.findByRole("alert")).toBeInTheDocument();
     failing = false;
-    fireEvent.click(screen.getByRole("button", { name: /retry/i }));
+    fireEvent.click(screen.getByRole("button", { name: /reintentar/i }));
 
     await screen.findByRole("table");
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
@@ -234,10 +234,10 @@ describe("DL page", () => {
     const modelsBefore = modelsCalls;
     const metricsBefore = metricsCalls;
 
-    fireEvent.click(screen.getByRole("button", { name: /^train$/i }));
+    fireEvent.click(screen.getByRole("button", { name: /^entrenar$/i }));
 
     const trainingButton = await screen.findByRole("button", {
-      name: /training/i,
+      name: /entrenando/i,
     });
     expect(trainingButton).toBeDisabled();
     expect(trainingButton).toHaveAttribute("aria-busy", "true");
@@ -245,7 +245,7 @@ describe("DL page", () => {
     await waitFor(() => expect(modelsCalls).toBe(modelsBefore + 1));
     await waitFor(() => expect(metricsCalls).toBe(metricsBefore + 1));
 
-    const settled = screen.getByRole("button", { name: /^train$/i });
+    const settled = screen.getByRole("button", { name: /^entrenar$/i });
     expect(settled).toBeEnabled();
   });
 
@@ -272,7 +272,7 @@ describe("DL page", () => {
     render(<DL />);
     await screen.findByRole("table");
 
-    fireEvent.click(screen.getByRole("button", { name: /^train$/i }));
+    fireEvent.click(screen.getByRole("button", { name: /^entrenar$/i }));
 
     expect(await screen.findByText(/lstm: no active F4 snapshot/i)).toBeInTheDocument();
   });
@@ -288,7 +288,7 @@ describe("DL page", () => {
     render(<DL />);
     await screen.findByRole("table");
 
-    fireEvent.click(screen.getByRole("button", { name: /^train$/i }));
+    fireEvent.click(screen.getByRole("button", { name: /^entrenar$/i }));
     expect(await screen.findByRole("alert")).toBeInTheDocument();
     expect(trainCalls).toBe(1);
 
@@ -298,7 +298,7 @@ describe("DL page", () => {
         return env(trainResult);
       })
     );
-    fireEvent.click(screen.getByRole("button", { name: /retry/i }));
+    fireEvent.click(screen.getByRole("button", { name: /reintentar/i }));
     await waitFor(() => expect(trainCalls).toBe(2));
   });
 });
