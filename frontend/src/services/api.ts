@@ -1,3 +1,4 @@
+import { getActiveSignal } from "../hooks/useApi";
 import type { ApiResponse } from "../types/envelope";
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api/v1";
@@ -110,6 +111,10 @@ function throwByStatus(status: number, message: string, code?: string): never {
  *
  * Reads VITE_API_BASE_URL from env (defaults to /api/v1).
  * Parses SuccessEnvelope / ErrorEnvelope and maps HTTP errors to typed classes.
+ *
+ * When called from a ``useApi``-managed fetcher, the live ``AbortSignal`` is
+ * picked up automatically from the module-level slot (``getActiveSignal()``)
+ * — no ``signal`` parameter needed.
  */
 export async function apiClient<T>(
   path: string,
@@ -117,13 +122,14 @@ export async function apiClient<T>(
   signal?: AbortSignal
 ): Promise<T> {
   const url = `${BASE_URL}${path}`;
+  const activeSignal = getActiveSignal();
   const response = await fetch(url, {
     headers: {
       "Content-Type": "application/json",
       ...init?.headers,
     },
     ...init,
-    signal: signal ?? init?.signal,
+    signal: signal ?? activeSignal ?? init?.signal,
   });
   return parseResponse<T>(response);
 }
